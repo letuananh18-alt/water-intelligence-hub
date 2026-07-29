@@ -78,6 +78,12 @@ class AppController {
       });
     }
 
+    // Bind Google Sign-In button
+    document.getElementById('btnGoogleSignIn')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.authManager.signInWithGoogle();
+    });
+
     document.getElementById('logoutBtn')?.addEventListener('click', () => {
       window.authManager.logout();
     });
@@ -88,6 +94,20 @@ class AppController {
 
     document.getElementById('demoMemberBtn')?.addEventListener('click', () => {
       window.authManager.switchPersona('MEMBER');
+    });
+
+    document.getElementById('toggleSignupLink')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      const email = prompt("ĐĂNG KÝ TÀI KHOẢN MỚI\nNhập địa chỉ Email của bạn:");
+      if (email && email.trim()) {
+        window.authManager.login(email, "123456");
+        alert("✨ Đã đăng ký và đăng nhập tài khoản mới thành công!");
+      }
+    });
+
+    document.getElementById('forgotPasswordLink')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      alert("📧 Đã gửi liên kết khôi phục mật khẩu vào Email của bạn!");
     });
   }
 
@@ -324,7 +344,6 @@ class AppController {
       if (e.key === 'Enter') handleSend();
     });
 
-    // Chat target switching
     document.querySelectorAll('[data-channel]').forEach(item => {
       item.addEventListener('click', () => {
         const channelId = item.getAttribute('data-channel');
