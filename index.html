@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Water Intelligence Hub - Thủ Đức Water Portal</title>
+  <meta name="description" content="Nền tảng lưu trữ và quản lý dữ liệu thông minh - Thủ Đức Water">
+  <link rel="stylesheet" href="css/styles.css">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       AUTHENTICATION CONTAINER (LOGIN / REGISTER MODAL)
+       ========================================================================== -->
+  <div id="authContainer" class="auth-container" style="display: none;">
+    <div class="auth-card">
+      <div class="brand-logo-wrapper">
+        <div class="brand-logo-icon">
+          <i data-lucide="droplet" style="width: 34px; height: 34px;"></i>
+        </div>
+        <h1 class="brand-title">Water Intelligence Hub</h1>
+        <p class="brand-subtitle">Nền tảng lưu trữ và quản lý dữ liệu thông minh<br>Kết nối trí thức, nâng tầm hiệu quả</p>
+      </div>
+
+      <form id="authForm" class="auth-form">
+        <div class="form-group">
+          <label class="form-label" for="authEmail">Email</label>
+          <div class="input-icon-wrapper">
+            <i data-lucide="mail" class="input-icon"></i>
+            <input type="email" id="authEmail" class="form-input" placeholder="Nhập email của bạn" value="tuan.nguyen@thuducwater.vn" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="authPassword">Mật khẩu</label>
+          <div class="input-icon-wrapper">
+            <i data-lucide="lock" class="input-icon"></i>
+            <input type="password" id="authPassword" class="form-input" placeholder="Nhập mật khẩu" value="••••••••" required>
+            <i data-lucide="eye" class="toggle-password" id="togglePasswordBtn"></i>
+          </div>
+        </div>
+
+        <div class="form-options">
+          <label class="checkbox-label">
+            <input type="checkbox" checked> Ghi nhớ đăng nhập
+          </label>
+          <a href="#" id="forgotPasswordLink">Quên mật khẩu?</a>
+        </div>
+
+        <button type="submit" class="btn-primary">
+          <span>Đăng nhập</span>
+          <i data-lucide="arrow-right" style="width: 18px; height: 18px;"></i>
+        </button>
+      </form>
+
+      <div class="auth-divider">
+        <span>Hoặc</span>
+      </div>
+
+      <button type="button" id="btnGoogleSignIn" class="btn-google">
+        <svg width="18" height="18" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+        </svg>
+        <span>Đăng nhập với Google</span>
+      </button>
+
+      <!-- Quick Persona Switcher for Evaluation -->
+      <div style="margin-top: 16px; font-size: 11px; color: var(--slate-500); font-weight: 600;">CHỌN TÀI KHOẢN MẪU DÙNG THỬ:</div>
+      <div class="demo-account-pills">
+        <button type="button" class="demo-pill" id="demoAdminBtn">
+          <i data-lucide="shield-check" style="width: 14px; height: 14px;"></i>
+          <span>Admin (Văn Tuấn)</span>
+        </button>
+        <button type="button" class="demo-pill" id="demoMemberBtn">
+          <i data-lucide="user" style="width: 14px; height: 14px;"></i>
+          <span>Member (Minh Anh)</span>
+        </button>
+      </div>
+
+      <p class="auth-footer">Chưa có tài khoản? <a href="#" id="toggleSignupLink">Đăng ký ngay</a></p>
+    </div>
+  </div>
+
+
+  <!-- ==========================================================================
+       MAIN APPLICATION LAYOUT (SIDEBAR + TOPBAR + CONTENT VIEWS)
+       ========================================================================== -->
+  <div id="appShell" class="app-shell" style="display: flex;">
+
+    <!-- Left Navigation Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">T</div>
+        <div>
+          <div class="sidebar-brand-name">THUDUC WATER</div>
+          <div class="sidebar-brand-sub">TIÊN PHONG - SÁNG TẠO - TẬN TÂM</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Menu Chính</div>
+        <div class="nav-item active" data-view="dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Tổng quan</span>
+        </div>
+        <div class="nav-item" data-view="personal-docs">
+          <i data-lucide="file-text"></i>
+          <span>Tài liệu cá nhân</span>
+        </div>
+        <div class="nav-item" data-view="dept-docs">
+          <i data-lucide="building-2"></i>
+          <span>Kho nội bộ phòng</span>
+        </div>
+        <div class="nav-item" data-view="team-chat">
+          <i data-lucide="message-square"></i>
+          <span>Trò chuyện (Chat)</span>
+          <span class="nav-badge">2</span>
+        </div>
+        <div class="nav-item" data-view="folders">
+          <i data-lucide="folder"></i>
+          <span>Thư mục</span>
+        </div>
+        <div class="nav-item" data-view="ai-assistant">
+          <i data-lucide="bot"></i>
+          <span>AI Assistant</span>
+        </div>
+
+        <div class="nav-section-title">Quản Lý</div>
+        <div class="nav-item" data-view="reports">
+          <i data-lucide="bar-chart-3"></i>
+          <span>Báo cáo</span>
+        </div>
+        <div class="nav-item" data-view="activity">
+          <i data-lucide="clock"></i>
+          <span>Hoạt động</span>
+        </div>
+        <div class="nav-item" data-view="users">
+          <i data-lucide="users"></i>
+          <span>Người dùng</span>
+        </div>
+        <div class="nav-item" data-view="settings">
+          <i data-lucide="settings"></i>
+          <span>Cài đặt</span>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-profile-widget">
+          <img id="userAvatarImg" class="user-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80" alt="Avatar">
+          <div class="user-info">
+            <div id="userNameTxt" class="user-name">Nguyễn Văn Tuấn</div>
+            <div id="userRoleTxt" class="user-role">Designer / Admin</div>
+          </div>
+          <button id="logoutBtn" class="icon-btn" title="Đăng xuất">
+            <i data-lucide="log-out" style="width: 16px; height: 16px;"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Wrapper -->
+    <div class="main-wrapper">
+
+      <!-- Top Header Bar -->
+      <header class="topbar">
+        <div class="global-search">
+          <i data-lucide="search" class="search-icon"></i>
+          <input type="text" id="globalSearchInput" class="search-input" placeholder="Tìm kiếm tài liệu, thư mục, quy trình...">
+        </div>
+
+        <div class="topbar-actions">
+          <button class="icon-btn" title="Thông báo" id="notifBellBtn">
+            <i data-lucide="bell"></i>
+            <span class="notification-badge">2</span>
+          </button>
+          <button class="icon-btn" title="Trợ giúp" id="helpBtn">
+            <i data-lucide="help-circle"></i>
+          </button>
+          <button class="btn-primary" id="topUploadBtn" style="padding: 8px 16px; font-size: 13px;">
+            <i data-lucide="upload" style="width: 16px; height: 16px;"></i>
+            <span>Tải lên</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Dynamic Page Content Views -->
+      <main class="page-content">
+
+        <!-- 1. DASHBOARD VIEW (TỔNG QUAN) -->
+        <section id="viewDashboard" class="view-panel">
+          <div class="page-header">
+            <div>
+              <h2 class="welcome-title">
+                <span>Xin chào, <span id="dashGreetingName">Nguyễn Văn Tuấn</span>!</span>
+                <span>👋</span>
+              </h2>
+              <p class="welcome-sub">Chào mừng bạn quay trở lại với Water Intelligence Hub</p>
+            </div>
+          </div>
+
+          <!-- Stat Cards -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-info">
+                <span class="stat-label">Tổng tài liệu</span>
+                <span class="stat-value" id="statTotalFiles">1,248</span>
+                <span class="stat-subtext">+12 tài liệu mới</span>
+              </div>
+              <div class="stat-icon-wrapper stat-icon-blue">
+                <i data-lucide="folder"></i>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-info" style="flex: 1;">
+                <span class="stat-label">Dung lượng đã dùng</span>
+                <span class="stat-value">128.4 GB <span style="font-size: 14px; font-weight: 500; color: var(--slate-400);">/ 500 GB</span></span>
+                <div class="progress-bar-bg">
+                  <div class="progress-bar-fill" style="width: 25%;"></div>
+                </div>
+                <span class="stat-subtext" style="color: var(--slate-500); margin-top: 6px;">25% đã sử dụng</span>
+              </div>
+              <div class="stat-icon-wrapper stat-icon-cyan">
+                <i data-lucide="cloud-upload"></i>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-info">
+                <span class="stat-label">Tài liệu chia sẻ</span>
+                <span class="stat-value">342</span>
+                <span class="stat-subtext">+5 người mới</span>
+              </div>
+              <div class="stat-icon-wrapper stat-icon-purple">
+                <i data-lucide="users"></i>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-info">
+                <span class="stat-label">Bảo mật</span>
+                <span class="stat-value" style="color: #059669; font-size: 20px;">An toàn</span>
+                <span class="stat-subtext" style="color: var(--slate-500);">Dữ liệu được bảo vệ</span>
+              </div>
+              <div class="stat-icon-wrapper stat-icon-green">
+                <i data-lucide="shield-check"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Middle Row: Upload Dropzone + Recent Activity -->
+          <div class="dashboard-middle-row">
+            <div id="dashboardDropzone" class="upload-widget-card">
+              <div class="upload-icon-circle">
+                <i data-lucide="cloud-upload" style="width: 28px; height: 28px;"></i>
+              </div>
+              <div class="upload-title">Kéo & thả tệp vào đây để tải lên</div>
+              <div class="upload-subtitle">hoặc chọn từ máy tính của bạn</div>
+              <button class="btn-upload-action" id="dropzoneSelectBtn">Chọn tệp để tải lên</button>
+              <input type="file" id="hiddenFileInput" style="display: none;" multiple>
+              <div class="upload-formats-hint">Hỗ trợ: PDF, DOCX, XLSX, PPTX, PNG, JPG (tối đa 100MB)</div>
+            </div>
+
+            <div class="activity-card">
+              <div class="card-header-flex">
+                <h3 class="card-title">Hoạt động gần đây</h3>
+                <a href="#" class="link-action" id="viewAllActivityLink">Xem tất cả</a>
+              </div>
+              <div class="activity-list" id="recentActivityList">
+                <!-- Activity Items dynamically rendered -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Files Data Table -->
+          <div class="table-card">
+            <div class="table-header-bar">
+              <h3 class="card-title">Tài liệu gần đây</h3>
+              <select id="dashFilterSelect" class="filter-select">
+                <option value="all">Tất cả loại file</option>
+                <option value="pdf">PDF</option>
+                <option value="docx">DOCX</option>
+                <option value="xlsx">XLSX</option>
+                <option value="ai">AI</option>
+                <option value="jpg">JPG</option>
+              </select>
+            </div>
+            <div class="data-table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Tên tài liệu</th>
+                    <th>Kích thước</th>
+                    <th>Ngày tải lên</th>
+                    <th>Người tải lên</th>
+                    <th style="text-align: right;">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="dashFilesTableBody">
+                  <!-- Rendered via JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. PERSONAL DOCUMENTS VIEW -->
+        <section id="viewPersonalDocs" class="view-panel" style="display: none;">
+          <div class="page-header">
+            <div>
+              <h2 class="welcome-title">Tài liệu cá nhân</h2>
+              <p class="welcome-sub">Quản lý và lưu trữ các tệp làm việc riêng của bạn</p>
+            </div>
+          </div>
+
+          <div class="table-card">
+            <div class="table-header-bar">
+              <div class="filter-toolbar">
+                <select id="personalTypeFilter" class="filter-select">
+                  <option value="all">Loại tệp: Tất cả</option>
+                  <option value="pdf">PDF</option>
+                  <option value="docx">DOCX</option>
+                  <option value="xlsx">XLSX</option>
+                  <option value="jpg">JPG</option>
+                </select>
+              </div>
+            </div>
+            <div class="data-table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th><input type="checkbox"></th>
+                    <th>Tên</th>
+                    <th>Loại</th>
+                    <th>Kích thước</th>
+                    <th>Ngày tải lên</th>
+                    <th style="text-align: right;">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="personalFilesTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. DEPARTMENT VAULT VIEW (KHO NỘI BỘ PHÒNG) -->
+        <section id="viewDeptDocs" class="view-panel" style="display: none;">
+          <div class="page-header">
+            <div>
+              <h2 class="welcome-title">Kho nội bộ phòng ban</h2>
+              <p class="welcome-sub">Văn bản, sơ đồ kỹ thuật và quy trình cấp nước dùng chung do Admin quản lý</p>
+            </div>
+            <button class="btn-primary" id="adminUploadDeptBtn" style="display: flex;">
+              <i data-lucide="plus"></i>
+              <span>Thêm tài liệu phòng ban</span>
+            </button>
+          </div>
+
+          <div class="table-card">
+            <div class="data-table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Tên văn bản phòng ban</th>
+                    <th>Loại</th>
+                    <th>Dung lượng</th>
+                    <th>Người đăng (Admin)</th>
+                    <th>Ngày ban hành</th>
+                    <th style="text-align: right;">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="deptFilesTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. TEAM CHAT VIEW -->
+        <section id="viewTeamChat" class="view-panel" style="display: none;">
+          <div class="team-chat-container">
+            <div class="ai-sidebar">
+              <div class="channel-section-header">Kênh Nhóm Phòng Ban</div>
+              <div class="thread-item active" data-channel="chan_general"># Phòng Kỹ Thuật & Vận Hành</div>
+              <div class="thread-item" data-channel="chan_project_q2"># Dự Án Cấp Nước Q2</div>
+              <div class="thread-item" data-channel="chan_safety"># Quy Chuẩn An Toàn</div>
+
+              <div class="channel-section-header" style="margin-top: 20px;">Trò Chuyện Trực Tiếp (1-1)</div>
+              <div class="user-chat-item" data-channel="dm_admin_tuan_001">
+                <div class="avatar-relative">
+                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80" style="width: 28px; height: 28px; border-radius: 50%;">
+                  <div class="online-dot"></div>
+                </div>
+                <span style="font-size: 13px; font-weight: 500;">Nguyễn Văn Tuấn</span>
+              </div>
+              <div class="user-chat-item" data-channel="dm_member_anh_002">
+                <div class="avatar-relative">
+                  <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80" style="width: 28px; height: 28px; border-radius: 50%;">
+                  <div class="online-dot"></div>
+                </div>
+                <span style="font-size: 13px; font-weight: 500;">Trần Minh Anh</span>
+              </div>
+            </div>
+
+            <div class="ai-chat-window">
+              <div class="chat-header">
+                <h3 id="currentChatTitle" style="font-size: 15px; font-weight: 700;"># Phòng Kỹ Thuật & Vận Hành</h3>
+                <span style="font-size: 12px; color: var(--slate-400);">4 thành viên trực tuyến</span>
+              </div>
+
+              <div id="teamChatMessageList" class="chat-messages-area"></div>
+
+              <div class="chat-input-bar">
+                <input type="text" id="teamChatInput" class="chat-input" placeholder="Nhập tin nhắn trò chuyện với đồng nghiệp...">
+                <button class="btn-send-chat" id="btnSendTeamChat">
+                  <i data-lucide="send" style="width: 18px; height: 18px;"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. AI ASSISTANT VIEW -->
+        <section id="viewAiAssistant" class="view-panel" style="display: none;">
+          <div class="ai-assistant-container">
+            <div class="ai-sidebar">
+              <button class="btn-new-chat" id="btnNewAiChat">
+                <i data-lucide="plus"></i>
+                <span>Cuộc trò chuyện mới</span>
+              </button>
+              <div class="chat-thread-list" id="aiThreadList">
+                <div class="thread-item active">Quy trình xử lý nước sạch</div>
+                <div class="thread-item">Báo cáo Q2 - Dự án cấp nước</div>
+                <div class="thread-item">Phân tích dữ liệu vận hành</div>
+                <div class="thread-item">Hướng dẫn an toàn lao động</div>
+              </div>
+            </div>
+
+            <div class="ai-chat-window">
+              <div class="chat-header">
+                <h3 style="font-size: 15px; font-weight: 700;">AI Assistant - Trợ lý AI thông minh của bạn</h3>
+                <span style="font-size: 12px; color: var(--accent-blue); font-weight: 600;">Sẵn sàng hỗ trợ 24/7</span>
+              </div>
+
+              <div id="aiChatArea" class="chat-messages-area">
+                <!-- AI Messages Rendered Dynamically -->
+              </div>
+
+              <div class="chat-input-bar">
+                <input type="text" id="aiChatInput" class="chat-input" placeholder="Hỏi bất cứ điều gì về tài liệu của bạn...">
+                <button class="btn-send-chat" id="btnSendAiChat">
+                  <i data-lucide="send" style="width: 18px; height: 18px;"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. FOLDERS / USERS / SETTINGS VIEWS -->
+        <section id="viewFolders" class="view-panel" style="display: none;">
+          <div class="page-header"><h2 class="welcome-title">Cấu trúc Thư mục</h2></div>
+          <div class="stats-grid">
+            <div class="stat-card"><div><strong>📁 Dự Án Cấp Nước 2026</strong><p>145 files</p></div></div>
+            <div class="stat-card"><div><strong>📁 Bản Vẽ Thiết Kế SCADA</strong><p>82 files</p></div></div>
+            <div class="stat-card"><div><strong>📁 Quy Chuẩn & Tiêu Chuẩn</strong><p>40 files</p></div></div>
+          </div>
+        </section>
+
+        <section id="viewUsers" class="view-panel" style="display: none;">
+          <div class="page-header"><h2 class="welcome-title">Danh sách người dùng & Phân quyền</h2></div>
+          <div class="table-card">
+            <table class="data-table">
+              <thead><tr><th>Họ và tên</th><th>Email</th><th>Chức danh</th><th>Quyền hạn</th></tr></thead>
+              <tbody>
+                <tr><td>Nguyễn Văn Tuấn</td><td>tuan.nguyen@thuducwater.vn</td><td>Designer / Admin</td><td><span class="badge-tag type-pdf">ADMIN</span></td></tr>
+                <tr><td>Trần Minh Anh</td><td>anh.tran@thuducwater.vn</td><td>Nhân viên Kỹ thuật</td><td><span class="badge-tag type-docx">MEMBER</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="viewSettings" class="view-panel" style="display: none;">
+          <div class="page-header"><h2 class="welcome-title">Cài đặt hệ thống</h2></div>
+          <div class="table-card" style="padding: 24px;">
+            <p><strong>Cấu hình Firebase Cloud Sync:</strong> Đã kết nối với dự án Thủ Đức Water Firebase.</p>
+            <p><strong>Dung lượng tối đa mỗi file:</strong> 100MB</p>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- FILE PREVIEW MODAL -->
+  <div id="filePreviewModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="previewModalTitle" class="modal-title">Xem trước tài liệu</h3>
+        <i data-lucide="x" class="close-btn" id="closePreviewModalBtn"></i>
+      </div>
+      <div class="file-preview-body">
+        <i data-lucide="file-text" style="width: 48px; height: 48px; color: var(--accent-blue); margin-bottom: 12px;"></i>
+        <h4 id="previewFileName">Tài liệu.pdf</h4>
+        <p id="previewFileMeta" style="font-size: 12px; color: var(--slate-400); margin-top: 6px;">PDF • 4.2 MB • Nguyễn Văn Tuấn</p>
+        <div style="margin-top: 20px;">
+          <a href="#" id="previewDownloadBtn" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">Tải về máy</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
