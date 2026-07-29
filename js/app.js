@@ -1,5 +1,5 @@
 // ==========================================================================
-// MAIN APPLICATION CONTROLLER (CLEAN RESETTABLE REAL DATA SYSTEM)
+// MAIN APPLICATION CONTROLLER (PURE REAL DATA ONLY)
 // ==========================================================================
 
 class AppController {
@@ -18,13 +18,9 @@ class AppController {
       this.bindChatEvents();
       this.bindAiEvents();
 
-      // Check and clear legacy mock data if present
-      const savedFiles = localStorage.getItem('thuduc_water_files');
-      if (savedFiles && savedFiles.includes('Quy trình thiết kế hệ thống.pdf')) {
-        localStorage.removeItem('thuduc_water_files');
-        localStorage.removeItem('thuduc_water_chats');
-        if (window.storageService) window.storageService.files = [];
-      }
+      // Clear legacy storage items
+      localStorage.removeItem('thuduc_water_files');
+      localStorage.removeItem('thuduc_water_chats');
 
       if (window.authManager) {
         window.authManager.onChange(user => this.onUserChanged(user));
@@ -108,14 +104,6 @@ class AppController {
       if (email && email.trim()) {
         window.authManager.login(email, "123456");
         alert("✨ Đã đăng ký và đăng nhập tài khoản mới thành công!");
-      }
-    });
-
-    // Reset data button
-    document.getElementById('resetDataBtn')?.addEventListener('click', () => {
-      if (confirm("Bạn có chắc chắn muốn xóa toàn bộ dữ liệu mẫu để thử nghiệm từ đầu không?")) {
-        localStorage.clear();
-        location.reload();
       }
     });
   }
@@ -206,7 +194,7 @@ class AppController {
     if (files.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="5" style="text-align: center; padding: 30px; color: var(--slate-400);">
+          <td colspan="5" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
             📂 Chưa có tài liệu nào. Kéo & thả tệp vào ô trên để bắt đầu tải lên!
           </td>
         </tr>
@@ -241,7 +229,7 @@ class AppController {
 
     const files = window.storageService.getFiles('all').slice(0, 4);
     if (files.length === 0) {
-      listEl.innerHTML = `<div style="font-size: 13px; color: var(--slate-400); text-align: center; padding: 20px;">Chưa có hoạt động mới nào.</div>`;
+      listEl.innerHTML = `<div style="font-size: 13px; color: var(--slate-400); text-align: center; padding: 25px;">Chưa có hoạt động mới nào.</div>`;
       return;
     }
 
@@ -264,7 +252,7 @@ class AppController {
     if (files.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="6" style="text-align: center; padding: 30px; color: var(--slate-400);">
+          <td colspan="6" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
             📄 Chưa có tài liệu cá nhân nào. Hãy bấm "Tải lên" để lưu tệp riêng của bạn!
           </td>
         </tr>
@@ -302,7 +290,7 @@ class AppController {
     if (files.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="6" style="text-align: center; padding: 30px; color: var(--slate-400);">
+          <td colspan="6" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
             🏢 Kho nội bộ chưa có văn bản nào. Admin có quyền tải thêm tài liệu chung cho phòng ban!
           </td>
         </tr>

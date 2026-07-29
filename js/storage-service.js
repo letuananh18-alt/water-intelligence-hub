@@ -1,8 +1,6 @@
 // ==========================================================================
-// FILE STORAGE & DUAL VAULT MANAGER SERVICE (CLEAN RESETTABLE STATE)
+// FILE STORAGE & DUAL VAULT MANAGER SERVICE (PURE REAL DATA)
 // ==========================================================================
-
-const INITIAL_FILES = [];
 
 class StorageService {
   constructor() {
@@ -12,28 +10,36 @@ class StorageService {
   }
 
   init() {
+    // Clear legacy mock data permanently
     const saved = localStorage.getItem('thuduc_water_files');
     if (saved) {
       try {
-        this.files = JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        // Filter out old mock files
+        this.files = parsed.filter(f => f.tags && f.tags.includes('Tệp thực tế'));
       } catch (e) {
         this.files = [];
       }
     } else {
       this.files = [];
-      this.saveLocal();
     }
+    this.saveLocal();
 
+    // Listen to real uploaded files from Cloud Firestore
     if (typeof firebase !== 'undefined' && firebase.firestore) {
       try {
         firebase.firestore().collection("files").onSnapshot(snapshot => {
-          if (!snapshot.empty) {
-            const cloudFiles = [];
-            snapshot.forEach(doc => cloudFiles.push({ id: doc.id, ...doc.data() }));
-            this.files = cloudFiles;
-            this.saveLocal();
-            this.notify();
-          }
+          const cloudFiles = [];
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            // Only load real files tagged as 'Tệp thực tế' or real user uploads
+            if (data.tags && data.tags.includes('Tệp thực tế')) {
+              cloudFiles.push({ id: doc.id, ...data });
+            }
+          });
+          this.files = cloudFiles;
+          this.saveLocal();
+          this.notify();
         }, err => {
           console.warn("Firestore snapshot notice:", err.message);
         });
@@ -45,12 +51,21 @@ class StorageService {
     localStorage.setItem('thuduc_water_files', JSON.stringify(this.files));
   }
 
-  resetAllData() {
+  async resetAllCloudAndLocalData() {
     this.files = [];
-    localStorage.removeItem('thuduc_water_files');
-    localStorage.removeItem('thuduc_water_chats');
-    localStorage.removeItem('thuduc_water_user');
+    localStorage.clear();
+
+    if (typeof firebase !== 'undefined' && firebase.firestore) {
+      try {
+        const snapshot = await firebase.firestore().collection("files").get();
+        snapshot.forEach(async (docRef) => {
+          await firebase.firestore().collection("files").doc(docRef.id).delete();
+        });
+      } catch (e) {}
+    }
+
     this.notify();
+    location.reload();
   }
 
   getFiles(category = 'all', searchQuery = '', typeFilter = 'all') {
