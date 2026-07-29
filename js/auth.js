@@ -1,30 +1,23 @@
 // ==========================================================================
-// USER AUTHENTICATION & ROLE MANAGEMENT MODULE (LIVE FIREBASE + MOCK)
-// Compatible with file:// protocol and http/https domains
+// USER AUTHENTICATION & ROLE MANAGEMENT MODULE
+// Real Admin: letuananh18@gmail.com
 // ==========================================================================
 
 const DEMO_USERS = {
   ADMIN: {
-    uid: "admin_tuan_001",
-    name: "Nguyễn Văn Tuấn",
-    email: "tuan.nguyen@thuducwater.vn",
-    role: "Designer / Admin",
+    uid: "admin_letuananh18",
+    name: "Lê Tuấn Anh",
+    email: "letuananh18@gmail.com",
+    role: "Admin / Quản trị hệ thống",
     avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    department: "Ban Giám Đốc / Thiết Kế"
-  },
-  MEMBER: {
-    uid: "member_anh_002",
-    name: "Trần Minh Anh",
-    email: "anh.tran@thuducwater.vn",
-    role: "Nhân viên Kỹ thuật",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-    department: "Phòng Vận Hành & Khảo Sát"
+    department: "Ban Quản Trị Hệ Thống"
   }
 };
 
 class AuthManager {
   constructor() {
     this.currentUser = null;
+    this.usersList = [DEMO_USERS.ADMIN];
     this.listeners = [];
     this.init();
   }
@@ -50,10 +43,16 @@ class AuthManager {
               uid: user.uid,
               name: user.displayName || user.email.split('@')[0],
               email: user.email,
-              role: "Nhân viên / Client (Live Cloud)",
+              role: user.email === 'letuananh18@gmail.com' ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
               avatar: user.photoURL || DEMO_USERS.ADMIN.avatar,
-              department: "Kỹ thuật Cấp nước"
+              department: "Phòng Kỹ thuật & Cấp nước"
             };
+            
+            // Add user to users list if not present
+            if (!this.usersList.some(u => u.email === user.email)) {
+              this.usersList.push(this.currentUser);
+            }
+
             localStorage.setItem('thuduc_water_user', JSON.stringify(this.currentUser));
             this.notify();
           }
@@ -66,8 +65,12 @@ class AuthManager {
     return this.currentUser;
   }
 
+  getUsersList() {
+    return this.usersList;
+  }
+
   isAdmin() {
-    return this.currentUser && (this.currentUser.role.includes("Admin") || this.currentUser.uid === "admin_tuan_001");
+    return this.currentUser && (this.currentUser.email === 'letuananh18@gmail.com' || this.currentUser.role.includes("Admin"));
   }
 
   async login(email, password) {
@@ -88,7 +91,7 @@ class AuthManager {
       }
     }
 
-    if (email.includes('admin') || email === DEMO_USERS.ADMIN.email) {
+    if (email === DEMO_USERS.ADMIN.email || email.includes('admin')) {
       this.currentUser = DEMO_USERS.ADMIN;
     } else {
       this.currentUser = {
@@ -99,6 +102,9 @@ class AuthManager {
         avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
         department: 'Phòng Kỹ thuật'
       };
+      if (!this.usersList.some(u => u.email === email)) {
+        this.usersList.push(this.currentUser);
+      }
     }
     localStorage.setItem('thuduc_water_user', JSON.stringify(this.currentUser));
     this.notify();
@@ -106,7 +112,6 @@ class AuthManager {
   }
 
   async signInWithGoogle() {
-    // If running on local file:// protocol, bypass error and directly log in
     if (window.location.protocol === 'file:') {
       this.switchPersona('ADMIN');
       return;

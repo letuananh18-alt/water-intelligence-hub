@@ -1,5 +1,5 @@
 // ==========================================================================
-// MAIN APPLICATION CONTROLLER (PURE REAL DATA ONLY)
+// MAIN APPLICATION CONTROLLER (REAL ADMIN: letuananh18@gmail.com)
 // ==========================================================================
 
 class AppController {
@@ -18,7 +18,7 @@ class AppController {
       this.bindChatEvents();
       this.bindAiEvents();
 
-      // Clear legacy storage items
+      // Remove fake old cache
       localStorage.removeItem('thuduc_water_files');
       localStorage.removeItem('thuduc_water_chats');
 
@@ -59,12 +59,10 @@ class AppController {
       const userNameTxt = document.getElementById('userNameTxt');
       const userRoleTxt = document.getElementById('userRoleTxt');
       const dashGreetingName = document.getElementById('dashGreetingName');
-      const userAvatarImg = document.getElementById('userAvatarImg');
 
-      if (userNameTxt) userNameTxt.textContent = user.name;
-      if (userRoleTxt) userRoleTxt.textContent = user.role;
-      if (dashGreetingName) dashGreetingName.textContent = user.name.split(' ').pop() || user.name;
-      if (userAvatarImg && user.avatar) userAvatarImg.src = user.avatar;
+      if (userNameTxt) userNameTxt.textContent = user.name || "Lê Tuấn Anh";
+      if (userRoleTxt) userRoleTxt.textContent = user.role || "Admin / Quản trị hệ thống";
+      if (dashGreetingName) dashGreetingName.textContent = (user.name ? user.name.split(' ').pop() : "Tuấn Anh");
 
       this.renderCurrentView();
     }
@@ -92,10 +90,6 @@ class AppController {
 
     document.getElementById('demoAdminBtn')?.addEventListener('click', () => {
       window.authManager.switchPersona('ADMIN');
-    });
-
-    document.getElementById('demoMemberBtn')?.addEventListener('click', () => {
-      window.authManager.switchPersona('MEMBER');
     });
 
     document.getElementById('toggleSignupLink')?.addEventListener('click', (e) => {
@@ -153,6 +147,7 @@ class AppController {
     this.renderRecentActivity();
     this.renderPersonalTable();
     this.renderDeptTable();
+    this.renderUsersTable();
     this.renderTeamChat();
     this.renderAiChat();
     this.refreshLucideIcons();
@@ -320,6 +315,21 @@ class AppController {
     `).join('');
   }
 
+  renderUsersTable() {
+    const tbody = document.getElementById('usersTableBody');
+    if (!tbody || !window.authManager) return;
+
+    const users = window.authManager.getUsersList();
+    tbody.innerHTML = users.map(u => `
+      <tr>
+        <td><strong>${u.name}</strong></td>
+        <td>${u.email}</td>
+        <td>${u.department || 'Phòng Kỹ thuật'}</td>
+        <td><span class="badge-tag ${u.email === 'letuananh18@gmail.com' ? 'type-pdf' : 'type-docx'}">${u.email === 'letuananh18@gmail.com' ? 'ADMIN' : 'MEMBER'}</span></td>
+      </tr>
+    `).join('');
+  }
+
   bindFileUploadEvents() {
     const hiddenInput = document.getElementById('hiddenFileInput');
     const selectBtn = document.getElementById('dropzoneSelectBtn');
@@ -340,7 +350,7 @@ class AppController {
 
     adminUploadDeptBtn?.addEventListener('click', () => {
       if (!window.authManager || !window.authManager.isAdmin()) {
-        alert("⚠️ Chỉ Admin mới có quyền tải lên Kho nội bộ phòng ban!");
+        alert("⚠️ Chỉ Admin (letuananh18@gmail.com) mới có quyền tải lên Kho nội bộ phòng ban!");
         return;
       }
       if (hiddenInput) hiddenInput.setAttribute('data-target-cat', 'department');

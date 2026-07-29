@@ -29,7 +29,7 @@
           <label class="form-label" for="authEmail">Email</label>
           <div class="input-icon-wrapper">
             <i data-lucide="mail" class="input-icon"></i>
-            <input type="email" id="authEmail" class="form-input" placeholder="Nhập email của bạn" value="tuan.nguyen@thuducwater.vn" required>
+            <input type="email" id="authEmail" class="form-input" placeholder="Nhập email của bạn" value="letuananh18@gmail.com" required>
           </div>
         </div>
 
@@ -69,16 +69,11 @@
         <span>Đăng nhập với Google</span>
       </button>
 
-      <!-- Quick Persona Switcher for Evaluation -->
-      <div style="margin-top: 16px; font-size: 11px; color: var(--slate-500); font-weight: 600;">CHỌN TÀI KHOẢN MẪU DÙNG THỬ:</div>
+      <div style="margin-top: 16px; font-size: 11px; color: var(--slate-500); font-weight: 600;">DÙNG THỬ NHANH VỚI TÀI KHOẢN ADMIN THẬT:</div>
       <div class="demo-account-pills">
-        <button type="button" class="demo-pill" id="demoAdminBtn">
+        <button type="button" class="demo-pill" id="demoAdminBtn" style="width: 100%;">
           <i data-lucide="shield-check" style="width: 14px; height: 14px;"></i>
-          <span>Admin (Văn Tuấn)</span>
-        </button>
-        <button type="button" class="demo-pill" id="demoMemberBtn">
-          <i data-lucide="user" style="width: 14px; height: 14px;"></i>
-          <span>Member (Minh Anh)</span>
+          <span>Admin (Lê Tuấn Anh - letuananh18@gmail.com)</span>
         </button>
       </div>
 
@@ -119,7 +114,7 @@
         <div class="nav-item" data-view="team-chat">
           <i data-lucide="message-square"></i>
           <span>Trò chuyện (Chat)</span>
-          <span class="nav-badge">2</span>
+          <span class="nav-badge">0</span>
         </div>
         <div class="nav-item" data-view="folders">
           <i data-lucide="folder"></i>
@@ -153,8 +148,8 @@
         <div class="user-profile-widget">
           <img id="userAvatarImg" class="user-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80" alt="Avatar">
           <div class="user-info">
-            <div id="userNameTxt" class="user-name">Nguyễn Văn Tuấn</div>
-            <div id="userRoleTxt" class="user-role">Designer / Admin</div>
+            <div id="userNameTxt" class="user-name">Lê Tuấn Anh</div>
+            <div id="userRoleTxt" class="user-role">Admin / Quản trị hệ thống</div>
           </div>
           <button id="logoutBtn" class="icon-btn" title="Đăng xuất">
             <i data-lucide="log-out" style="width: 16px; height: 16px;"></i>
@@ -176,7 +171,6 @@
         <div class="topbar-actions">
           <button class="icon-btn" title="Thông báo" id="notifBellBtn">
             <i data-lucide="bell"></i>
-            <span class="notification-badge">2</span>
           </button>
           <button class="icon-btn" title="Trợ giúp" id="helpBtn">
             <i data-lucide="help-circle"></i>
@@ -196,7 +190,7 @@
           <div class="page-header">
             <div>
               <h2 class="welcome-title">
-                <span>Xin chào, <span id="dashGreetingName">Nguyễn Văn Tuấn</span>!</span>
+                <span>Xin chào, <span id="dashGreetingName">Tuấn Anh</span>!</span>
                 <span>👋</span>
               </h2>
               <p class="welcome-sub">Chào mừng bạn quay trở lại với Water Intelligence Hub</p>
@@ -208,8 +202,8 @@
             <div class="stat-card">
               <div class="stat-info">
                 <span class="stat-label">Tổng tài liệu</span>
-                <span class="stat-value" id="statTotalFiles">1,248</span>
-                <span class="stat-subtext">+12 tài liệu mới</span>
+                <span class="stat-value" id="statTotalFiles">0</span>
+                <span class="stat-subtext">Đã kết nối Firebase Cloud</span>
               </div>
               <div class="stat-icon-wrapper stat-icon-blue">
                 <i data-lucide="folder"></i>
@@ -219,11 +213,11 @@
             <div class="stat-card">
               <div class="stat-info" style="flex: 1;">
                 <span class="stat-label">Dung lượng đã dùng</span>
-                <span class="stat-value">128.4 GB <span style="font-size: 14px; font-weight: 500; color: var(--slate-400);">/ 500 GB</span></span>
+                <span class="stat-value">0 MB <span style="font-size: 14px; font-weight: 500; color: var(--slate-400);">/ 500 GB</span></span>
                 <div class="progress-bar-bg">
-                  <div class="progress-bar-fill" style="width: 25%;"></div>
+                  <div class="progress-bar-fill" style="width: 0%;"></div>
                 </div>
-                <span class="stat-subtext" style="color: var(--slate-500); margin-top: 6px;">25% đã sử dụng</span>
+                <span class="stat-subtext" style="color: var(--slate-500); margin-top: 6px;">0% đã sử dụng</span>
               </div>
               <div class="stat-icon-wrapper stat-icon-cyan">
                 <i data-lucide="cloud-upload"></i>
@@ -232,9 +226,9 @@
 
             <div class="stat-card">
               <div class="stat-info">
-                <span class="stat-label">Tài liệu chia sẻ</span>
-                <span class="stat-value">342</span>
-                <span class="stat-subtext">+5 người mới</span>
+                <span class="stat-label">Tài liệu phòng ban</span>
+                <span class="stat-value">0</span>
+                <span class="stat-subtext">Kho nội bộ</span>
               </div>
               <div class="stat-icon-wrapper stat-icon-purple">
                 <i data-lucide="users"></i>
@@ -271,7 +265,9 @@
                 <h3 class="card-title">Hoạt động gần đây</h3>
                 <a href="#" class="link-action" id="viewAllActivityLink">Xem tất cả</a>
               </div>
-              <div class="activity-list" id="recentActivityList"></div>
+              <div class="activity-list" id="recentActivityList">
+                <div style="font-size: 13px; color: var(--slate-400); text-align: center; padding: 25px;">Chưa có hoạt động nào.</div>
+              </div>
             </div>
           </div>
 
@@ -299,7 +295,13 @@
                     <th style="text-align: right;">Thao tác</th>
                   </tr>
                 </thead>
-                <tbody id="dashFilesTableBody"></tbody>
+                <tbody id="dashFilesTableBody">
+                  <tr>
+                    <td colspan="5" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
+                      📂 Chưa có tài liệu nào. Kéo & thả tệp vào ô trên để bắt đầu tải lên!
+                    </td>
+                  </tr>
+                </tbody>
               </table>
             </div>
           </div>
@@ -338,7 +340,13 @@
                     <th style="text-align: right;">Thao tác</th>
                   </tr>
                 </thead>
-                <tbody id="personalFilesTableBody"></tbody>
+                <tbody id="personalFilesTableBody">
+                  <tr>
+                    <td colspan="6" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
+                      📄 Chưa có tài liệu cá nhân nào. Hãy bấm "Tải lên" để lưu tệp riêng của bạn!
+                    </td>
+                  </tr>
+                </tbody>
               </table>
             </div>
           </div>
@@ -370,7 +378,13 @@
                     <th style="text-align: right;">Thao tác</th>
                   </tr>
                 </thead>
-                <tbody id="deptFilesTableBody"></tbody>
+                <tbody id="deptFilesTableBody">
+                  <tr>
+                    <td colspan="6" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
+                      🏢 Kho nội bộ chưa có văn bản nào. Admin có quyền tải thêm tài liệu chung cho phòng ban!
+                    </td>
+                  </tr>
+                </tbody>
               </table>
             </div>
           </div>
@@ -384,31 +398,17 @@
               <div class="thread-item active" data-channel="chan_general"># Phòng Kỹ Thuật & Vận Hành</div>
               <div class="thread-item" data-channel="chan_project_q2"># Dự Án Cấp Nước Q2</div>
               <div class="thread-item" data-channel="chan_safety"># Quy Chuẩn An Toàn</div>
-
-              <div class="channel-section-header" style="margin-top: 20px;">Trò Chuyện Trực Tiếp (1-1)</div>
-              <div class="user-chat-item" data-channel="dm_admin_tuan_001">
-                <div class="avatar-relative">
-                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80" style="width: 28px; height: 28px; border-radius: 50%;">
-                  <div class="online-dot"></div>
-                </div>
-                <span style="font-size: 13px; font-weight: 500;">Nguyễn Văn Tuấn</span>
-              </div>
-              <div class="user-chat-item" data-channel="dm_member_anh_002">
-                <div class="avatar-relative">
-                  <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80" style="width: 28px; height: 28px; border-radius: 50%;">
-                  <div class="online-dot"></div>
-                </div>
-                <span style="font-size: 13px; font-weight: 500;">Trần Minh Anh</span>
-              </div>
             </div>
 
             <div class="ai-chat-window">
               <div class="chat-header">
                 <h3 id="currentChatTitle" style="font-size: 15px; font-weight: 700;"># Phòng Kỹ Thuật & Vận Hành</h3>
-                <span style="font-size: 12px; color: var(--slate-400);">4 thành viên trực tuyến</span>
+                <span style="font-size: 12px; color: var(--slate-400);">Trực tuyến</span>
               </div>
 
-              <div id="teamChatMessageList" class="chat-messages-area"></div>
+              <div id="teamChatMessageList" class="chat-messages-area">
+                <div style="font-size: 13px; color: var(--slate-400); text-align: center; margin-top: 40px;">💬 Chưa có tin nhắn nào. Hãy gửi tin nhắn đầu tiên!</div>
+              </div>
 
               <div class="chat-input-bar">
                 <input type="text" id="teamChatInput" class="chat-input" placeholder="Nhập tin nhắn trò chuyện với đồng nghiệp...">
@@ -454,34 +454,39 @@
           </div>
         </section>
 
-        <!-- 6. FOLDERS / USERS / SETTINGS VIEWS -->
-        <section id="viewFolders" class="view-panel" style="display: none;">
-          <div class="page-header"><h2 class="welcome-title">Cấu trúc Thư mục</h2></div>
-          <div class="stats-grid">
-            <div class="stat-card"><div><strong>📁 Dự Án Cấp Nước 2026</strong><p>145 files</p></div></div>
-            <div class="stat-card"><div><strong>📁 Bản Vẽ Thiết Kế SCADA</strong><p>82 files</p></div></div>
-            <div class="stat-card"><div><strong>📁 Quy Chuẩn & Tiêu Chuẩn</strong><p>40 files</p></div></div>
-          </div>
-        </section>
-
+        <!-- 6. USERS VIEW -->
         <section id="viewUsers" class="view-panel" style="display: none;">
           <div class="page-header"><h2 class="welcome-title">Danh sách người dùng & Phân quyền</h2></div>
           <div class="table-card">
             <table class="data-table">
-              <thead><tr><th>Họ và tên</th><th>Email</th><th>Chức danh</th><th>Quyền hạn</th></tr></thead>
-              <tbody>
-                <tr><td>Nguyễn Văn Tuấn</td><td>tuan.nguyen@thuducwater.vn</td><td>Designer / Admin</td><td><span class="badge-tag type-pdf">ADMIN</span></td></tr>
-                <tr><td>Trần Minh Anh</td><td>anh.tran@thuducwater.vn</td><td>Nhân viên Kỹ thuật</td><td><span class="badge-tag type-docx">MEMBER</span></td></tr>
+              <thead><tr><th>Họ và tên</th><th>Email</th><th>Chức danh / Phòng ban</th><th>Quyền hạn</th></tr></thead>
+              <tbody id="usersTableBody">
+                <tr>
+                  <td><strong>Lê Tuấn Anh</strong></td>
+                  <td>letuananh18@gmail.com</td>
+                  <td>Ban Quản Trị Hệ Thống</td>
+                  <td><span class="badge-tag type-pdf">ADMIN</span></td>
+                </tr>
               </tbody>
             </table>
+          </div>
+        </section>
+
+        <!-- 7. FOLDERS / SETTINGS VIEWS -->
+        <section id="viewFolders" class="view-panel" style="display: none;">
+          <div class="page-header"><h2 class="welcome-title">Cấu trúc Thư mục</h2></div>
+          <div class="stats-grid">
+            <div class="stat-card"><div><strong>📁 Dự Án Cấp Nước 2026</strong><p>0 files</p></div></div>
+            <div class="stat-card"><div><strong>📁 Bản Vẽ Thiết Kế SCADA</strong><p>0 files</p></div></div>
+            <div class="stat-card"><div><strong>📁 Quy Chuẩn & Tiêu Chuẩn</strong><p>0 files</p></div></div>
           </div>
         </section>
 
         <section id="viewSettings" class="view-panel" style="display: none;">
           <div class="page-header"><h2 class="welcome-title">Cài đặt hệ thống</h2></div>
           <div class="table-card" style="padding: 24px;">
-            <p><strong>Cấu hình Firebase Cloud Sync:</strong> Đã kết nối dự án thuduc-water-hub thành công!</p>
-            <p><strong>Dung lượng tối đa mỗi file:</strong> 100MB</p>
+            <p><strong>Cấu hình Firebase Cloud Sync:</strong> Đã kết nối với dự án <code>thuduc-water-hub</code>.</p>
+            <p><strong>Admin chính:</strong> letuananh18@gmail.com</p>
           </div>
         </section>
 
@@ -499,7 +504,7 @@
       <div class="file-preview-body">
         <i data-lucide="file-text" style="width: 48px; height: 48px; color: var(--accent-blue); margin-bottom: 12px;"></i>
         <h4 id="previewFileName">Tài liệu.pdf</h4>
-        <p id="previewFileMeta" style="font-size: 12px; color: var(--slate-400); margin-top: 6px;">PDF • 4.2 MB • Nguyễn Văn Tuấn</p>
+        <p id="previewFileMeta" style="font-size: 12px; color: var(--slate-400); margin-top: 6px;">PDF • 0 MB</p>
         <div style="margin-top: 20px;">
           <a href="#" id="previewDownloadBtn" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">Tải về máy</a>
         </div>
