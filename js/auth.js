@@ -1,5 +1,5 @@
 // ==========================================================================
-// USER AUTHENTICATION & ROLE MANAGEMENT MODULE
+// USER AUTHENTICATION & ROLE MANAGEMENT MODULE (STRICT FIREBASE AUTH)
 // Real Admin: letuananh18@gmail.com
 // ==========================================================================
 
@@ -28,11 +28,8 @@ class AuthManager {
       try {
         this.currentUser = JSON.parse(saved);
       } catch (e) {
-        this.currentUser = DEMO_USERS.ADMIN;
+        this.currentUser = null;
       }
-    } else {
-      this.currentUser = DEMO_USERS.ADMIN;
-      localStorage.setItem('thuduc_water_user', JSON.stringify(this.currentUser));
     }
 
     if (typeof firebase !== 'undefined' && firebase.auth) {
@@ -48,7 +45,6 @@ class AuthManager {
               department: "Phòng Kỹ thuật & Cấp nước"
             };
             
-            // Add user to users list if not present
             if (!this.usersList.some(u => u.email === user.email)) {
               this.usersList.push(this.currentUser);
             }
@@ -74,46 +70,71 @@ class AuthManager {
   }
 
   async login(email, password) {
+    if (!email || !email.trim()) {
+      alert("⚠️ Vui lòng nhập địa chỉ Email!");
+      return null;
+    }
+    if (!password || password.length < 6) {
+      alert("⚠️ Mật khẩu phải có ít nhất 6 ký tự!");
+      return null;
+    }
+
+    // Live Firebase Cloud Strict Auth Check
     if (window.location.protocol !== 'file:' && typeof firebase !== 'undefined' && firebase.auth) {
       try {
         const res = await firebase.auth().signInWithEmailAndPassword(email, password);
         return res.user;
       } catch (err) {
-        if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
-          try {
-            const newUserRes = await firebase.auth().createUserWithEmailAndPassword(email, password);
-            alert("✨ Đã tự động khởi tạo tài khoản mới thành công trên Firebase Cloud!");
-            return newUserRes.user;
-          } catch (createErr) {
-            console.warn("Firebase auth create fallback:", createErr);
+        console.error("Firebase Auth Error Code:", err.code);
+        if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+          alert("❌ Mật khẩu không chính xác! Vui lòng kiểm tra lại.");
+          return null;
+        } else if (err.code === 'auth/user-not-found') {
+          if (confirm(`Email ${email} chưa được đăng ký trên Firebase Cloud. Bạn có muốn tạo tài khoản mới với mật khẩu vừa nhập không?`)) {
+            try {
+              const newUserRes = await firebase.auth().createUserWithEmailAndPassword(email, password);
+              alert("✨ Tạo tài khoản mới thành công trên Cloud!");
+              return newUserRes.user;
+            } catch (cErr) {
+              alert("⚠️ Không thể tạo tài khoản: " + cErr.message);
+              return null;
+            }
           }
+          return null;
+        } else {
+          alert("⚠️ Lỗi đăng nhập: " + err.message);
+          return null;
         }
       }
-    }
-
-    if (email === DEMO_USERS.ADMIN.email || email.includes('admin')) {
-      this.currentUser = DEMO_USERS.ADMIN;
     } else {
+      // Local testing mode password verification
+      if (password !== "123456" && password !== "12345678" && password !== "admin123") {
+        alert("❌ Mật khẩu không chính xác! (Mật khẩu thử nghiệm mặc định là: 123456)");
+        return null;
+      }
+
       this.currentUser = {
-        uid: 'user_' + Date.now(),
+        uid: "user_" + Date.now(),
         name: email.split('@')[0],
         email: email,
-        role: 'Nhân viên / Client',
-        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-        department: 'Phòng Kỹ thuật'
+        role: email === 'letuananh18@gmail.com' ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
+        avatar: DEMO_USERS.ADMIN.avatar,
+        department: "Phòng Kỹ thuật"
       };
+
       if (!this.usersList.some(u => u.email === email)) {
         this.usersList.push(this.currentUser);
       }
+
+      localStorage.setItem('thuduc_water_user', JSON.stringify(this.currentUser));
+      this.notify();
+      return this.currentUser;
     }
-    localStorage.setItem('thuduc_water_user', JSON.stringify(this.currentUser));
-    this.notify();
-    return this.currentUser;
   }
 
   async signInWithGoogle() {
     if (window.location.protocol === 'file:') {
-      this.switchPersona('ADMIN');
+      alert("ℹ️ Đang xem file cục bộ file://. Hãy sử dụng bản web live trên Vercel để sử dụng Google Sign-in chính thức!");
       return;
     }
 
@@ -123,14 +144,8 @@ class AuthManager {
         const result = await firebase.auth().signInWithPopup(provider);
         return result.user;
       } catch (err) {
-        if (err.code === 'auth/operation-not-supported-in-this-environment') {
-          this.switchPersona('ADMIN');
-        } else {
-          alert("⚠️ Google Sign-in Notice: " + err.message);
-        }
+        alert("⚠️ Lỗi đăng nhập Google: " + err.message);
       }
-    } else {
-      this.switchPersona('ADMIN');
     }
   }
 
