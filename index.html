@@ -480,7 +480,7 @@
         <section id="viewSettings" class="view-panel" style="display: none;">
           <div class="page-header"><h2 class="welcome-title">Cài đặt hệ thống</h2></div>
           <div class="table-card" style="padding: 24px;">
-            <p><strong>Cấu hình Firebase Cloud Sync:</strong> Đã kết nối với dự án Thủ Đức Water Firebase.</p>
+            <p><strong>Cấu hình Firebase Cloud Sync:</strong> Đã kết nối dự án thuduc-water-hub thành công!</p>
             <p><strong>Dung lượng tối đa mỗi file:</strong> 100MB</p>
           </div>
         </section>
@@ -507,7 +507,14 @@
     </div>
   </div>
 
-  <!-- Standard Script Tags compatible with file:// protocol -->
+  <!-- Official Firebase v10 SDK Compat Libraries -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+
+  <!-- Application Logic -->
+  <script src="js/firebase-config.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/storage-service.js"></script>
   <script src="js/chat-service.js"></script>

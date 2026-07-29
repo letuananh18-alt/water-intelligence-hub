@@ -1,55 +1,41 @@
 // ==========================================================================
-// FIREBASE CONFIGURATION & INITIALIZATION (FIREBASE SDK V10)
+// LIVE FIREBASE CLOUD CONFIGURATION & INITIALIZATION
+// Connected to project: thuduc-water-hub
 // ==========================================================================
 
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged,
-  GoogleAuthProvider,
-  signInWithPopup
-} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
-  deleteDoc, 
-  doc, 
-  onSnapshot 
-} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-
-// Default Firebase Configuration (replace with your Firebase project config)
-export const firebaseConfig = {
-  apiKey: "AIzaSyYOUR_FIREBASE_API_KEY_HERE",
+const firebaseConfig = {
+  apiKey: "AIzaSyBvDBnrQvUMfYzwk15VFLM0XqDqY2-UYzw",
   authDomain: "thuduc-water-hub.firebaseapp.com",
   projectId: "thuduc-water-hub",
-  storageBucket: "thuduc-water-hub.appspot.com",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:abcdef123456"
+  storageBucket: "thuduc-water-hub.firebasestorage.app",
+  messagingSenderId: "1078655296118",
+  appId: "1:1078655296118:web:9cd66c44aa5ba2cce67557",
+  measurementId: "G-Q7R7BJ5D5J"
 };
 
-let app, auth, db;
+let firebaseApp = null;
+let firebaseAuth = null;
+let firebaseDb = null;
+let firebaseStorage = null;
 let isFirebaseLive = false;
 
 try {
-  if (firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("YOUR_FIREBASE_API_KEY_HERE")) {
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
+  if (typeof firebase !== 'undefined') {
+    firebaseApp = firebase.initializeApp(firebaseConfig);
+    firebaseAuth = firebase.auth();
+    firebaseDb = firebase.firestore();
+    firebaseStorage = firebase.storage();
     isFirebaseLive = true;
-    console.log("🔥 Firebase initialized successfully!");
+    console.log("🔥 Live Firebase Cloud Services successfully initialized for thuduc-water-hub!");
   } else {
-    console.warn("⚠️ Using local mock fallback mode. Update js/firebase-config.js with your real Firebase keys for live cloud sync.");
+    console.warn("⚠️ Firebase SDK script tags not yet loaded.");
   }
-} catch (e) {
-  console.warn("⚠️ Running in offline standalone mode:", e.message);
+} catch (err) {
+  console.warn("⚠️ Firebase initialization notice:", err.message);
 }
 
-export { app, auth, db, isFirebaseLive };
+window.firebaseConfig = firebaseConfig;
+window.firebaseAuth = firebaseAuth;
+window.firebaseDb = firebaseDb;
+window.firebaseStorage = firebaseStorage;
+window.isFirebaseLive = isFirebaseLive;

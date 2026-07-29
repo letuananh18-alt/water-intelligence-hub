@@ -1,6 +1,5 @@
 // ==========================================================================
-// USER AUTHENTICATION & ROLE MANAGEMENT MODULE
-// Compatible with file:// protocol and http:// servers
+// USER AUTHENTICATION & ROLE MANAGEMENT MODULE (LIVE FIREBASE + MOCK)
 // ==========================================================================
 
 const DEMO_USERS = {
@@ -30,6 +29,7 @@ class AuthManager {
   }
 
   init() {
+    // Check saved session in localStorage
     const saved = localStorage.getItem('thuduc_water_user');
     if (saved) {
       try {
@@ -41,6 +41,24 @@ class AuthManager {
       this.currentUser = DEMO_USERS.ADMIN;
       localStorage.setItem('thuduc_water_user', JSON.stringify(this.currentUser));
     }
+
+    // Subscribe to Live Firebase Authentication listener if SDK is loaded
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+      firebase.auth().onAuthStateChanged(user => {
+        if (user) {
+          this.currentUser = {
+            uid: user.uid,
+            name: user.displayName || user.email.split('@')[0],
+            email: user.email,
+            role: "Nhân viên / Client (Live Cloud)",
+            avatar: user.photoURL || DEMO_USERS.ADMIN.avatar,
+            department: "Kỹ thuật Cấp nước"
+          };
+          localStorage.setItem('thuduc_water_user', JSON.stringify(this.currentUser));
+          this.notify();
+        }
+      });
+    }
   }
 
   getCurrentUser() {
@@ -51,7 +69,26 @@ class AuthManager {
     return this.currentUser && (this.currentUser.role.includes("Admin") || this.currentUser.uid === "admin_tuan_001");
   }
 
-  login(email, password) {
+  async login(email, password) {
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+      try {
+        const res = await firebase.auth().signInWithEmailAndPassword(email, password);
+        return res.user;
+      } catch (err) {
+        // If user not found, auto-create account on Live Firebase
+        if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+          try {
+            const newUserRes = await firebase.auth().createUserWithEmailAndPassword(email, password);
+            alert("✨ Đã tự động khởi tạo tài khoản mới thành công trên Firebase Cloud!");
+            return newUserRes.user;
+          } catch (createErr) {
+            console.warn("Firebase auth create fallback:", createErr);
+          }
+        }
+      }
+    }
+
+    // Local fallback login simulation
     if (email.includes('admin') || email === DEMO_USERS.ADMIN.email) {
       this.currentUser = DEMO_USERS.ADMIN;
     } else {
@@ -69,6 +106,20 @@ class AuthManager {
     return this.currentUser;
   }
 
+  async signInWithGoogle() {
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        const result = await firebase.auth().signInWithPopup(provider);
+        return result.user;
+      } catch (err) {
+        alert("⚠️ Google Sign-in Notice: " + err.message);
+      }
+    } else {
+      this.switchPersona('ADMIN');
+    }
+  }
+
   switchPersona(personaKey) {
     if (DEMO_USERS[personaKey]) {
       this.currentUser = DEMO_USERS[personaKey];
@@ -77,7 +128,12 @@ class AuthManager {
     }
   }
 
-  logout() {
+  async logout() {
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+      try {
+        await firebase.auth().signOut();
+      } catch (e) {}
+    }
     this.currentUser = null;
     localStorage.removeItem('thuduc_water_user');
     this.notify();
