@@ -1,8 +1,16 @@
 // ==========================================================================
-// MAIN APPLICATION CONTROLLER (STRICT RBAC ADMIN VS CLIENT PERMISSIONS)
-// Admin: letuananh18@gmail.com
-// Client: View & Download shared files, Manage & Upload own personal files
+// MAIN APPLICATION CONTROLLER (ENTERPRISE SECURITY & XSS PROTECTION)
 // ==========================================================================
+
+function escapeHTML(str) {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 class AppController {
   constructor() {
@@ -62,14 +70,9 @@ class AppController {
       if (userRoleTxt) userRoleTxt.textContent = user.role;
       if (dashGreetingName) dashGreetingName.textContent = (user.name ? user.name.split(' ').pop() : user.email.split('@')[0]);
 
-      // Hide or show Admin-only buttons based on RBAC
       const adminUploadDeptBtn = document.getElementById('adminUploadDeptBtn');
       if (adminUploadDeptBtn) {
-        if (window.authManager && window.authManager.isAdmin()) {
-          adminUploadDeptBtn.style.display = 'flex';
-        } else {
-          adminUploadDeptBtn.style.display = 'none';
-        }
+        adminUploadDeptBtn.style.display = (window.authManager && window.authManager.isAdmin()) ? 'flex' : 'none';
       }
 
       this.renderCurrentView();
@@ -94,10 +97,6 @@ class AppController {
 
     document.getElementById('logoutBtn')?.addEventListener('click', () => {
       window.authManager.logout();
-    });
-
-    document.getElementById('demoAdminBtn')?.addEventListener('click', () => {
-      window.authManager.switchPersona('ADMIN');
     });
 
     document.getElementById('toggleSignupLink')?.addEventListener('click', (e) => {
@@ -170,7 +169,7 @@ class AppController {
 
     const elUsed = document.querySelector('.stat-card:nth-child(2) .stat-value');
     if (elUsed) {
-      elUsed.innerHTML = `${stats.usedFormatted} <span style="font-size: 14px; font-weight: 500; color: var(--slate-400);">/ 500 GB</span>`;
+      elUsed.innerHTML = `${escapeHTML(stats.usedFormatted)} <span style="font-size: 14px; font-weight: 500; color: var(--slate-400);">/ 500 GB</span>`;
     }
 
     const elProgress = document.querySelector('.progress-bar-fill');
@@ -211,17 +210,17 @@ class AppController {
       <tr>
         <td>
           <div class="file-name-cell">
-            <span class="file-type-icon type-${file.type.toLowerCase()}">${file.type}</span>
-            <span>${file.name}</span>
+            <span class="file-type-icon type-${escapeHTML(file.type.toLowerCase())}">${escapeHTML(file.type)}</span>
+            <span>${escapeHTML(file.name)}</span>
           </div>
         </td>
-        <td>${file.sizeFormatted}</td>
-        <td>${file.uploadDate}</td>
-        <td>${file.uploadedBy}</td>
+        <td>${escapeHTML(file.sizeFormatted)}</td>
+        <td>${escapeHTML(file.uploadDate)}</td>
+        <td>${escapeHTML(file.uploadedBy)}</td>
         <td style="text-align: right;">
           <div class="table-actions" style="justify-content: flex-end;">
-            <button class="table-btn preview-btn" data-id="${file.id}">Xem & Tải về</button>
-            ${(isAdmin || (file.category === 'personal' && file.uploaderUid === window.authManager.getCurrentUser()?.uid)) ? `<button class="table-btn table-btn-delete delete-btn" data-id="${file.id}">Xóa</button>` : `<span style="font-size: 11px; color: var(--slate-400); padding: 4px 8px; background: var(--slate-100); border-radius: 4px;">Quyền xem</span>`}
+            <button class="table-btn preview-btn" data-id="${escapeHTML(file.id)}">Xem & Tải về</button>
+            ${(isAdmin || (file.category === 'personal' && file.uploaderUid === window.authManager.getCurrentUser()?.uid)) ? `<button class="table-btn table-btn-delete delete-btn" data-id="${escapeHTML(file.id)}">Xóa</button>` : `<span style="font-size: 11px; color: var(--slate-400); padding: 4px 8px; background: var(--slate-100); border-radius: 4px;">Quyền xem</span>`}
           </div>
         </td>
       </tr>
@@ -240,10 +239,10 @@ class AppController {
 
     listEl.innerHTML = files.map(f => `
       <div class="activity-item">
-        <div class="file-type-icon type-${f.type.toLowerCase()}">${f.type}</div>
+        <div class="file-type-icon type-${escapeHTML(f.type.toLowerCase())}">${escapeHTML(f.type)}</div>
         <div class="activity-details">
-          <div class="activity-filename">${f.name}</div>
-          <div class="activity-meta">${f.uploadedBy} đã tải lên • ${f.uploadDate}</div>
+          <div class="activity-filename">${escapeHTML(f.name)}</div>
+          <div class="activity-meta">${escapeHTML(f.uploadedBy)} đã tải lên • ${escapeHTML(f.uploadDate)}</div>
         </div>
       </div>
     `).join('');
@@ -270,17 +269,17 @@ class AppController {
         <td><input type="checkbox"></td>
         <td>
           <div class="file-name-cell">
-            <span class="file-type-icon type-${file.type.toLowerCase()}">${file.type}</span>
-            <span>${file.name}</span>
+            <span class="file-type-icon type-${escapeHTML(file.type.toLowerCase())}">${escapeHTML(file.type)}</span>
+            <span>${escapeHTML(file.name)}</span>
           </div>
         </td>
-        <td><span class="badge-tag type-${file.type.toLowerCase()}">${file.type}</span></td>
-        <td>${file.sizeFormatted}</td>
-        <td>${file.uploadDate}</td>
+        <td><span class="badge-tag type-${escapeHTML(file.type.toLowerCase())}">${escapeHTML(file.type)}</span></td>
+        <td>${escapeHTML(file.sizeFormatted)}</td>
+        <td>${escapeHTML(file.uploadDate)}</td>
         <td style="text-align: right;">
           <div class="table-actions" style="justify-content: flex-end;">
-            <button class="table-btn preview-btn" data-id="${file.id}">Xem & Tải về</button>
-            <button class="table-btn table-btn-delete delete-btn" data-id="${file.id}">Xóa</button>
+            <button class="table-btn preview-btn" data-id="${escapeHTML(file.id)}">Xem & Tải về</button>
+            <button class="table-btn table-btn-delete delete-btn" data-id="${escapeHTML(file.id)}">Xóa</button>
           </div>
         </td>
       </tr>
@@ -309,18 +308,18 @@ class AppController {
       <tr>
         <td>
           <div class="file-name-cell">
-            <span class="file-type-icon type-${file.type.toLowerCase()}">${file.type}</span>
-            <span>${file.name}</span>
+            <span class="file-type-icon type-${escapeHTML(file.type.toLowerCase())}">${escapeHTML(file.type)}</span>
+            <span>${escapeHTML(file.name)}</span>
           </div>
         </td>
-        <td><span class="badge-tag type-${file.type.toLowerCase()}">${file.type}</span></td>
-        <td>${file.sizeFormatted}</td>
-        <td>${file.uploadedBy}</td>
-        <td>${file.uploadDate}</td>
+        <td><span class="badge-tag type-${escapeHTML(file.type.toLowerCase())}">${escapeHTML(file.type)}</span></td>
+        <td>${escapeHTML(file.sizeFormatted)}</td>
+        <td>${escapeHTML(file.uploadedBy)}</td>
+        <td>${escapeHTML(file.uploadDate)}</td>
         <td style="text-align: right;">
           <div class="table-actions" style="justify-content: flex-end;">
-            <button class="table-btn preview-btn" data-id="${file.id}">Xem & Tải về</button>
-            ${isAdmin ? `<button class="table-btn table-btn-delete delete-btn" data-id="${file.id}">Xóa</button>` : `<span style="font-size: 11px; color: var(--slate-500); padding: 4px 10px; background: var(--slate-100); border-radius: 4px; font-weight: 600;">👁️ Quyền xem & Tải về</span>`}
+            <button class="table-btn preview-btn" data-id="${escapeHTML(file.id)}">Xem & Tải về</button>
+            ${isAdmin ? `<button class="table-btn table-btn-delete delete-btn" data-id="${escapeHTML(file.id)}">Xóa</button>` : `<span style="font-size: 11px; color: var(--slate-500); padding: 4px 10px; background: var(--slate-100); border-radius: 4px; font-weight: 600;">👁️ Quyền xem & Tải về</span>`}
           </div>
         </td>
       </tr>
@@ -334,9 +333,9 @@ class AppController {
     const users = window.authManager.getUsersList();
     tbody.innerHTML = users.map(u => `
       <tr>
-        <td><strong>${u.name}</strong></td>
-        <td>${u.email}</td>
-        <td>${u.department || 'Phòng Kỹ thuật'}</td>
+        <td><strong>${escapeHTML(u.name)}</strong></td>
+        <td>${escapeHTML(u.email)}</td>
+        <td>${escapeHTML(u.department || 'Phòng Kỹ thuật')}</td>
         <td><span class="badge-tag ${u.email === 'letuananh18@gmail.com' ? 'type-pdf' : 'type-docx'}">${u.email === 'letuananh18@gmail.com' ? 'ADMIN' : 'CLIENT'}</span></td>
       </tr>
     `).join('');
@@ -454,9 +453,9 @@ class AppController {
 
     listEl.innerHTML = msgs.map(msg => `
       <div class="chat-bubble ${msg.senderUid === (currentUser ? currentUser.uid : '') ? 'bubble-user' : 'bubble-ai'}" style="margin-bottom: 12px;">
-        <div style="font-size: 11px; opacity: 0.8; margin-bottom: 4px; font-weight: 600;">${msg.senderName} • ${msg.timestamp}</div>
-        <div>${msg.text}</div>
-        ${msg.attachment ? `<div class="ai-summary-card" style="margin-top: 8px;">📎 <strong>${msg.attachment.name}</strong> (${msg.attachment.size})</div>` : ''}
+        <div style="font-size: 11px; opacity: 0.8; margin-bottom: 4px; font-weight: 600;">${escapeHTML(msg.senderName)} • ${escapeHTML(msg.timestamp)}</div>
+        <div>${escapeHTML(msg.text)}</div>
+        ${msg.attachment ? `<div class="ai-summary-card" style="margin-top: 8px;">📎 <strong>${escapeHTML(msg.attachment.name)}</strong> (${escapeHTML(msg.attachment.size)})</div>` : ''}
       </div>
     `).join('');
 
@@ -487,11 +486,11 @@ class AppController {
     const msgs = window.aiAssistant.getActiveMessages();
     area.innerHTML = msgs.map(m => {
       if (m.role === 'pill') {
-        return `<div class="suggested-prompt-pill">${m.text}</div>`;
+        return `<div class="suggested-prompt-pill">${escapeHTML(m.text)}</div>`;
       }
       return `
         <div class="chat-bubble ${m.role === 'user' ? 'bubble-user' : 'bubble-ai'}">
-          <div>${m.text.replace(/\n/g, '<br>')}</div>
+          <div>${escapeHTML(m.text).replace(/\n/g, '<br>')}</div>
         </div>
       `;
     }).join('');

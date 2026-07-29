@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for strict authentication & authorization
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.email == "letuananh18@gmail.com";
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Rules for Files collection (Dual Storage Model)
+    match /files/{fileId} {
+      // Anyone authenticated can read/list documents
+      allow read: if isAuthenticated();
+
+      // Client can only upload personal documents (category == 'personal')
+      // Admin can upload to both personal and department categories
+      allow create: if isAuthenticated() && 
+        (isAdmin() || (request.resource.data.category == 'personal' && request.resource.data.uploaderUid == request.auth.uid));
+
+      // Client can only delete their own personal files
+      // Admin can delete any document
+      allow delete: if isAdmin() || (isOwner(resource.data.uploaderUid) && resource.data.category == 'personal');
+
+      // Client cannot update department documents
+      allow update: if isAdmin() || (isOwner(resource.data.uploaderUid) && request.resource.data.category == 'personal');
+    }
+
+    // Rules for User directory
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isOwner(userId);
+    }
+  }
+}
