@@ -1,6 +1,5 @@
 // ==========================================================================
-// MAIN APPLICATION CONTROLLER (VIEW ROUTING, DOM BINDING & INTERACTIONS)
-// Compatible with file:// protocol and http:// servers
+// MAIN APPLICATION CONTROLLER (CLEAN RESETTABLE REAL DATA SYSTEM)
 // ==========================================================================
 
 class AppController {
@@ -78,7 +77,6 @@ class AppController {
       });
     }
 
-    // Bind Google Sign-In button
     document.getElementById('btnGoogleSignIn')?.addEventListener('click', (e) => {
       e.preventDefault();
       window.authManager.signInWithGoogle();
@@ -103,11 +101,6 @@ class AppController {
         window.authManager.login(email, "123456");
         alert("✨ Đã đăng ký và đăng nhập tài khoản mới thành công!");
       }
-    });
-
-    document.getElementById('forgotPasswordLink')?.addEventListener('click', (e) => {
-      e.preventDefault();
-      alert("📧 Đã gửi liên kết khôi phục mật khẩu vào Email của bạn!");
     });
   }
 
@@ -164,8 +157,29 @@ class AppController {
   renderDashboardStats() {
     if (!window.storageService) return;
     const stats = window.storageService.getStorageStats();
-    const el = document.getElementById('statTotalFiles');
-    if (el) el.textContent = stats.totalFiles.toLocaleString();
+    
+    const elTotal = document.getElementById('statTotalFiles');
+    if (elTotal) elTotal.textContent = stats.totalFiles.toLocaleString();
+
+    const elUsed = document.querySelector('.stat-card:nth-child(2) .stat-value');
+    if (elUsed) {
+      elUsed.innerHTML = `${stats.usedFormatted} <span style="font-size: 14px; font-weight: 500; color: var(--slate-400);">/ 500 GB</span>`;
+    }
+
+    const elProgress = document.querySelector('.progress-bar-fill');
+    if (elProgress) {
+      elProgress.style.width = `${stats.percentage}%`;
+    }
+
+    const elProgressSub = document.querySelector('.stat-card:nth-child(2) .stat-subtext');
+    if (elProgressSub) {
+      elProgressSub.textContent = `${stats.percentage}% đã sử dụng`;
+    }
+
+    const elShared = document.querySelector('.stat-card:nth-child(3) .stat-value');
+    if (elShared) {
+      elShared.textContent = stats.sharedFiles.toString();
+    }
   }
 
   renderDashboardTable() {
@@ -173,6 +187,17 @@ class AppController {
     if (!tbody || !window.storageService) return;
 
     const files = window.storageService.getFiles('all').slice(0, 5);
+    if (files.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align: center; padding: 30px; color: var(--slate-400);">
+            📂 Chưa có tài liệu nào. Kéo & thả tệp vào ô trên để bắt đầu tải lên!
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
     tbody.innerHTML = files.map(file => `
       <tr>
         <td>
@@ -196,21 +221,20 @@ class AppController {
 
   renderRecentActivity() {
     const listEl = document.getElementById('recentActivityList');
-    if (!listEl) return;
+    if (!listEl || !window.storageService) return;
 
-    const activities = [
-      { name: "Quy trình thiết kế hệ thống.pdf", type: "pdf", user: "Nguyễn Văn Tuấn", action: "đã tải lên", time: "10:30" },
-      { name: "Báo cáo dự án Q2.docx", type: "docx", user: "Trần Minh Anh", action: "đã cập nhật", time: "09:15" },
-      { name: "Mockup giao diện.ai", type: "ai", user: "Lê Hoàng Nam", action: "đã tải lên", time: "Hôm qua" },
-      { name: "Tài liệu hướng dẫn sử dụng.pdf", type: "pdf", user: "Phạm Thị Mai", action: "đã cập nhật", time: "2 ngày trước" }
-    ];
+    const files = window.storageService.getFiles('all').slice(0, 4);
+    if (files.length === 0) {
+      listEl.innerHTML = `<div style="font-size: 13px; color: var(--slate-400); text-align: center; padding: 20px;">Chưa có hoạt động mới nào.</div>`;
+      return;
+    }
 
-    listEl.innerHTML = activities.map(act => `
+    listEl.innerHTML = files.map(f => `
       <div class="activity-item">
-        <div class="file-type-icon type-${act.type}">${act.type.toUpperCase()}</div>
+        <div class="file-type-icon type-${f.type.toLowerCase()}">${f.type}</div>
         <div class="activity-details">
-          <div class="activity-filename">${act.name}</div>
-          <div class="activity-meta">${act.user} ${act.action} • ${act.time}</div>
+          <div class="activity-filename">${f.name}</div>
+          <div class="activity-meta">${f.uploadedBy} đã tải lên • ${f.uploadDate}</div>
         </div>
       </div>
     `).join('');
@@ -221,6 +245,17 @@ class AppController {
     if (!tbody || !window.storageService) return;
 
     const files = window.storageService.getFiles('personal');
+    if (files.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align: center; padding: 30px; color: var(--slate-400);">
+            📄 Chưa có tài liệu cá nhân nào. Hãy bấm "Tải lên" để lưu tệp riêng của bạn!
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
     tbody.innerHTML = files.map(file => `
       <tr>
         <td><input type="checkbox"></td>
@@ -248,6 +283,17 @@ class AppController {
     if (!tbody || !window.storageService) return;
 
     const files = window.storageService.getFiles('department');
+    if (files.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align: center; padding: 30px; color: var(--slate-400);">
+            🏢 Kho nội bộ chưa có văn bản nào. Admin có quyền tải thêm tài liệu chung cho phòng ban!
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
     tbody.innerHTML = files.map(file => `
       <tr>
         <td>
@@ -263,7 +309,7 @@ class AppController {
         <td style="text-align: right;">
           <div class="table-actions" style="justify-content: flex-end;">
             <button class="table-btn preview-btn" data-id="${file.id}">Xem</button>
-            ${window.authManager.isAdmin() ? `<button class="table-btn table-btn-delete delete-btn" data-id="${file.id}">Xóa</button>` : `<span style="font-size: 11px; color: var(--slate-400);">Quyền xem</span>`}
+            ${(window.authManager && window.authManager.isAdmin()) ? `<button class="table-btn table-btn-delete delete-btn" data-id="${file.id}">Xóa</button>` : `<span style="font-size: 11px; color: var(--slate-400);">Quyền xem</span>`}
           </div>
         </td>
       </tr>
@@ -275,25 +321,39 @@ class AppController {
     const selectBtn = document.getElementById('dropzoneSelectBtn');
     const topUploadBtn = document.getElementById('topUploadBtn');
     const dropzone = document.getElementById('dashboardDropzone');
+    const adminUploadDeptBtn = document.getElementById('adminUploadDeptBtn');
 
     selectBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
+      if (hiddenInput) hiddenInput.setAttribute('data-target-cat', 'personal');
       hiddenInput?.click();
     });
 
     topUploadBtn?.addEventListener('click', () => {
+      if (hiddenInput) hiddenInput.setAttribute('data-target-cat', 'personal');
+      hiddenInput?.click();
+    });
+
+    adminUploadDeptBtn?.addEventListener('click', () => {
+      if (!window.authManager || !window.authManager.isAdmin()) {
+        alert("⚠️ Chỉ Admin mới có quyền tải lên Kho nội bộ phòng ban!");
+        return;
+      }
+      if (hiddenInput) hiddenInput.setAttribute('data-target-cat', 'department');
       hiddenInput?.click();
     });
 
     dropzone?.addEventListener('click', () => {
+      if (hiddenInput) hiddenInput.setAttribute('data-target-cat', 'personal');
       hiddenInput?.click();
     });
 
     hiddenInput?.addEventListener('change', (e) => {
       const files = e.target.files;
+      const category = hiddenInput.getAttribute('data-target-cat') || 'personal';
       if (files && files.length > 0) {
-        Array.from(files).forEach(f => window.storageService.addFile(f, 'personal'));
-        alert(`✅ Đã tải lên ${files.length} tệp thành công!`);
+        Array.from(files).forEach(f => window.storageService.addFile(f, category));
+        alert(`✅ Đã tải lên ${files.length} tệp thành công vào ${category === 'department' ? 'Kho nội bộ phòng ban' : 'Kho cá nhân'}!`);
       }
     });
   }
@@ -359,7 +419,12 @@ class AppController {
     if (!listEl || !window.chatService) return;
 
     const msgs = window.chatService.getActiveMessages();
-    const currentUser = window.authManager.getCurrentUser();
+    const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
+
+    if (msgs.length === 0) {
+      listEl.innerHTML = `<div style="font-size: 13px; color: var(--slate-400); text-align: center; margin-top: 40px;">💬 Chưa có tin nhắn nào trong kênh này. Hãy gửi tin nhắn đầu tiên!</div>`;
+      return;
+    }
 
     listEl.innerHTML = msgs.map(msg => `
       <div class="chat-bubble ${msg.senderUid === (currentUser ? currentUser.uid : '') ? 'bubble-user' : 'bubble-ai'}" style="margin-bottom: 12px;">

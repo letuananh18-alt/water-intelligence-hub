@@ -1,44 +1,15 @@
 // ==========================================================================
-// REAL-TIME TEAM CHAT SERVICE (1-ON-1 & GROUP CHANNELS)
-// Compatible with file:// protocol and http:// servers
+// REAL-TIME TEAM CHAT SERVICE (CLEAN RESETTABLE CHAT HISTORY)
 // ==========================================================================
 
 const INITIAL_CHANNELS = [
-  { id: "chan_general", name: "# Phòng Kỹ Thuật & Vận Hành", type: "channel", unread: 2 },
+  { id: "chan_general", name: "# Phòng Kỹ Thuật & Vận Hành", type: "channel", unread: 0 },
   { id: "chan_project_q2", name: "# Dự Án Cấp Nước Q2", type: "channel", unread: 0 },
   { id: "chan_safety", name: "# Quy Chuẩn An Toàn", type: "channel", unread: 0 }
 ];
 
 const INITIAL_MESSAGES = {
-  chan_general: [
-    {
-      id: "m1",
-      senderName: "Trần Minh Anh",
-      senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-      senderUid: "member_anh_002",
-      text: "Chào mọi người, bản vẽ sơ đồ cấp nước tuyến đường Lê Văn Việt đã hoàn thành rà soát.",
-      timestamp: "10:15 AM",
-      attachment: null
-    },
-    {
-      id: "m2",
-      senderName: "Nguyễn Văn Tuấn",
-      senderAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-      senderUid: "admin_tuan_001",
-      text: "Cảm ơn Minh Anh. Mình vừa cập nhật Quy trình thiết kế hệ thống mới lên Kho nội bộ phòng ban.",
-      timestamp: "10:20 AM",
-      attachment: { name: "Quy trình thiết kế hệ thống.pdf", size: "4.2 MB", type: "PDF" }
-    },
-    {
-      id: "m3",
-      senderName: "Trần Minh Anh",
-      senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-      senderUid: "member_anh_002",
-      text: "Vâng anh Tuấn, để em tải về xem xét ngay!",
-      timestamp: "10:22 AM",
-      attachment: null
-    }
-  ]
+  chan_general: []
 };
 
 class ChatService {
@@ -77,7 +48,7 @@ class ChatService {
   }
 
   sendMessage(text, attachment = null) {
-    const currentUser = window.authManager.getCurrentUser();
+    const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
     if (!currentUser || (!text.trim() && !attachment)) return;
 
     const newMsg = {
@@ -95,35 +66,6 @@ class ChatService {
     }
 
     this.messages[this.activeTargetId].push(newMsg);
-    this.saveLocal();
-    this.notify();
-
-    if (this.activeTargetId === 'chan_general') {
-      setTimeout(() => {
-        this.receiveAutomatedReply();
-      }, 1200);
-    }
-  }
-
-  receiveAutomatedReply() {
-    const replies = [
-      "Đã nhận được thông tin, phòng Kỹ thuật đang tiến hành xử lý.",
-      "Tài liệu đã được ghi nhận vào kho hệ thống chung.",
-      "Tuyệt vời! Hãy thông báo nếu có biến động về chỉ số lưu lượng nước nhé."
-    ];
-    const randomReply = replies[Math.floor(Math.random() * replies.length)];
-
-    const botMsg = {
-      id: "msg_reply_" + Date.now(),
-      senderName: "Lê Hoàng Nam",
-      senderAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
-      senderUid: "member_nam_003",
-      text: randomReply,
-      timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-      attachment: null
-    };
-
-    this.messages['chan_general'].push(botMsg);
     this.saveLocal();
     this.notify();
   }
