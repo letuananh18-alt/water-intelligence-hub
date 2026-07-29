@@ -12,14 +12,15 @@
 <body>
 
   <!-- ==========================================================================
-       AUTHENTICATION CONTAINER (LOGIN / REGISTER MODAL)
+       AUTHENTICATION CONTAINER (FUTURISTIC DIGITAL TRANSFORMATION BG)
        ========================================================================== -->
   <div id="authContainer" class="auth-container" style="display: none;">
+    <!-- High-Tech Animated Digital Water Canvas -->
+    <canvas id="techBgCanvas"></canvas>
+
     <div class="auth-card">
       <div class="brand-logo-wrapper">
-        <div class="brand-logo-icon">
-          <i data-lucide="droplet" style="width: 34px; height: 34px;"></i>
-        </div>
+        <img src="assets/logo.png" alt="THUDUC WATER Logo" class="auth-brand-logo">
         <h1 class="brand-title">Water Intelligence Hub</h1>
         <p class="brand-subtitle">Nền tảng lưu trữ và quản lý dữ liệu thông minh<br>Kết nối trí thức, nâng tầm hiệu quả</p>
       </div>
@@ -82,11 +83,7 @@
     <!-- Left Navigation Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-header">
-        <div class="sidebar-logo">T</div>
-        <div>
-          <div class="sidebar-brand-name">THUDUC WATER</div>
-          <div class="sidebar-brand-sub">TIÊN PHONG - SÁNG TẠO - TẬN TÂM</div>
-        </div>
+        <img src="assets/logo.png" alt="THUDUC WATER Logo" class="sidebar-brand-logo">
       </div>
 
       <nav class="sidebar-nav">
@@ -512,6 +509,7 @@
 
   <!-- Application Logic -->
   <script src="js/firebase-config.js"></script>
+  <script src="js/tech-bg.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/storage-service.js"></script>
   <script src="js/chat-service.js"></script>
