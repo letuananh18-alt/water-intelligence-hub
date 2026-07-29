@@ -271,9 +271,7 @@
                 <h3 class="card-title">Hoạt động gần đây</h3>
                 <a href="#" class="link-action" id="viewAllActivityLink">Xem tất cả</a>
               </div>
-              <div class="activity-list" id="recentActivityList">
-                <!-- Activity Items dynamically rendered -->
-              </div>
+              <div class="activity-list" id="recentActivityList"></div>
             </div>
           </div>
 
@@ -301,9 +299,7 @@
                     <th style="text-align: right;">Thao tác</th>
                   </tr>
                 </thead>
-                <tbody id="dashFilesTableBody">
-                  <!-- Rendered via JavaScript -->
-                </tbody>
+                <tbody id="dashFilesTableBody"></tbody>
               </table>
             </div>
           </div>
@@ -446,9 +442,7 @@
                 <span style="font-size: 12px; color: var(--accent-blue); font-weight: 600;">Sẵn sàng hỗ trợ 24/7</span>
               </div>
 
-              <div id="aiChatArea" class="chat-messages-area">
-                <!-- AI Messages Rendered Dynamically -->
-              </div>
+              <div id="aiChatArea" class="chat-messages-area"></div>
 
               <div class="chat-input-bar">
                 <input type="text" id="aiChatInput" class="chat-input" placeholder="Hỏi bất cứ điều gì về tài liệu của bạn...">
@@ -513,6 +507,11 @@
     </div>
   </div>
 
-  <script type="module" src="js/app.js"></script>
+  <!-- Standard Script Tags compatible with file:// protocol -->
+  <script src="js/auth.js"></script>
+  <script src="js/storage-service.js"></script>
+  <script src="js/chat-service.js"></script>
+  <script src="js/ai-assistant.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>

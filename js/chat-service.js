@@ -1,8 +1,7 @@
 // ==========================================================================
 // REAL-TIME TEAM CHAT SERVICE (1-ON-1 & GROUP CHANNELS)
+// Compatible with file:// protocol and http:// servers
 // ==========================================================================
-
-import { authManager, DEMO_USERS } from './auth.js';
 
 const INITIAL_CHANNELS = [
   { id: "chan_general", name: "# Phòng Kỹ Thuật & Vận Hành", type: "channel", unread: 2 },
@@ -15,7 +14,7 @@ const INITIAL_MESSAGES = {
     {
       id: "m1",
       senderName: "Trần Minh Anh",
-      senderAvatar: DEMO_USERS.MEMBER.avatar,
+      senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
       senderUid: "member_anh_002",
       text: "Chào mọi người, bản vẽ sơ đồ cấp nước tuyến đường Lê Văn Việt đã hoàn thành rà soát.",
       timestamp: "10:15 AM",
@@ -24,7 +23,7 @@ const INITIAL_MESSAGES = {
     {
       id: "m2",
       senderName: "Nguyễn Văn Tuấn",
-      senderAvatar: DEMO_USERS.ADMIN.avatar,
+      senderAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
       senderUid: "admin_tuan_001",
       text: "Cảm ơn Minh Anh. Mình vừa cập nhật Quy trình thiết kế hệ thống mới lên Kho nội bộ phòng ban.",
       timestamp: "10:20 AM",
@@ -33,21 +32,10 @@ const INITIAL_MESSAGES = {
     {
       id: "m3",
       senderName: "Trần Minh Anh",
-      senderAvatar: DEMO_USERS.MEMBER.avatar,
+      senderAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
       senderUid: "member_anh_002",
       text: "Vâng anh Tuấn, để em tải về xem xét ngay!",
       timestamp: "10:22 AM",
-      attachment: null
-    }
-  ],
-  dm_admin_tuan_001: [
-    {
-      id: "dm1",
-      senderName: "Nguyễn Văn Tuấn",
-      senderAvatar: DEMO_USERS.ADMIN.avatar,
-      senderUid: "admin_tuan_001",
-      text: "Chào bạn, hãy cho tôi biết nếu bạn cần cấp thêm quyền duyệt tài liệu dự án nhé.",
-      timestamp: "Yesterday",
       attachment: null
     }
   ]
@@ -89,7 +77,7 @@ class ChatService {
   }
 
   sendMessage(text, attachment = null) {
-    const currentUser = authManager.getCurrentUser();
+    const currentUser = window.authManager.getCurrentUser();
     if (!currentUser || (!text.trim() && !attachment)) return;
 
     const newMsg = {
@@ -110,11 +98,10 @@ class ChatService {
     this.saveLocal();
     this.notify();
 
-    // Trigger simulated automated response from peer if testing
     if (this.activeTargetId === 'chan_general') {
       setTimeout(() => {
         this.receiveAutomatedReply();
-      }, 1500);
+      }, 1200);
     }
   }
 
@@ -150,4 +137,4 @@ class ChatService {
   }
 }
 
-export const chatService = new ChatService();
+window.chatService = new ChatService();

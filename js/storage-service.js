@@ -1,12 +1,8 @@
 // ==========================================================================
 // FILE STORAGE & DUAL VAULT MANAGER SERVICE
+// Compatible with file:// protocol and http:// servers
 // ==========================================================================
 
-import { authManager } from './auth.js';
-import { db, isFirebaseLive } from './firebase-config.js';
-import { collection, addDoc, getDocs, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-
-// Initial sample file items matching the user's provided screenshot
 const INITIAL_FILES = [
   {
     id: "f1",
@@ -17,8 +13,8 @@ const INITIAL_FILES = [
     uploadedBy: "Nguyễn Văn Tuấn",
     uploaderUid: "admin_tuan_001",
     uploadDate: "10/06/2026 10:30",
-    category: "department", // 'personal' or 'department'
-    url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+    category: "department",
+    url: "#",
     tags: ["Kỹ thuật", "Hệ thống"]
   },
   {
@@ -96,7 +92,7 @@ const INITIAL_FILES = [
     uploaderUid: "member_nam_003",
     uploadDate: "07/06/2026 15:30",
     category: "personal",
-    url: "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?w=800&auto=format&fit=crop&q=80",
+    url: "#",
     tags: ["Khảo sát"]
   }
 ];
@@ -130,7 +126,7 @@ class StorageService {
     let list = [...this.files];
 
     if (category === 'personal') {
-      const user = authManager.getCurrentUser();
+      const user = window.authManager.getCurrentUser();
       list = list.filter(f => f.category === 'personal' || (user && f.uploaderUid === user.uid));
     } else if (category === 'department') {
       list = list.filter(f => f.category === 'department');
@@ -149,9 +145,8 @@ class StorageService {
   }
 
   addFile(fileObj, category = 'personal') {
-    const currentUser = authManager.getCurrentUser() || { name: "Nguyễn Văn Tuấn", uid: "admin_tuan_001" };
+    const currentUser = window.authManager.getCurrentUser() || { name: "Nguyễn Văn Tuấn", uid: "admin_tuan_001" };
     
-    // Convert size to human readable MB/KB
     let formattedSize = (fileObj.size / (1024 * 1024)).toFixed(1) + " MB";
     if (fileObj.size < 1024 * 1024) {
       formattedSize = Math.round(fileObj.size / 1024) + " KB";
@@ -169,7 +164,7 @@ class StorageService {
       uploaderUid: currentUser.uid,
       uploadDate: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
       category: category,
-      url: URL.createObjectURL(fileObj),
+      url: "#",
       tags: ["Mới tải lên"]
     };
 
@@ -183,9 +178,8 @@ class StorageService {
     const file = this.files.find(f => f.id === fileId);
     if (!file) return false;
 
-    const user = authManager.getCurrentUser();
-    // Admin can delete any file; Members can delete their own personal files
-    if (authManager.isAdmin() || (user && file.uploaderUid === user.uid)) {
+    const user = window.authManager.getCurrentUser();
+    if (window.authManager.isAdmin() || (user && file.uploaderUid === user.uid)) {
       this.files = this.files.filter(f => f.id !== fileId);
       this.saveLocal();
       this.notify();
@@ -197,14 +191,9 @@ class StorageService {
   }
 
   getStorageStats() {
-    const totalBytes = this.files.reduce((acc, curr) => acc + (curr.sizeBytes || 0), 0);
-    const totalGB = (totalBytes / (1024 * 1024 * 1024)).toFixed(1);
-    const maxGB = 500;
-    const percentage = Math.min(100, Math.round((totalGB / maxGB) * 100));
-
     return {
-      totalFiles: 1248 + this.files.length - INITIAL_FILES.length, // Matching the 1,248 stat in screenshot
-      usedGB: 128.4, // Display matching screenshot value, dynamically augmented
+      totalFiles: 1248 + this.files.length - INITIAL_FILES.length,
+      usedGB: 128.4,
       maxGB: 500,
       percentage: 25,
       sharedFiles: 342
@@ -220,4 +209,4 @@ class StorageService {
   }
 }
 
-export const storageService = new StorageService();
+window.storageService = new StorageService();

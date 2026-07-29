@@ -1,15 +1,16 @@
 // ==========================================================================
 // AI DOCUMENT ASSISTANT MODULE (SMART SUMMARIES & TECHNICAL Q&A)
+// Compatible with file:// protocol and http:// servers
 // ==========================================================================
 
-export const INITIAL_AI_THREADS = [
+const INITIAL_AI_THREADS = [
   { id: "thread_water_process", title: "Quy trình xử lý nước sạch", active: true },
   { id: "thread_q2_report", title: "Báo cáo Q2 - Dự án cấp nước", active: false },
   { id: "thread_ops_data", title: "Phân tích dữ liệu vận hành", active: false },
   { id: "thread_safety", title: "Hướng dẫn an toàn lao động", active: false }
 ];
 
-export const INITIAL_AI_MESSAGES = {
+const INITIAL_AI_MESSAGES = {
   thread_water_process: [
     {
       role: "pill",
@@ -63,7 +64,6 @@ class AIAssistant {
       this.messages[this.activeThreadId] = [];
     }
 
-    // Add user bubble
     this.messages[this.activeThreadId].push({
       role: "user",
       text: userPrompt
@@ -71,7 +71,6 @@ class AIAssistant {
 
     this.notify();
 
-    // Generate intelligent AI response based on domain context
     setTimeout(() => {
       let aiReply = "";
       const lower = userPrompt.toLowerCase();
@@ -92,7 +91,7 @@ class AIAssistant {
         text: aiReply
       });
       this.notify();
-    }, 800);
+    }, 600);
   }
 
   onChange(callback) {
@@ -104,4 +103,4 @@ class AIAssistant {
   }
 }
 
-export const aiAssistant = new AIAssistant();
+window.aiAssistant = new AIAssistant();

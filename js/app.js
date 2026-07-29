@@ -1,11 +1,7 @@
 // ==========================================================================
 // MAIN APPLICATION CONTROLLER (VIEW ROUTING, DOM BINDING & INTERACTIONS)
+// Compatible with file:// protocol and http:// servers
 // ==========================================================================
-
-import { authManager } from './auth.js';
-import { storageService } from './storage-service.js';
-import { chatService } from './chat-service.js';
-import { aiAssistant } from './ai-assistant.js';
 
 class AppController {
   constructor() {
@@ -14,7 +10,7 @@ class AppController {
   }
 
   init() {
-    document.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('DOMContentLoaded', () => {
       this.refreshLucideIcons();
       this.bindAuthEvents();
       this.bindNavigationEvents();
@@ -23,14 +19,20 @@ class AppController {
       this.bindChatEvents();
       this.bindAiEvents();
 
-      // Listen for Auth changes
-      authManager.onChange(user => this.onUserChanged(user));
-      storageService.onChange(() => this.renderCurrentView());
-      chatService.onChange(() => this.renderTeamChat());
-      aiAssistant.onChange(() => this.renderAiChat());
+      if (window.authManager) {
+        window.authManager.onChange(user => this.onUserChanged(user));
+      }
+      if (window.storageService) {
+        window.storageService.onChange(() => this.renderCurrentView());
+      }
+      if (window.chatService) {
+        window.chatService.onChange(() => this.renderTeamChat());
+      }
+      if (window.aiAssistant) {
+        window.aiAssistant.onChange(() => this.renderAiChat());
+      }
 
-      // Initial Render
-      this.onUserChanged(authManager.getCurrentUser());
+      this.onUserChanged(window.authManager ? window.authManager.getCurrentUser() : null);
     });
   }
 
@@ -45,19 +47,21 @@ class AppController {
     const appShell = document.getElementById('appShell');
 
     if (!user) {
-      authContainer.style.display = 'flex';
-      appShell.style.display = 'none';
+      if (authContainer) authContainer.style.display = 'flex';
+      if (appShell) appShell.style.display = 'none';
     } else {
-      authContainer.style.display = 'none';
-      appShell.style.display = 'flex';
+      if (authContainer) authContainer.style.display = 'none';
+      if (appShell) appShell.style.display = 'flex';
 
-      // Update User Profile Widgets
-      document.getElementById('userNameTxt').textContent = user.name;
-      document.getElementById('userRoleTxt').textContent = user.role;
-      document.getElementById('dashGreetingName').textContent = user.name.split(' ').pop() || user.name;
-      if (user.avatar) {
-        document.getElementById('userAvatarImg').src = user.avatar;
-      }
+      const userNameTxt = document.getElementById('userNameTxt');
+      const userRoleTxt = document.getElementById('userRoleTxt');
+      const dashGreetingName = document.getElementById('dashGreetingName');
+      const userAvatarImg = document.getElementById('userAvatarImg');
+
+      if (userNameTxt) userNameTxt.textContent = user.name;
+      if (userRoleTxt) userRoleTxt.textContent = user.role;
+      if (dashGreetingName) dashGreetingName.textContent = user.name.split(' ').pop() || user.name;
+      if (userAvatarImg && user.avatar) userAvatarImg.src = user.avatar;
 
       this.renderCurrentView();
     }
@@ -70,20 +74,20 @@ class AppController {
         e.preventDefault();
         const email = document.getElementById('authEmail').value;
         const pass = document.getElementById('authPassword').value;
-        authManager.login(email, pass);
+        window.authManager.login(email, pass);
       });
     }
 
     document.getElementById('logoutBtn')?.addEventListener('click', () => {
-      authManager.logout();
+      window.authManager.logout();
     });
 
     document.getElementById('demoAdminBtn')?.addEventListener('click', () => {
-      authManager.switchPersona('ADMIN');
+      window.authManager.switchPersona('ADMIN');
     });
 
     document.getElementById('demoMemberBtn')?.addEventListener('click', () => {
-      authManager.switchPersona('MEMBER');
+      window.authManager.switchPersona('MEMBER');
     });
   }
 
@@ -138,15 +142,17 @@ class AppController {
   }
 
   renderDashboardStats() {
-    const stats = storageService.getStorageStats();
-    document.getElementById('statTotalFiles').textContent = stats.totalFiles.toLocaleString();
+    if (!window.storageService) return;
+    const stats = window.storageService.getStorageStats();
+    const el = document.getElementById('statTotalFiles');
+    if (el) el.textContent = stats.totalFiles.toLocaleString();
   }
 
   renderDashboardTable() {
     const tbody = document.getElementById('dashFilesTableBody');
-    if (!tbody) return;
+    if (!tbody || !window.storageService) return;
 
-    const files = storageService.getFiles('all').slice(0, 5); // top 5 recent
+    const files = window.storageService.getFiles('all').slice(0, 5);
     tbody.innerHTML = files.map(file => `
       <tr>
         <td>
@@ -192,9 +198,9 @@ class AppController {
 
   renderPersonalTable() {
     const tbody = document.getElementById('personalFilesTableBody');
-    if (!tbody) return;
+    if (!tbody || !window.storageService) return;
 
-    const files = storageService.getFiles('personal');
+    const files = window.storageService.getFiles('personal');
     tbody.innerHTML = files.map(file => `
       <tr>
         <td><input type="checkbox"></td>
@@ -219,9 +225,9 @@ class AppController {
 
   renderDeptTable() {
     const tbody = document.getElementById('deptFilesTableBody');
-    if (!tbody) return;
+    if (!tbody || !window.storageService) return;
 
-    const files = storageService.getFiles('department');
+    const files = window.storageService.getFiles('department');
     tbody.innerHTML = files.map(file => `
       <tr>
         <td>
@@ -237,7 +243,7 @@ class AppController {
         <td style="text-align: right;">
           <div class="table-actions" style="justify-content: flex-end;">
             <button class="table-btn preview-btn" data-id="${file.id}">Xem</button>
-            ${authManager.isAdmin() ? `<button class="table-btn table-btn-delete delete-btn" data-id="${file.id}">Xóa</button>` : `<span style="font-size: 11px; color: var(--slate-400);">Quyền xem</span>`}
+            ${window.authManager.isAdmin() ? `<button class="table-btn table-btn-delete delete-btn" data-id="${file.id}">Xóa</button>` : `<span style="font-size: 11px; color: var(--slate-400);">Quyền xem</span>`}
           </div>
         </td>
       </tr>
@@ -252,21 +258,21 @@ class AppController {
 
     selectBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
-      hiddenInput.click();
+      hiddenInput?.click();
     });
 
     topUploadBtn?.addEventListener('click', () => {
-      hiddenInput.click();
+      hiddenInput?.click();
     });
 
     dropzone?.addEventListener('click', () => {
-      hiddenInput.click();
+      hiddenInput?.click();
     });
 
     hiddenInput?.addEventListener('change', (e) => {
       const files = e.target.files;
       if (files && files.length > 0) {
-        Array.from(files).forEach(f => storageService.addFile(f, 'personal'));
+        Array.from(files).forEach(f => window.storageService.addFile(f, 'personal'));
         alert(`✅ Đã tải lên ${files.length} tệp thành công!`);
       }
     });
@@ -277,23 +283,28 @@ class AppController {
       if (e.target.classList.contains('delete-btn')) {
         const id = e.target.getAttribute('data-id');
         if (confirm("Bạn có chắc chắn muốn xóa tài liệu này không?")) {
-          storageService.deleteFile(id);
+          window.storageService.deleteFile(id);
         }
       }
 
       if (e.target.classList.contains('preview-btn')) {
         const id = e.target.getAttribute('data-id');
-        const file = storageService.files.find(f => f.id === id);
+        const file = window.storageService.files.find(f => f.id === id);
         if (file) {
-          document.getElementById('previewFileName').textContent = file.name;
-          document.getElementById('previewFileMeta').textContent = `${file.type} • ${file.sizeFormatted} • Tải bởi ${file.uploadedBy}`;
-          document.getElementById('filePreviewModal').style.display = 'flex';
+          const previewTitle = document.getElementById('previewFileName');
+          const previewMeta = document.getElementById('previewFileMeta');
+          const modal = document.getElementById('filePreviewModal');
+          if (previewTitle) previewTitle.textContent = file.name;
+          if (previewMeta) previewMeta.textContent = `${file.type} • ${file.sizeFormatted} • Tải bởi ${file.uploadedBy}`;
+          if (modal) modal.style.display = 'flex';
+          this.refreshLucideIcons();
         }
       }
     });
 
     document.getElementById('closePreviewModalBtn')?.addEventListener('click', () => {
-      document.getElementById('filePreviewModal').style.display = 'none';
+      const modal = document.getElementById('filePreviewModal');
+      if (modal) modal.style.display = 'none';
     });
   }
 
@@ -302,8 +313,8 @@ class AppController {
     const chatInput = document.getElementById('teamChatInput');
 
     const handleSend = () => {
-      if (chatInput.value.trim()) {
-        chatService.sendMessage(chatInput.value);
+      if (chatInput && chatInput.value.trim()) {
+        window.chatService.sendMessage(chatInput.value);
         chatInput.value = '';
       }
     };
@@ -312,15 +323,27 @@ class AppController {
     chatInput?.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') handleSend();
     });
+
+    // Chat target switching
+    document.querySelectorAll('[data-channel]').forEach(item => {
+      item.addEventListener('click', () => {
+        const channelId = item.getAttribute('data-channel');
+        document.querySelectorAll('[data-channel]').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        if (window.chatService) window.chatService.setActiveTarget(channelId);
+      });
+    });
   }
 
   renderTeamChat() {
     const listEl = document.getElementById('teamChatMessageList');
-    if (!listEl) return;
+    if (!listEl || !window.chatService) return;
 
-    const msgs = chatService.getActiveMessages();
+    const msgs = window.chatService.getActiveMessages();
+    const currentUser = window.authManager.getCurrentUser();
+
     listEl.innerHTML = msgs.map(msg => `
-      <div class="chat-bubble ${msg.senderUid === authManager.getCurrentUser()?.uid ? 'bubble-user' : 'bubble-ai'}" style="margin-bottom: 12px;">
+      <div class="chat-bubble ${msg.senderUid === (currentUser ? currentUser.uid : '') ? 'bubble-user' : 'bubble-ai'}" style="margin-bottom: 12px;">
         <div style="font-size: 11px; opacity: 0.8; margin-bottom: 4px; font-weight: 600;">${msg.senderName} • ${msg.timestamp}</div>
         <div>${msg.text}</div>
         ${msg.attachment ? `<div class="ai-summary-card" style="margin-top: 8px;">📎 <strong>${msg.attachment.name}</strong> (${msg.attachment.size})</div>` : ''}
@@ -335,8 +358,8 @@ class AppController {
     const aiInput = document.getElementById('aiChatInput');
 
     const handleSend = () => {
-      if (aiInput.value.trim()) {
-        aiAssistant.askQuestion(aiInput.value);
+      if (aiInput && aiInput.value.trim()) {
+        window.aiAssistant.askQuestion(aiInput.value);
         aiInput.value = '';
       }
     };
@@ -349,9 +372,9 @@ class AppController {
 
   renderAiChat() {
     const area = document.getElementById('aiChatArea');
-    if (!area) return;
+    if (!area || !window.aiAssistant) return;
 
-    const msgs = aiAssistant.getActiveMessages();
+    const msgs = window.aiAssistant.getActiveMessages();
     area.innerHTML = msgs.map(m => {
       if (m.role === 'pill') {
         return `<div class="suggested-prompt-pill">${m.text}</div>`;
