@@ -18,6 +18,14 @@ class AppController {
       this.bindChatEvents();
       this.bindAiEvents();
 
+      // Check and clear legacy mock data if present
+      const savedFiles = localStorage.getItem('thuduc_water_files');
+      if (savedFiles && savedFiles.includes('Quy trình thiết kế hệ thống.pdf')) {
+        localStorage.removeItem('thuduc_water_files');
+        localStorage.removeItem('thuduc_water_chats');
+        if (window.storageService) window.storageService.files = [];
+      }
+
       if (window.authManager) {
         window.authManager.onChange(user => this.onUserChanged(user));
       }
@@ -100,6 +108,14 @@ class AppController {
       if (email && email.trim()) {
         window.authManager.login(email, "123456");
         alert("✨ Đã đăng ký và đăng nhập tài khoản mới thành công!");
+      }
+    });
+
+    // Reset data button
+    document.getElementById('resetDataBtn')?.addEventListener('click', () => {
+      if (confirm("Bạn có chắc chắn muốn xóa toàn bộ dữ liệu mẫu để thử nghiệm từ đầu không?")) {
+        localStorage.clear();
+        location.reload();
       }
     });
   }
