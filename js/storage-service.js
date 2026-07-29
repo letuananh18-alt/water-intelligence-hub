@@ -1,5 +1,5 @@
 // ==========================================================================
-// FILE STORAGE & DUAL VAULT MANAGER SERVICE (STRICT RBAC PERMISSIONS)
+// FILE STORAGE & DUAL VAULT MANAGER SERVICE (REAL FILE DOWNLOAD & CATEGORY)
 // ==========================================================================
 
 class StorageService {
@@ -33,9 +33,11 @@ class StorageService {
               cloudFiles.push({ id: doc.id, ...data });
             }
           });
-          this.files = cloudFiles;
-          this.saveLocal();
-          this.notify();
+          if (cloudFiles.length > 0) {
+            this.files = cloudFiles;
+            this.saveLocal();
+            this.notify();
+          }
         }, err => {
           console.warn("Firestore snapshot notice:", err.message);
         });
@@ -85,9 +87,15 @@ class StorageService {
     }
 
     const ext = fileObj.name.split('.').pop().toUpperCase();
+    
+    // Create Object URL for real browser downloading
+    let fileUrl = "#";
+    try {
+      fileUrl = URL.createObjectURL(fileObj);
+    } catch (e) {}
 
     const newFile = {
-      id: "f_" + Date.now(),
+      id: "f_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
       name: fileObj.name,
       type: ext || "FILE",
       sizeBytes: fileObj.size,
@@ -96,7 +104,7 @@ class StorageService {
       uploaderUid: currentUser.uid,
       uploadDate: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
       category: category,
-      url: "#",
+      url: fileUrl,
       tags: ["Tệp thực tế"]
     };
 
@@ -106,7 +114,10 @@ class StorageService {
 
     if (typeof firebase !== 'undefined' && firebase.firestore) {
       try {
-        await firebase.firestore().collection("files").doc(newFile.id).set(newFile);
+        await firebase.firestore().collection("files").doc(newFile.id).set({
+          ...newFile,
+          url: "#" // Don't upload huge blob string to firestore
+        });
       } catch (err) {
         console.warn("Firestore upload sync notice:", err.message);
       }
@@ -122,9 +133,8 @@ class StorageService {
     const user = window.authManager ? window.authManager.getCurrentUser() : null;
     const isAdmin = window.authManager && window.authManager.isAdmin();
 
-    // STRICT RBAC CHECK: Client CANNOT delete files in Department Vault or belonging to others
     if (file.category === 'department' && !isAdmin) {
-      alert("⛔ Bị từ chối: Client không có quyền xóa hoặc sửa đổi tài liệu trong Kho nội bộ phòng ban! Chỉ Admin (letuananh18@gmail.com) mới có quyền.");
+      alert("⛔ Bị từ chối: Client không có quyền xóa tài liệu trong Kho nội bộ phòng ban!");
       return false;
     }
 

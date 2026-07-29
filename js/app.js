@@ -1,5 +1,5 @@
 // ==========================================================================
-// MAIN APPLICATION CONTROLLER (ENTERPRISE SECURITY & XSS PROTECTION)
+// MAIN APPLICATION CONTROLLER (REAL FILE DOWNLOAD & DYNAMIC CATEGORY UPLOAD)
 // ==========================================================================
 
 function escapeHTML(str) {
@@ -348,14 +348,20 @@ class AppController {
     const dropzone = document.getElementById('dashboardDropzone');
     const adminUploadDeptBtn = document.getElementById('adminUploadDeptBtn');
 
+    // Get active category based on currently open view tab
+    const getActiveCategory = () => {
+      if (this.currentView === 'dept-docs') return 'department';
+      return 'personal';
+    };
+
     selectBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (hiddenInput) hiddenInput.setAttribute('data-target-cat', 'personal');
+      if (hiddenInput) hiddenInput.setAttribute('data-target-cat', getActiveCategory());
       hiddenInput?.click();
     });
 
     topUploadBtn?.addEventListener('click', () => {
-      if (hiddenInput) hiddenInput.setAttribute('data-target-cat', 'personal');
+      if (hiddenInput) hiddenInput.setAttribute('data-target-cat', getActiveCategory());
       hiddenInput?.click();
     });
 
@@ -369,16 +375,22 @@ class AppController {
     });
 
     dropzone?.addEventListener('click', () => {
-      if (hiddenInput) hiddenInput.setAttribute('data-target-cat', 'personal');
+      if (hiddenInput) hiddenInput.setAttribute('data-target-cat', getActiveCategory());
       hiddenInput?.click();
     });
 
     hiddenInput?.addEventListener('change', (e) => {
       const files = e.target.files;
-      const category = hiddenInput.getAttribute('data-target-cat') || 'personal';
+      const category = hiddenInput.getAttribute('data-target-cat') || getActiveCategory();
       if (files && files.length > 0) {
-        Array.from(files).forEach(f => window.storageService.addFile(f, category));
-        alert(`✅ Đã tải lên ${files.length} tệp thành công vào ${category === 'department' ? 'Kho nội bộ phòng ban' : 'Kho cá nhân'}!`);
+        let successCount = 0;
+        Array.from(files).forEach(f => {
+          const res = window.storageService.addFile(f, category);
+          if (res) successCount++;
+        });
+        if (successCount > 0) {
+          alert(`✅ Đã tải lên ${successCount} tệp thành công vào ${category === 'department' ? 'Kho nội bộ phòng ban' : 'Kho cá nhân'}!`);
+        }
       }
     });
   }
@@ -398,9 +410,30 @@ class AppController {
         if (file) {
           const previewTitle = document.getElementById('previewFileName');
           const previewMeta = document.getElementById('previewFileMeta');
+          const downloadBtn = document.getElementById('previewDownloadBtn');
           const modal = document.getElementById('filePreviewModal');
+          
           if (previewTitle) previewTitle.textContent = file.name;
           if (previewMeta) previewMeta.textContent = `${file.type} • ${file.sizeFormatted} • Tải bởi ${file.uploadedBy}`;
+          
+          if (downloadBtn) {
+            downloadBtn.href = file.url || "#";
+            downloadBtn.download = file.name;
+            downloadBtn.onclick = (event) => {
+              if (file.url && file.url !== "#") {
+                // Real browser file download trigger
+                const tempLink = document.createElement('a');
+                tempLink.href = file.url;
+                tempLink.download = file.name;
+                document.body.appendChild(tempLink);
+                tempLink.click();
+                document.body.removeChild(tempLink);
+              } else {
+                alert("ℹ️ Tệp này đã được lưu danh mục metadata. Bạn có thể xem thông tin trực tiếp trên bảng.");
+              }
+            };
+          }
+
           if (modal) modal.style.display = 'flex';
           this.refreshLucideIcons();
         }
