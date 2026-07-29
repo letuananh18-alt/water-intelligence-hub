@@ -1,5 +1,5 @@
 // ==========================================================================
-// FILE STORAGE & DUAL VAULT MANAGER SERVICE (PURE REAL DATA)
+// FILE STORAGE & DUAL VAULT MANAGER SERVICE (STRICT RBAC PERMISSIONS)
 // ==========================================================================
 
 class StorageService {
@@ -10,12 +10,10 @@ class StorageService {
   }
 
   init() {
-    // Clear legacy mock data permanently
     const saved = localStorage.getItem('thuduc_water_files');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Filter out old mock files
         this.files = parsed.filter(f => f.tags && f.tags.includes('Tệp thực tế'));
       } catch (e) {
         this.files = [];
@@ -25,14 +23,12 @@ class StorageService {
     }
     this.saveLocal();
 
-    // Listen to real uploaded files from Cloud Firestore
     if (typeof firebase !== 'undefined' && firebase.firestore) {
       try {
         firebase.firestore().collection("files").onSnapshot(snapshot => {
           const cloudFiles = [];
           snapshot.forEach(doc => {
             const data = doc.data();
-            // Only load real files tagged as 'Tệp thực tế' or real user uploads
             if (data.tags && data.tags.includes('Tệp thực tế')) {
               cloudFiles.push({ id: doc.id, ...data });
             }
@@ -49,23 +45,6 @@ class StorageService {
 
   saveLocal() {
     localStorage.setItem('thuduc_water_files', JSON.stringify(this.files));
-  }
-
-  async resetAllCloudAndLocalData() {
-    this.files = [];
-    localStorage.clear();
-
-    if (typeof firebase !== 'undefined' && firebase.firestore) {
-      try {
-        const snapshot = await firebase.firestore().collection("files").get();
-        snapshot.forEach(async (docRef) => {
-          await firebase.firestore().collection("files").doc(docRef.id).delete();
-        });
-      } catch (e) {}
-    }
-
-    this.notify();
-    location.reload();
   }
 
   getFiles(category = 'all', searchQuery = '', typeFilter = 'all') {
@@ -91,8 +70,15 @@ class StorageService {
   }
 
   async addFile(fileObj, category = 'personal') {
-    const currentUser = (window.authManager && window.authManager.getCurrentUser()) || { name: "Người dùng mới", uid: "user_new" };
-    
+    const currentUser = (window.authManager && window.authManager.getCurrentUser()) || { name: "Client User", uid: "user_client" };
+    const isAdmin = window.authManager && window.authManager.isAdmin();
+
+    // STRICT RBAC CHECK: Client CANNOT upload to Department Vault
+    if (category === 'department' && !isAdmin) {
+      alert("⛔ Bị từ chối: Client không có quyền tải lên Kho nội bộ phòng ban! Chỉ Admin (letuananh18@gmail.com) mới được phép.");
+      return null;
+    }
+
     let formattedSize = (fileObj.size / (1024 * 1024)).toFixed(1) + " MB";
     if (fileObj.size < 1024 * 1024) {
       formattedSize = Math.round(fileObj.size / 1024) + " KB";
@@ -106,7 +92,7 @@ class StorageService {
       type: ext || "FILE",
       sizeBytes: fileObj.size,
       sizeFormatted: formattedSize,
-      uploadedBy: currentUser.name,
+      uploadedBy: currentUser.name || currentUser.email,
       uploaderUid: currentUser.uid,
       uploadDate: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
       category: category,
@@ -134,7 +120,15 @@ class StorageService {
     if (!file) return false;
 
     const user = window.authManager ? window.authManager.getCurrentUser() : null;
-    if ((window.authManager && window.authManager.isAdmin()) || (user && file.uploaderUid === user.uid)) {
+    const isAdmin = window.authManager && window.authManager.isAdmin();
+
+    // STRICT RBAC CHECK: Client CANNOT delete files in Department Vault or belonging to others
+    if (file.category === 'department' && !isAdmin) {
+      alert("⛔ Bị từ chối: Client không có quyền xóa hoặc sửa đổi tài liệu trong Kho nội bộ phòng ban! Chỉ Admin (letuananh18@gmail.com) mới có quyền.");
+      return false;
+    }
+
+    if (isAdmin || (user && file.uploaderUid === user.uid && file.category === 'personal')) {
       this.files = this.files.filter(f => f.id !== fileId);
       this.saveLocal();
       this.notify();
@@ -146,7 +140,7 @@ class StorageService {
       }
       return true;
     } else {
-      alert("⚠️ Bạn không có quyền xóa tài liệu này.");
+      alert("⛔ Bị từ chối: Bạn không có quyền xóa tài liệu của người khác.");
       return false;
     }
   }

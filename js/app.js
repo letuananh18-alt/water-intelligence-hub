@@ -1,5 +1,7 @@
 // ==========================================================================
-// MAIN APPLICATION CONTROLLER (REAL ADMIN: letuananh18@gmail.com)
+// MAIN APPLICATION CONTROLLER (STRICT RBAC ADMIN VS CLIENT PERMISSIONS)
+// Admin: letuananh18@gmail.com
+// Client: View & Download shared files, Manage & Upload own personal files
 // ==========================================================================
 
 class AppController {
@@ -17,10 +19,6 @@ class AppController {
       this.bindTableActions();
       this.bindChatEvents();
       this.bindAiEvents();
-
-      // Remove fake old cache
-      localStorage.removeItem('thuduc_water_files');
-      localStorage.removeItem('thuduc_water_chats');
 
       if (window.authManager) {
         window.authManager.onChange(user => this.onUserChanged(user));
@@ -60,9 +58,19 @@ class AppController {
       const userRoleTxt = document.getElementById('userRoleTxt');
       const dashGreetingName = document.getElementById('dashGreetingName');
 
-      if (userNameTxt) userNameTxt.textContent = user.name || "Lê Tuấn Anh";
-      if (userRoleTxt) userRoleTxt.textContent = user.role || "Admin / Quản trị hệ thống";
-      if (dashGreetingName) dashGreetingName.textContent = (user.name ? user.name.split(' ').pop() : "Tuấn Anh");
+      if (userNameTxt) userNameTxt.textContent = user.name || user.email.split('@')[0];
+      if (userRoleTxt) userRoleTxt.textContent = user.role;
+      if (dashGreetingName) dashGreetingName.textContent = (user.name ? user.name.split(' ').pop() : user.email.split('@')[0]);
+
+      // Hide or show Admin-only buttons based on RBAC
+      const adminUploadDeptBtn = document.getElementById('adminUploadDeptBtn');
+      if (adminUploadDeptBtn) {
+        if (window.authManager && window.authManager.isAdmin()) {
+          adminUploadDeptBtn.style.display = 'flex';
+        } else {
+          adminUploadDeptBtn.style.display = 'none';
+        }
+      }
 
       this.renderCurrentView();
     }
@@ -94,10 +102,10 @@ class AppController {
 
     document.getElementById('toggleSignupLink')?.addEventListener('click', (e) => {
       e.preventDefault();
-      const email = prompt("ĐĂNG KÝ TÀI KHOẢN MỚI\nNhập địa chỉ Email của bạn:");
+      const email = prompt("ĐĂNG KÝ TÀI KHOẢN CLIENT MỚI\nNhập địa chỉ Email của bạn:");
       if (email && email.trim()) {
         window.authManager.login(email, "123456");
-        alert("✨ Đã đăng ký và đăng nhập tài khoản mới thành công!");
+        alert("✨ Đã đăng ký tài khoản Client thành công!");
       }
     });
   }
@@ -186,11 +194,13 @@ class AppController {
     if (!tbody || !window.storageService) return;
 
     const files = window.storageService.getFiles('all').slice(0, 5);
+    const isAdmin = window.authManager && window.authManager.isAdmin();
+
     if (files.length === 0) {
       tbody.innerHTML = `
         <tr>
           <td colspan="5" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
-            📂 Chưa có tài liệu nào. Kéo & thả tệp vào ô trên để bắt đầu tải lên!
+            📂 Chưa có tài liệu nào. Kéo & thả tệp vào ô trên để tải tệp cá nhân của bạn!
           </td>
         </tr>
       `;
@@ -210,8 +220,8 @@ class AppController {
         <td>${file.uploadedBy}</td>
         <td style="text-align: right;">
           <div class="table-actions" style="justify-content: flex-end;">
-            <button class="table-btn preview-btn" data-id="${file.id}">Xem</button>
-            <button class="table-btn table-btn-delete delete-btn" data-id="${file.id}">Xóa</button>
+            <button class="table-btn preview-btn" data-id="${file.id}">Xem & Tải về</button>
+            ${(isAdmin || (file.category === 'personal' && file.uploaderUid === window.authManager.getCurrentUser()?.uid)) ? `<button class="table-btn table-btn-delete delete-btn" data-id="${file.id}">Xóa</button>` : `<span style="font-size: 11px; color: var(--slate-400); padding: 4px 8px; background: var(--slate-100); border-radius: 4px;">Quyền xem</span>`}
           </div>
         </td>
       </tr>
@@ -248,7 +258,7 @@ class AppController {
       tbody.innerHTML = `
         <tr>
           <td colspan="6" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
-            📄 Chưa có tài liệu cá nhân nào. Hãy bấm "Tải lên" để lưu tệp riêng của bạn!
+            📄 Chưa có tài liệu cá nhân nào. Bấm "Tải lên" để chọn file từ máy tính của bạn!
           </td>
         </tr>
       `;
@@ -269,7 +279,7 @@ class AppController {
         <td>${file.uploadDate}</td>
         <td style="text-align: right;">
           <div class="table-actions" style="justify-content: flex-end;">
-            <button class="table-btn preview-btn" data-id="${file.id}">Xem</button>
+            <button class="table-btn preview-btn" data-id="${file.id}">Xem & Tải về</button>
             <button class="table-btn table-btn-delete delete-btn" data-id="${file.id}">Xóa</button>
           </div>
         </td>
@@ -282,11 +292,13 @@ class AppController {
     if (!tbody || !window.storageService) return;
 
     const files = window.storageService.getFiles('department');
+    const isAdmin = window.authManager && window.authManager.isAdmin();
+
     if (files.length === 0) {
       tbody.innerHTML = `
         <tr>
           <td colspan="6" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
-            🏢 Kho nội bộ chưa có văn bản nào. Admin có quyền tải thêm tài liệu chung cho phòng ban!
+            🏢 Kho nội bộ chung chưa có văn bản nào. ${isAdmin ? 'Bấm "+ Thêm tài liệu phòng ban" ở trên để đăng bài!' : 'Chỉ Admin (letuananh18@gmail.com) được phép đăng văn bản chung cho phòng ban.'}
           </td>
         </tr>
       `;
@@ -307,8 +319,8 @@ class AppController {
         <td>${file.uploadDate}</td>
         <td style="text-align: right;">
           <div class="table-actions" style="justify-content: flex-end;">
-            <button class="table-btn preview-btn" data-id="${file.id}">Xem</button>
-            ${(window.authManager && window.authManager.isAdmin()) ? `<button class="table-btn table-btn-delete delete-btn" data-id="${file.id}">Xóa</button>` : `<span style="font-size: 11px; color: var(--slate-400);">Quyền xem</span>`}
+            <button class="table-btn preview-btn" data-id="${file.id}">Xem & Tải về</button>
+            ${isAdmin ? `<button class="table-btn table-btn-delete delete-btn" data-id="${file.id}">Xóa</button>` : `<span style="font-size: 11px; color: var(--slate-500); padding: 4px 10px; background: var(--slate-100); border-radius: 4px; font-weight: 600;">👁️ Quyền xem & Tải về</span>`}
           </div>
         </td>
       </tr>
@@ -325,7 +337,7 @@ class AppController {
         <td><strong>${u.name}</strong></td>
         <td>${u.email}</td>
         <td>${u.department || 'Phòng Kỹ thuật'}</td>
-        <td><span class="badge-tag ${u.email === 'letuananh18@gmail.com' ? 'type-pdf' : 'type-docx'}">${u.email === 'letuananh18@gmail.com' ? 'ADMIN' : 'MEMBER'}</span></td>
+        <td><span class="badge-tag ${u.email === 'letuananh18@gmail.com' ? 'type-pdf' : 'type-docx'}">${u.email === 'letuananh18@gmail.com' ? 'ADMIN' : 'CLIENT'}</span></td>
       </tr>
     `).join('');
   }
@@ -350,7 +362,7 @@ class AppController {
 
     adminUploadDeptBtn?.addEventListener('click', () => {
       if (!window.authManager || !window.authManager.isAdmin()) {
-        alert("⚠️ Chỉ Admin (letuananh18@gmail.com) mới có quyền tải lên Kho nội bộ phòng ban!");
+        alert("⛔ Bị từ chối: Bạn đang ở quyền Client. Chỉ Admin (letuananh18@gmail.com) mới có quyền tải lên Kho nội bộ phòng ban!");
         return;
       }
       if (hiddenInput) hiddenInput.setAttribute('data-target-cat', 'department');
