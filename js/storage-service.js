@@ -1,6 +1,6 @@
 // ==========================================================================
 // FILE STORAGE & DUAL VAULT MANAGER SERVICE (ROCK-SOLID PERMANENT PERSISTENCE)
-// Guarantees Folder ID and Base64 Data URL preservation across cloud syncs
+// Guarantees Complete Cascading Deletion across Postgres DB & Storage Bucket
 // ==========================================================================
 
 class StorageService {
@@ -140,19 +140,26 @@ class StorageService {
     if (!window.supabaseClient) return;
     try {
       const { data, error } = await window.supabaseClient.from('folders').select('*');
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const prevJson = JSON.stringify(this.folders);
 
         const localMap = new Map();
         this.folders.forEach(f => localMap.set(f.id, f));
 
+        const dbIds = new Set(data.map(f => f.id));
         const mergedMap = new Map();
-        // 1. Keep local folders
-        this.folders.forEach(f => mergedMap.set(f.id, f));
-        // 2. Overlay cloud folders without wiping local properties
+
+        // 1. Load cloud folders
         data.forEach(f => {
           const existing = localMap.get(f.id);
           mergedMap.set(f.id, this.normalizeFolderFromDb(f, existing));
+        });
+
+        // 2. Keep local folders that haven't been deleted on cloud
+        this.folders.forEach(f => {
+          if (!mergedMap.has(f.id) && !dbIds.has(f.id)) {
+            mergedMap.set(f.id, f);
+          }
         });
 
         const nextFolders = Array.from(mergedMap.values());
@@ -173,19 +180,26 @@ class StorageService {
     if (!window.supabaseClient) return;
     try {
       const { data, error } = await window.supabaseClient.from('files').select('*');
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const prevJson = JSON.stringify(this.files);
 
         const localMap = new Map();
         this.files.forEach(f => localMap.set(f.id, f));
 
+        const dbIds = new Set(data.map(f => f.id));
         const mergedMap = new Map();
-        // 1. Keep local files first (preserving dataUrl and folderId)
-        this.files.forEach(f => mergedMap.set(f.id, f));
-        // 2. Overlay cloud files without erasing local folderId or dataUrl
+
+        // 1. Load cloud files
         data.forEach(f => {
           const existing = localMap.get(f.id);
           mergedMap.set(f.id, this.normalizeFileFromDb(f, existing));
+        });
+
+        // 2. Keep local files that haven't been deleted on cloud
+        this.files.forEach(f => {
+          if (!mergedMap.has(f.id) && !dbIds.has(f.id)) {
+            mergedMap.set(f.id, f);
+          }
         });
 
         const nextFiles = Array.from(mergedMap.values());
@@ -252,7 +266,6 @@ class StorageService {
       return null;
     }
 
-    // Default target folder for department files if not specified
     let targetFolderId = folderId;
     if (category === 'department' && !targetFolderId) {
       const deptFolds = this.getFolders('department');
@@ -371,7 +384,7 @@ class StorageService {
         if (fold && fold.filesCount > 0) {
           fold.filesCount -= 1;
           if (window.supabaseClient) {
-            window.supabaseClient.from('folders').update({ files_count: fold.filesCount }).eq('id', file.folderId).then(()=>{}).catch(()=>{});
+            await window.supabaseClient.from('folders').update({ files_count: fold.filesCount }).eq('id', file.folderId);
           }
         }
       }
@@ -383,8 +396,18 @@ class StorageService {
 
       if (window.supabaseClient) {
         try {
+          // 1. Delete record from Supabase Postgres 'files' table
           await window.supabaseClient.from('files').delete().eq('id', fileId);
-        } catch (e) {}
+
+          // 2. Delete raw binary file from Supabase Storage Bucket 'documents'
+          if (window.supabaseClient.storage) {
+            const sanitizeName = file.name ? file.name.replace(/[^a-zA-Z0-9._-]/g, '_') : '';
+            const filePath = `${file.category}/${file.id}_${sanitizeName}`;
+            await window.supabaseClient.storage.from('documents').remove([filePath]);
+          }
+        } catch (e) {
+          console.warn("Supabase deleteFile error:", e);
+        }
       }
       return true;
     } else {
@@ -450,15 +473,25 @@ class StorageService {
   }
 
   async deleteFolder(folderId) {
+    const folderFiles = this.files.filter(f => f.folderId === folderId);
+    
+    // 1. Delete all contained files locally and from Supabase
+    for (const file of folderFiles) {
+      await this.deleteFile(file.id);
+    }
+
+    // 2. Delete folder locally
     this.folders = this.folders.filter(f => f.id !== folderId);
-    this.files = this.files.filter(f => f.folderId !== folderId);
     this.saveLocal();
     this.notify();
 
+    // 3. Delete folder record from Supabase Postgres 'folders' table
     if (window.supabaseClient) {
       try {
         await window.supabaseClient.from('folders').delete().eq('id', folderId);
-      } catch (e) {}
+      } catch (e) {
+        console.warn("Supabase deleteFolder error:", e);
+      }
     }
     return true;
   }
