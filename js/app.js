@@ -1169,8 +1169,17 @@ class AppController {
       createModal.style.display = 'flex';
     });
 
-    btnCloseModal?.addEventListener('click', () => {
+    const btnCancelModal = document.getElementById('btnCancelCreateChannel');
+
+    const closeModalFunc = () => {
       if (createModal) createModal.style.display = 'none';
+    };
+
+    btnCloseModal?.addEventListener('click', closeModalFunc);
+    btnCancelModal?.addEventListener('click', closeModalFunc);
+
+    createModal?.addEventListener('click', (e) => {
+      if (e.target === createModal) closeModalFunc();
     });
 
     btnConfirmCreate?.addEventListener('click', () => {
