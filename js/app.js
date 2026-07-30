@@ -1194,12 +1194,12 @@ class AppController {
       }
     });
 
-    document.querySelectorAll('[data-channel]').forEach(item => {
+    document.querySelectorAll('[data-target]').forEach(item => {
       item.addEventListener('click', () => {
-        const channelId = item.getAttribute('data-channel');
-        document.querySelectorAll('[data-channel]').forEach(i => i.classList.remove('active'));
+        const targetId = item.getAttribute('data-target');
+        document.querySelectorAll('[data-target]').forEach(i => i.classList.remove('active'));
         item.classList.add('active');
-        if (window.chatService) window.chatService.setActiveTarget(channelId);
+        if (window.chatService) window.chatService.setActiveTarget(targetId);
       });
     });
   }
@@ -1210,9 +1210,9 @@ class AppController {
     const descEl = document.getElementById('currentChatDesc');
     if (!listEl || !window.chatService) return;
 
-    const activeChan = window.chatService.getActiveChannel();
-    if (titleEl && activeChan) titleEl.textContent = activeChan.name;
-    if (descEl && activeChan) descEl.textContent = activeChan.desc || "Kênh trao đổi nghiệp vụ KDDVKH";
+    const targetInfo = window.chatService.getActiveTargetInfo();
+    if (titleEl && targetInfo) titleEl.textContent = targetInfo.name;
+    if (descEl && targetInfo) descEl.textContent = targetInfo.desc || "Kênh trao đổi công việc P.KDDVKH";
 
     const msgs = window.chatService.getActiveMessages();
     const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;

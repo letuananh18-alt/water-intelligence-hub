@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/styles.css?v=20260731_v69">
+  <link rel="stylesheet" href="css/styles.css?v=20260731_v70">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- PDF.js for 100% Real Text PDF Document Extracting & Canvas Page Rendering -->
@@ -486,15 +486,21 @@
           </div>
         </section>
 
-        <!-- 4. TEAM CHAT VIEW (UPGRADED PHÒNG KDDVKH REALTIME TEAM CHAT WITH ATTACHMENTS) -->
+        <!-- 4. TEAM CHAT VIEW (UPGRADED CHANNELS + DIRECT 1:1 MESSAGING BETWEEN USER ACCOUNTS) -->
         <section id="viewTeamChat" class="view-panel" style="display: none;">
           <div class="team-chat-container">
             <div class="ai-sidebar">
-              <div class="channel-section-header">Kênh Nghiệp Vụ P.KDDVKH</div>
-              <div class="thread-item active" data-channel="chan_general">💬 # Trao đổi chung P.KDDVKH</div>
-              <div class="thread-item" data-channel="chan_contracts">📝 # Hợp đồng & Khách hàng mới</div>
-              <div class="thread-item" data-channel="chan_complaints">⚠️ # Xử lý Khiếu nại & Sự cố</div>
-              <div class="thread-item" data-channel="chan_rates">💰 # Biểu giá & Thu tiền nước</div>
+              <div class="channel-section-header">📢 KÊNH PHÒNG BAN (NHÓM)</div>
+              <div class="thread-item active" data-target="chan_general">💬 # Trao đổi chung P.KDDVKH</div>
+              <div class="thread-item" data-target="chan_contracts">📝 # Hợp đồng & Khách hàng mới</div>
+              <div class="thread-item" data-target="chan_complaints">⚠️ # Xử lý Khiếu nại & Sự cố</div>
+              <div class="thread-item" data-target="chan_rates">💰 # Biểu giá & Thu tiền nước</div>
+
+              <div class="channel-section-header" style="margin-top: 20px;">💬 TIN NHẮN TRỰC TIẾP (1:1 CÁ NHÂN)</div>
+              <div class="thread-item" data-target="dm_minhtri">👤 Nguyễn Minh Trí <span style="font-size: 10px; color: #10b981; float: right;">● Trực tuyến</span></div>
+              <div class="thread-item" data-target="dm_ngoclan">👤 Trần Thị Ngọc Lan <span style="font-size: 10px; color: #10b981; float: right;">● Trực tuyến</span></div>
+              <div class="thread-item" data-target="dm_hoangnam">👤 Phạm Hoàng Nam <span style="font-size: 10px; color: #f59e0b; float: right;">● Vắng mặt</span></div>
+              <div class="thread-item" data-target="dm_quangvinh">👤 Bùi Quang Vinh <span style="font-size: 10px; color: #10b981; float: right;">● Trực tuyến</span></div>
             </div>
 
             <div class="ai-chat-window">
@@ -509,7 +515,7 @@
               </div>
 
               <div id="teamChatMessageList" class="chat-messages-area">
-                <div style="font-size: 13px; color: var(--slate-400); text-align: center; margin-top: 40px;">💬 Chưa có tin nhắn nào trong kênh này. Hãy gửi tin nhắn đầu tiên!</div>
+                <div style="font-size: 13px; color: var(--slate-400); text-align: center; margin-top: 40px;">💬 Chưa có tin nhắn nào trong cuộc trò chuyện này. Hãy gửi tin nhắn đầu tiên!</div>
               </div>
 
               <!-- Attachment Preview Bar -->
@@ -524,7 +530,7 @@
                 </button>
                 <input type="file" id="teamChatAttachmentInput" style="display: none;">
                 
-                <input type="text" id="teamChatInput" class="chat-input" placeholder="Nhập tin nhắn trao đổi nghiệp vụ KDDVKH..." style="flex: 1;">
+                <input type="text" id="teamChatInput" class="chat-input" placeholder="Nhập tin nhắn trao đổi..." style="flex: 1;">
                 
                 <button class="btn-send-chat" id="btnSendTeamChat">
                   <i data-lucide="send" style="width: 18px; height: 18px;"></i>
@@ -604,7 +610,7 @@
                     <td>waterain8n@gmail.com</td>
                     <td>Ban Quản Trị - Phòng KDDVKH</td>
                     <td><span class="badge-tag type-pdf">ADMIN</span></td>
-                    <td>31/07/2026 01:56</td>
+                    <td>31/07/2026 01:59</td>
                   </tr>
                 </tbody>
               </table>
@@ -822,13 +828,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Application Logic with Supabase Backend -->
-  <script src="js/supabase-config.js?v=20260731_v69"></script>
-  <script src="js/tech-bg.js?v=20260731_v69"></script>
-  <script src="js/auth.js?v=20260731_v69"></script>
-  <script src="js/storage-service.js?v=20260731_v69"></script>
-  <script src="js/chat-service.js?v=20260731_v69"></script>
-  <script src="js/ai-assistant.js?v=20260731_v69"></script>
-  <script src="js/ai-analyzer-module.js?v=20260731_v69"></script>
-  <script src="js/app.js?v=20260731_v69"></script>
+  <script src="js/supabase-config.js?v=20260731_v70"></script>
+  <script src="js/tech-bg.js?v=20260731_v70"></script>
+  <script src="js/auth.js?v=20260731_v70"></script>
+  <script src="js/storage-service.js?v=20260731_v70"></script>
+  <script src="js/chat-service.js?v=20260731_v70"></script>
+  <script src="js/ai-assistant.js?v=20260731_v70"></script>
+  <script src="js/ai-analyzer-module.js?v=20260731_v70"></script>
+  <script src="js/app.js?v=20260731_v70"></script>
 </body>
 </html>
