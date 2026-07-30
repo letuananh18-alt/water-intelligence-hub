@@ -1,5 +1,5 @@
 // ==========================================================================
-// FILE STORAGE & DUAL VAULT MANAGER SERVICE (SUPABASE POSTGRESQL + REALTIME)
+// FILE STORAGE & DUAL VAULT MANAGER SERVICE (SUPABASE POSTGRESQL + STORAGE)
 // ==========================================================================
 
 class StorageService {
@@ -34,9 +34,9 @@ class StorageService {
 
     if (this.folders.length === 0) {
       this.folders = [
-        { id: "fold_kddvkh_1", name: "Hợp đồng Dịch vụ Khách hàng 2026", category: "department", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", ownerUid: "admin_letuananh18", date: "30/07/2026", filesCount: 0 },
-        { id: "fold_kddvkh_2", name: "Báo cáo Doanh thu & Cấp nước KDDVKH", category: "department", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", ownerUid: "admin_letuananh18", date: "30/07/2026", filesCount: 0 },
-        { id: "fold_kddvkh_3", name: "Biểu giá & Quy trình Dịch vụ Khách hàng", category: "department", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", ownerUid: "admin_letuananh18", date: "30/07/2026", filesCount: 0 }
+        { id: "fold_kddvkh_1", name: "Hợp đồng Dịch vụ Khách hàng 2026", category: "department", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", ownerUid: "admin_waterain8n", date: "30/07/2026", filesCount: 0 },
+        { id: "fold_kddvkh_2", name: "Báo cáo Doanh thu & Cấp nước KDDVKH", category: "department", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", ownerUid: "admin_waterain8n", date: "30/07/2026", filesCount: 0 },
+        { id: "fold_kddvkh_3", name: "Biểu giá & Quy trình Dịch vụ Khách hàng", category: "department", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", ownerUid: "admin_waterain8n", date: "30/07/2026", filesCount: 0 }
       ];
       this.saveLocal();
     }
@@ -176,6 +176,25 @@ class StorageService {
       dataUrl: null,
       tags: ["Tệp thực tế"]
     };
+
+    // Upload raw file to Supabase Storage Bucket if bucket "documents" exists
+    if (window.supabaseClient && window.supabaseClient.storage) {
+      try {
+        const filePath = `${category}/${fileId}_${fileObj.name}`;
+        const { data: uploadData, error: uploadErr } = await window.supabaseClient.storage.from('documents').upload(filePath, fileObj, {
+          cacheControl: '3600',
+          upsert: true
+        });
+        if (!uploadErr && uploadData) {
+          const { data: publicUrlData } = window.supabaseClient.storage.from('documents').getPublicUrl(filePath);
+          if (publicUrlData && publicUrlData.publicUrl) {
+            newFile.url = publicUrlData.publicUrl;
+          }
+        }
+      } catch (stErr) {
+        console.warn("Supabase Storage bucket notice:", stErr);
+      }
+    }
 
     if (fileObj.size < 8 * 1024 * 1024) {
       const reader = new FileReader();
