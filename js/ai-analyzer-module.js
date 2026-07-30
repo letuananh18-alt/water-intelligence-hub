@@ -1,5 +1,5 @@
 // ==========================================================================
-// CHATGPT & GEMINI DUAL AI GATEWAY MODULE (WITH PDF.JS CANVAS IMAGE OCR VISION)
+// CHATGPT & GEMINI DUAL AI GATEWAY MODULE (WITH VISION OCR & EXECUTIVE REPORT PARSER)
 // Converts PDF Scanned Pages & Images into High-Res JPEG Base64 for ChatGPT GPT-4o Vision
 // 100% Isolated Module - Zero impact on Uploads, Storage, or Database Logic
 // ==========================================================================
@@ -51,7 +51,7 @@ class AiAnalyzerModule {
       const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       const page = await pdf.getPage(Math.min(pageNum, pdf.numPages));
       
-      const viewport = page.getViewport({ scale: 1.5 }); // High-quality 1.5x zoom for sharp OCR
+      const viewport = page.getViewport({ scale: 1.5 }); // High quality 1.5x zoom for sharp OCR
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d');
       canvas.height = viewport.height;
@@ -65,17 +65,113 @@ class AiAnalyzerModule {
     }
   }
 
-  // 2. DIRECT CHATGPT OPENAI VISION API GATEWAY DISPATCHER (GPT-4o Vision Engine)
+  // 2. PARSE MARKDOWN TEXT INTO EXECUTIVE HTML CARDS & BADGES (ELIMINATES RAW HASHES & ROUGH TEXT)
+  parseAiMarkdownToHtml(markdownText) {
+    if (!markdownText) return '';
+
+    // Strip raw markdown hashes and bold stars safely
+    let clean = markdownText
+      .replace(/^###\s+/gm, '### ')
+      .replace(/^##\s+/gm, '## ')
+      .replace(/^#\s+/gm, '# ');
+
+    const sections = clean.split(/(?=### |## |# )/g);
+    let formattedHtml = `<div class="ai-report-container">`;
+
+    sections.forEach(sec => {
+      const trimmed = sec.trim();
+      if (!trimmed) return;
+
+      if (trimmed.startsWith('#')) {
+        const firstLineEnd = trimmed.indexOf('\n');
+        const titleLine = (firstLineEnd > -1 ? trimmed.substring(0, firstLineEnd) : trimmed).replace(/^[#\s]+/, '').trim();
+        const contentLines = firstLineEnd > -1 ? trimmed.substring(firstLineEnd + 1).trim() : '';
+
+        const isOverview = titleLine.toLowerCase().includes('tổng quan');
+        const isClauses = titleLine.toLowerCase().includes('điều khoản') || titleLine.toLowerCase().includes('nội dung');
+        const isAction = titleLine.toLowerCase().includes('kết luận') || titleLine.toLowerCase().includes('hành động');
+
+        let parsedContent = contentLines
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/^[*-]\s+(.*)$/gm, '<div class="ai-report-clause-item">• $1</div>')
+          .replace(/\n\n/g, '<br>');
+
+        if (isOverview) {
+          formattedHtml += `
+            <div class="ai-report-overview-box">
+              <div class="ai-report-overview-title">📌 ${titleLine}</div>
+              <div class="ai-report-overview-text">${parsedContent}</div>
+            </div>
+          `;
+        } else if (isClauses) {
+          formattedHtml += `
+            <div class="ai-report-clauses-box">
+              <div class="ai-report-clauses-title">📋 ${titleLine}</div>
+              <div>${parsedContent}</div>
+            </div>
+          `;
+        } else if (isAction) {
+          formattedHtml += `
+            <div class="ai-report-action-box">
+              <div class="ai-report-action-title">⚡ ${titleLine}</div>
+              <div class="ai-report-action-text">${parsedContent}</div>
+            </div>
+          `;
+        } else {
+          formattedHtml += `
+            <div class="ai-report-clauses-box">
+              <div class="ai-report-clauses-title">📄 ${titleLine}</div>
+              <div style="font-size: 13px; color: #334155; line-height: 1.6;">${parsedContent}</div>
+            </div>
+          `;
+        }
+      } else {
+        const parsed = trimmed
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/^[*-]\s+(.*)$/gm, '<div class="ai-report-clause-item">• $1</div>')
+          .replace(/\n/g, '<br>');
+        formattedHtml += `<div class="ai-report-overview-box"><div class="ai-report-overview-text">${parsed}</div></div>`;
+      }
+    });
+
+    formattedHtml += `</div>`;
+    return formattedHtml;
+  }
+
+  // 3. DIRECT CHATGPT OPENAI VISION API GATEWAY DISPATCHER WITH ENTERPRISE SYSTEM PROMPT
   async queryOpenAiGptGateway(promptText, base64JpegImage = null) {
     const key = this.getOpenAiKey();
     if (!key) return null;
 
+    const systemPrompt = `
+Bạn là Trợ lý AI Chuyên gia Phân tích Văn bản Nghiệp vụ cấp cao của CÔNG TY CỔ PHẦN CẤP NƯỚC THỦ ĐỨC (Thủ Đức Water).
+Nhiệm vụ của bạn là soi kỹ từng nét chữ, con số, tiêu đề, số hợp đồng, ngày tháng, tên các bên, con dấu đỏ và điều khoản trong tài liệu (dù là ảnh scan chụp từ giấy hay file văn bản gõ máy).
+
+BẮT BUỘC TRẢ VỀ BẢN BÁO CÁO TÓM TẮT ĐƯỢC CHIA THÀNH CHÍNH XÁC 4 PHẦN SAU DÀNH CHO PHÒNG KINH DOANH & DỊCH VỤ KHÁCH HÀNG:
+
+### 1. THÔNG TIN & CHỈ MỤC VĂN BẢN
+- Tên tài liệu / Số hiệu hợp đồng / Biên bản: [Số hiệu chính xác]
+- Đơn vị ban hành & Các bên ký kết: [Tên chính xác]
+- Ngày ban hành / Ngày ký: [Ngày tháng]
+- Phân loại KDDVKH: [Hợp đồng cấp nước / Biểu giá / Quy trình CSKH / Biên bản sự cố]
+
+### 2. TỔNG QUAN NỘI DUNG VĂN BẢN
+- [Viết 2-3 câu mô tả mục đích chính, địa điểm, thời gian, đối tượng phục vụ và bối cảnh áp dụng]
+
+### 3. CÁC ĐIỀU KHOẢN & CHI TIẾT CỐT LÕI
+- Điều khoản 1: [Trích xuất chi tiết nội dung, con số hoặc chỉ số tiêu thụ/giá nước nếu có]
+- Điều khoản 2: [Trích xuất quyền hạn và nghĩa vụ của Đơn vị Cấp nước / Khách hàng]
+- Điều khoản 3: [Trích xuất thời hạn thanh toán, xử lý sự cố hoặc nghiệm thu kỹ thuật]
+- Điều khoản 4: [Các quy định bảo vệ thủy kế / bảo mật thông tin khác]
+
+### 4. KẾT LUẬN & CHỈ ĐẠO THỰC HIỆN
+- [Cán bộ Phòng KDDVKH cần thực hiện những bước gì tiếp theo đối với tệp này]
+- [Trách nhiệm theo dõi tiến độ và lưu trữ CSDL Supabase]
+`;
+
     try {
       const messages = [
-        {
-          role: "system",
-          content: "Bạn là Trợ lý AI ChatGPT Engine tích hợp trên Cổng Web App Thư viện Điện tử - Công ty Cổ phần Cấp nước Thủ Đức (Thủ Đức Water). Bạn được cung cấp ảnh chụp thực tế của tài liệu. Hãy dùng mắt thần Vision OCR đọc kỹ tất cả nét chữ, con số, tiêu đề, ngày tháng, tên các bên trên ảnh scan tài liệu và trả về bản tóm tắt tiếng Việt cực kỳ chi tiết, chuyên nghiệp, chính xác."
-        }
+        { role: "system", content: systemPrompt }
       ];
 
       if (base64JpegImage && base64JpegImage.length > 100) {
@@ -100,7 +196,7 @@ class AiAnalyzerModule {
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: messages,
-          max_tokens: 1500
+          max_tokens: 1800
         })
       });
 
@@ -109,9 +205,6 @@ class AiAnalyzerModule {
         if (data?.choices?.[0]?.message?.content) {
           return data.choices[0].message.content;
         }
-      } else {
-        const errJson = await response.json().catch(() => ({}));
-        console.warn("OpenAI ChatGPT Gateway notice:", errJson);
       }
     } catch (e) {
       console.warn("OpenAI ChatGPT Gateway error:", e);
@@ -119,7 +212,7 @@ class AiAnalyzerModule {
     return null;
   }
 
-  // 3. GOOGLE GEMINI VISION API GATEWAY DISPATCHER
+  // 4. GOOGLE GEMINI VISION API GATEWAY DISPATCHER
   async queryGeminiAI(promptText, base64JpegImage = null) {
     const key = localStorage.getItem('gemini_api_key') || this.geminiApiKey;
     if (!key) return null;
@@ -160,7 +253,7 @@ class AiAnalyzerModule {
     return null;
   }
 
-  // 4. EXTRACT VECTOR TEXT FROM PDF BLOB USING PDF.JS
+  // 5. EXTRACT VECTOR TEXT FROM PDF BLOB USING PDF.JS
   async extractTextFromPdfBlob(blobOrUrl) {
     try {
       if (!window.pdfjsLib) return { text: "", numPages: 1 };
@@ -196,7 +289,7 @@ class AiAnalyzerModule {
     }
   }
 
-  // 5. EXTRACT TEXT FROM WORD (.DOCX) USING MAMMOTH.JS
+  // 6. EXTRACT TEXT FROM WORD (.DOCX) USING MAMMOTH.JS
   async extractTextFromDocxBlob(blobOrArrayBuffer) {
     try {
       if (!window.mammoth) return "";
@@ -214,7 +307,7 @@ class AiAnalyzerModule {
     }
   }
 
-  // 6. MAIN GATEWAY ANALYZER - RENDERS PDF PAGES TO HIGH-RES JPEG IMAGES & SENDS TO CHATGPT VISION
+  // 7. MAIN GATEWAY ANALYZER - DISPATCHES TO CHATGPT VISION & RE-FORMATS HTML
   async analyzeDocument(fileObj, rawBlob = null) {
     if (!fileObj) return null;
 
@@ -245,9 +338,8 @@ class AiAnalyzerModule {
     const openAiKey = this.getOpenAiKey();
     const geminiKey = localStorage.getItem('gemini_api_key') || this.geminiApiKey;
 
-    const prompt = `Đây là dữ liệu tài liệu "${fileName}" từ Cổng Web App Thư viện Điện tử KDDVKH (Công ty Cổ phần Cấp nước Thủ Đức).\n` +
-      (pageBase64Image ? `Tôi gửi kèm ẢNH CHỤP SẮC NÉT TRỰC TIẾP của trang văn bản. Hãy dùng mắt thần Vision OCR đọc kỹ tất cả nét chữ, con số, bảng biểu, tên các bên, tiêu đề, ngày tháng trên ảnh scan này.` : `Nội dung chữ trích xuất: "${cleanText.substring(0, 8000)}"`) +
-      `\n\nHãy tổng hợp bản tóm tắt tiếng Việt cực kỳ chi tiết bao gồm:\n1. TỔNG QUAN VĂN BẢN (Tên văn bản, cơ quan/đơn vị ban hành, số hiệu, ngày tháng, các bên liên quan).\n2. CÁC NỘI DUNG & ĐIỀU KHOẢN CỐT LÕI (Liệt kê chi tiết 3-4 điểm chính đọc được từ ảnh scan).\n3. KẾT LUẬN & HÀNH ĐỘNG THỰC HIỆN.`;
+    const prompt = `Phân tích tệp "${fileName}" (Tệp thuộc Kho Kinh doanh & Dịch vụ Khách hàng - Thủ Đức Water).\n` +
+      (pageBase64Image ? `Đã đính kèm ảnh chụp trang tài liệu sắc nét. Hãy dùng mắt thần Vision OCR đọc kỹ tất cả nét chữ, con số, tiêu đề, số hợp đồng và chi tiết trên ảnh scan này.` : `Nội dung chữ: "${cleanText.substring(0, 8000)}"`);
 
     // B1. DISPATCH TO OPENAI CHATGPT VISION API GATEWAY IF OPENAI KEY IS SET
     if (openAiKey) {
@@ -256,8 +348,8 @@ class AiAnalyzerModule {
         return {
           title: `🤖 Báo cáo Vision OCR OpenAI ChatGPT Gateway: ${fileName}`,
           isRealOcr: true,
-          modeText: pageBase64Image ? `⚡ ChatGPT Vision OCR đã quét trực tiếp ảnh sắc nét của trang tệp scan.` : `⚡ ChatGPT AI đã phân tích văn bản thực tế.`,
-          contentHtml: gptResponse.replace(/\n/g, '<br>')
+          modeText: pageBase64Image ? `⚡ ChatGPT Vision OCR đã đọc trực tiếp ảnh trang scan tệp.` : `⚡ ChatGPT AI đã phân tích văn bản thực tế.`,
+          contentHtml: this.parseAiMarkdownToHtml(gptResponse)
         };
       }
     }
@@ -270,7 +362,7 @@ class AiAnalyzerModule {
           title: `🤖 Báo cáo Vision OCR Google Gemini AI Gateway: ${fileName}`,
           isRealOcr: true,
           modeText: pageBase64Image ? `⚡ Gemini Vision OCR đã đọc trực tiếp ảnh trang scan.` : `⚡ Gemini AI đã phân tích văn bản.`,
-          contentHtml: geminiResponse.replace(/\n/g, '<br>')
+          contentHtml: this.parseAiMarkdownToHtml(geminiResponse)
         };
       }
     }
@@ -296,15 +388,17 @@ class AiAnalyzerModule {
         <div id="modalGptKeyStatus" style="font-size: 12px; margin-top: 8px; font-weight: 600; color: #4ade80;"></div>
       </div>
 
-      <div style="font-weight: 700; color: #0284c7; margin-bottom: 10px; font-size: 14px;">📌 Tổng quan tài liệu nhận diện từ Cổng Gateway:</div>
-      <p style="margin-bottom: 14px; font-size: 13px; color: var(--slate-700); line-height: 1.6;">${overviewText}</p>
-      
-      <div style="font-weight: 700; color: #0284c7; margin-bottom: 8px; font-size: 14px;">📌 Thông tin chỉ mục nghiệp vụ:</div>
-      <ul style="margin-bottom: 16px; padding-left: 20px; font-size: 13px; color: var(--slate-700); line-height: 1.6;">
-        <li style="margin-bottom: 6px;">Phân loại: ${fileObj.docType || 'Hợp đồng & Quy trình CSKH'}.</li>
-        <li style="margin-bottom: 6px;">Định dạng: ${ext.toUpperCase()} • Dung lượng ${fileObj.sizeFormatted}.</li>
-        <li style="margin-bottom: 6px;">Ban hành: Ngày ${fileObj.uploadDate} bởi ${fileObj.uploadedBy || 'Lê Tuấn Anh (Admin)'}.</li>
-      </ul>
+      <div class="ai-report-overview-box">
+        <div class="ai-report-overview-title">📌 Tổng quan tài liệu nhận diện từ Cổng Gateway:</div>
+        <div class="ai-report-overview-text">${overviewText}</div>
+      </div>
+
+      <div class="ai-report-clauses-box" style="margin-top: 14px;">
+        <div class="ai-report-clauses-title">📋 Thông tin chỉ mục nghiệp vụ KDDVKH:</div>
+        <div class="ai-report-clause-item">• Phân loại: ${fileObj.docType || 'Hợp đồng & Quy trình CSKH'}.</div>
+        <div class="ai-report-clause-item">• Định dạng: ${ext.toUpperCase()} • Dung lượng ${fileObj.sizeFormatted}.</div>
+        <div class="ai-report-clause-item">• Ban hành: Ngày ${fileObj.uploadDate} bởi ${fileObj.uploadedBy || 'Lê Tuấn Anh (Admin)'}.</div>
+      </div>
     `;
 
     return {

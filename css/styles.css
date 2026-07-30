@@ -1480,3 +1480,112 @@ mark.search-highlight {
   line-height: 1.6;
 }
 
+/* AI Executive Report Formatting */
+.ai-report-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+}
+
+.ai-report-badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.ai-report-badge-item {
+  background: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.ai-report-badge-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ai-report-badge-val {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 2px;
+}
+
+.ai-report-overview-box {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #7dd3fc;
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+.ai-report-overview-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0369a1;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.ai-report-overview-text {
+  font-size: 13.5px;
+  color: #0c4a6e;
+  line-height: 1.6;
+}
+
+.ai-report-clauses-box {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+.ai-report-clauses-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0284c7;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.ai-report-clause-item {
+  background: #f8fafc;
+  border-left: 4px solid #0284c7;
+  padding: 10px 14px;
+  border-radius: 0 8px 8px 0;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.6;
+}
+
+.ai-report-action-box {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 1px solid #86efac;
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+.ai-report-action-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #15803d;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.ai-report-action-text {
+  font-size: 13.5px;
+  color: #14532d;
+  line-height: 1.6;
+}
+
