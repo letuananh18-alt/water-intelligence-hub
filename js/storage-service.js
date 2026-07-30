@@ -1,6 +1,7 @@
 // ==========================================================================
-// CENTRAL STORAGE SERVICE (SUPABASE POSTGRESQL DB SINGLE SOURCE OF TRUTH)
-// 100% Pure 1-to-1 Sync with Supabase Postgres 'files' & 'folders' Tables
+// CENTRAL STORAGE SERVICE (SUPABASE POSTGRESQL DB 100% SINGLE SOURCE OF TRUTH)
+// Pure 1-to-1 Sync with Supabase Postgres 'files' & 'folders' Tables
+// No seed overrides, no synthetic file generators, no auto-recreating deleted items
 // ==========================================================================
 
 class StorageService {
@@ -13,7 +14,7 @@ class StorageService {
   }
 
   async init() {
-    // 1. Load local cache
+    // 1. Load local cache (for instant rendering before Supabase fetch completes)
     const savedFiles = localStorage.getItem('thuduc_water_files');
     const savedFolders = localStorage.getItem('thuduc_water_folders');
 
@@ -49,33 +50,6 @@ class StorageService {
     }
   }
 
-  ensureDefaultFolders() {
-    if (!this.folders || this.folders.length === 0) {
-      this.folders = [
-        {
-          id: "fold_kddvkh_1",
-          name: "Hợp đồng cấp nước & Quy trình CSKH 2026",
-          category: "department",
-          department: "Phòng Kinh doanh & DVKH",
-          createdBy: "Lê Tuấn Anh (Admin)",
-          ownerUid: "admin_waterain8n",
-          date: "30/07/2026",
-          filesCount: 0
-        },
-        {
-          id: "fold_kddvkh_2",
-          name: "Biểu giá & Tiêu chuẩn nước sạch",
-          category: "department",
-          department: "Phòng Kinh doanh & DVKH",
-          createdBy: "Lê Tuấn Anh (Admin)",
-          ownerUid: "admin_waterain8n",
-          date: "30/07/2026",
-          filesCount: 0
-        }
-      ];
-    }
-  }
-
   getStorageStats() {
     const totalFiles = this.files ? this.files.length : 0;
     let totalBytes = 0;
@@ -103,16 +77,16 @@ class StorageService {
     };
   }
 
-  normalizeFolderFromDb(f, existingLocalFolder) {
+  normalizeFolderFromDb(f) {
     return {
       id: f.id,
-      name: f.name || (existingLocalFolder ? existingLocalFolder.name : "Thư mục"),
-      category: f.category || (existingLocalFolder ? existingLocalFolder.category : 'department'),
-      department: f.department || (existingLocalFolder ? existingLocalFolder.department : 'dept_kddvkh'),
-      createdBy: f.createdBy || f.created_by || (existingLocalFolder ? existingLocalFolder.createdBy : 'Admin'),
-      ownerUid: f.ownerUid || f.owner_uid || (existingLocalFolder ? existingLocalFolder.ownerUid : ''),
-      date: f.date || (existingLocalFolder ? existingLocalFolder.date : new Date().toLocaleDateString('vi-VN')),
-      filesCount: typeof f.filesCount !== 'undefined' ? f.filesCount : (typeof f.files_count !== 'undefined' ? f.files_count : (existingLocalFolder ? existingLocalFolder.filesCount : 0))
+      name: f.name || "Thư mục",
+      category: f.category || 'department',
+      department: f.department || 'dept_kddvkh',
+      createdBy: f.createdBy || f.created_by || 'Admin',
+      ownerUid: f.ownerUid || f.owner_uid || '',
+      date: f.date || new Date().toLocaleDateString('vi-VN'),
+      filesCount: typeof f.filesCount !== 'undefined' ? f.filesCount : (typeof f.files_count !== 'undefined' ? f.files_count : 0)
     };
   }
 
@@ -174,52 +148,32 @@ class StorageService {
     };
   }
 
-  // PURE SYNC FROM SUPABASE POSTGRES DB 'folders' TABLE (NO RE-CREATING DELETED FOLDERS)
+  // 100% PURE SYNC FROM SUPABASE POSTGRES DB 'folders' TABLE
   async syncFoldersFromSupabase() {
     if (!window.supabaseClient) return;
     try {
       const { data, error } = await window.supabaseClient.from('folders').select('*');
       if (!error && data) {
-        const prevJson = JSON.stringify(this.folders);
         const cloudFolders = data.map(f => this.normalizeFolderFromDb(f));
-
-        const initialized = localStorage.getItem('thuduc_water_folders_initialized');
-        if (!initialized && cloudFolders.length === 0) {
-          this.ensureDefaultFolders();
-          localStorage.setItem('thuduc_water_folders_initialized', 'true');
-          for (const fold of this.folders) {
-            await window.supabaseClient.from('folders').upsert(this.normalizeFolderToDb(fold));
-          }
-        } else {
-          this.folders = cloudFolders;
-        }
-
-        const nextJson = JSON.stringify(this.folders);
-        if (prevJson !== nextJson) {
-          this.saveLocal();
-          this.notify();
-        }
+        this.folders = cloudFolders;
+        this.saveLocal();
+        this.notify();
       }
     } catch (e) {
       console.warn("Folder sync notice:", e);
     }
   }
 
-  // PURE SYNC FROM SUPABASE POSTGRES DB 'files' TABLE
+  // 100% PURE SYNC FROM SUPABASE POSTGRES DB 'files' TABLE
   async syncFilesFromSupabase() {
     if (!window.supabaseClient) return;
     try {
       const { data, error } = await window.supabaseClient.from('files').select('*');
       if (!error && data) {
-        const prevJson = JSON.stringify(this.files);
         const cloudFiles = data.map(f => this.normalizeFileFromDb(f));
-
-        const nextJson = JSON.stringify(cloudFiles);
-        if (prevJson !== nextJson) {
-          this.files = cloudFiles;
-          this.saveLocal();
-          this.notify();
-        }
+        this.files = cloudFiles;
+        this.saveLocal();
+        this.notify();
       }
     } catch (e) {
       console.warn("Files sync notice:", e);
@@ -268,6 +222,7 @@ class StorageService {
     return this.rawFileMap.get(fileId) || null;
   }
 
+  // UPLOAD FILE: SAVES BINARY TO BUCKET + INSERTS ROW TO SUPABASE DB
   async addFile(fileObj, category = 'personal', folderId = null, docType = 'Tài liệu cá nhân', statusTag = '🟢 Đã lưu') {
     const currentUser = (window.authManager && window.authManager.getCurrentUser()) || { name: "Client User", uid: "user_client" };
     const isAdmin = window.authManager && window.authManager.isAdmin();
@@ -362,6 +317,7 @@ class StorageService {
     return newFile;
   }
 
+  // DELETE SINGLE FILE: DELETES FROM POSTGRES DB & STORAGE BUCKET
   async deleteFile(fileId) {
     const file = this.files.find(f => f.id === fileId);
     this.files = this.files.filter(f => f.id !== fileId);
@@ -397,6 +353,7 @@ class StorageService {
     }
   }
 
+  // DELETE BATCH FILES: DELETES FROM POSTGRES DB & STORAGE BUCKET
   async deleteFilesBatch(fileIds) {
     if (!Array.isArray(fileIds) || fileIds.length === 0) return;
     const targetFiles = this.files.filter(f => fileIds.includes(f.id));
@@ -460,7 +417,6 @@ class StorageService {
   async purgeAllTrash() {
     this.files = [];
     this.folders = [];
-    localStorage.setItem('thuduc_water_folders_initialized', 'true');
     this.saveLocal();
     this.notify();
 
@@ -483,6 +439,7 @@ class StorageService {
     }
   }
 
+  // CREATE FOLDER: INSERTS ROW TO SUPABASE DB
   async createFolder(name, category = 'department') {
     const currentUser = (window.authManager && window.authManager.getCurrentUser()) || { name: "Admin", uid: "admin_waterain8n" };
     const foldId = "fold_" + Date.now();
@@ -498,7 +455,6 @@ class StorageService {
     };
 
     this.folders.push(newFolder);
-    localStorage.setItem('thuduc_water_folders_initialized', 'true');
     this.saveLocal();
     this.notify();
 
@@ -506,7 +462,9 @@ class StorageService {
       try {
         const dbFold = this.normalizeFolderToDb(newFolder);
         await window.supabaseClient.from('folders').upsert(dbFold);
-      } catch (e) {}
+      } catch (e) {
+        console.warn("Create folder notice:", e);
+      }
     }
 
     return newFolder;
@@ -527,10 +485,9 @@ class StorageService {
     }
   }
 
-  // DELETE FOLDER PERMANENTLY FROM LOCAL STORAGE & SUPABASE DB
+  // DELETE FOLDER: DELETES ROW FROM SUPABASE DB
   async deleteFolder(folderId) {
     this.folders = this.folders.filter(f => f.id !== folderId);
-    localStorage.setItem('thuduc_water_folders_initialized', 'true');
     this.saveLocal();
     this.notify();
 
