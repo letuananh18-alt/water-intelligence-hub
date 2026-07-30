@@ -1,6 +1,6 @@
 // ==========================================================================
 // FILE STORAGE & DUAL VAULT MANAGER SERVICE (ROCK-SOLID PERMANENT PERSISTENCE)
-// Compatible with both Local Storage Cache and Supabase PostgreSQL Cloud
+// Guarantees Folder ID and Base64 Data URL preservation across cloud syncs
 // ==========================================================================
 
 class StorageService {
@@ -66,16 +66,16 @@ class StorageService {
     }
   }
 
-  normalizeFolderFromDb(f) {
+  normalizeFolderFromDb(f, existingLocalFolder) {
     return {
       id: f.id,
-      name: f.name,
-      category: f.category || 'department',
-      department: f.department || 'dept_kddvkh',
-      createdBy: f.createdBy || f.created_by || 'Admin',
-      ownerUid: f.ownerUid || f.owner_uid || '',
-      date: f.date || new Date().toLocaleDateString('vi-VN'),
-      filesCount: typeof f.filesCount !== 'undefined' ? f.filesCount : (f.files_count || 0)
+      name: f.name || (existingLocalFolder ? existingLocalFolder.name : "Thư mục"),
+      category: f.category || (existingLocalFolder ? existingLocalFolder.category : 'department'),
+      department: f.department || (existingLocalFolder ? existingLocalFolder.department : 'dept_kddvkh'),
+      createdBy: f.createdBy || f.created_by || (existingLocalFolder ? existingLocalFolder.createdBy : 'Admin'),
+      ownerUid: f.ownerUid || f.owner_uid || (existingLocalFolder ? existingLocalFolder.ownerUid : ''),
+      date: f.date || (existingLocalFolder ? existingLocalFolder.date : new Date().toLocaleDateString('vi-VN')),
+      filesCount: typeof f.filesCount !== 'undefined' ? f.filesCount : (typeof f.files_count !== 'undefined' ? f.files_count : (existingLocalFolder ? existingLocalFolder.filesCount : 0))
     };
   }
 
@@ -92,24 +92,26 @@ class StorageService {
     };
   }
 
-  normalizeFileFromDb(f) {
+  normalizeFileFromDb(f, existingLocalFile) {
+    const targetFolderId = f.folderId || f.folder_id || (existingLocalFile ? existingLocalFile.folderId : null);
+
     return {
       id: f.id,
-      name: f.name,
-      type: f.type || 'FILE',
-      mimeType: f.mimeType || f.mime_type || '',
-      sizeBytes: f.sizeBytes || f.size_bytes || 0,
-      sizeFormatted: f.sizeFormatted || f.size_formatted || '0 KB',
-      uploadedBy: f.uploadedBy || f.uploaded_by || 'Khách hàng',
-      uploaderUid: f.uploaderUid || f.uploader_uid || '',
-      uploadDate: f.uploadDate || f.upload_date || new Date().toLocaleDateString('vi-VN'),
-      category: f.category || 'personal',
-      folderId: f.folderId || f.folder_id || null,
-      docType: f.docType || f.doc_type || 'Văn bản Nghiệp vụ',
-      statusTag: f.statusTag || f.status_tag || '🟢 Đã ban hành',
-      url: f.url || '#',
-      dataUrl: f.dataUrl || f.data_url || null,
-      tags: f.tags || ["Tệp thực tế"]
+      name: f.name || (existingLocalFile ? existingLocalFile.name : "Tài liệu"),
+      type: f.type || (existingLocalFile ? existingLocalFile.type : 'FILE'),
+      mimeType: f.mimeType || f.mime_type || (existingLocalFile ? existingLocalFile.mimeType : ''),
+      sizeBytes: f.sizeBytes || f.size_bytes || (existingLocalFile ? existingLocalFile.sizeBytes : 0),
+      sizeFormatted: f.sizeFormatted || f.size_formatted || (existingLocalFile ? existingLocalFile.sizeFormatted : '0 KB'),
+      uploadedBy: f.uploadedBy || f.uploaded_by || (existingLocalFile ? existingLocalFile.uploadedBy : 'Khách hàng'),
+      uploaderUid: f.uploaderUid || f.uploader_uid || (existingLocalFile ? existingLocalFile.uploaderUid : ''),
+      uploadDate: f.uploadDate || f.upload_date || (existingLocalFile ? existingLocalFile.uploadDate : new Date().toLocaleDateString('vi-VN')),
+      category: f.category || (existingLocalFile ? existingLocalFile.category : 'personal'),
+      folderId: targetFolderId,
+      docType: f.docType || f.doc_type || (existingLocalFile ? existingLocalFile.docType : 'Văn bản Nghiệp vụ'),
+      statusTag: f.statusTag || f.status_tag || (existingLocalFile ? existingLocalFile.statusTag : '🟢 Đã ban hành'),
+      url: f.url || (existingLocalFile ? existingLocalFile.url : '#'),
+      dataUrl: f.dataUrl || f.data_url || (existingLocalFile ? existingLocalFile.dataUrl : null),
+      tags: f.tags || (existingLocalFile ? existingLocalFile.tags : ["Tệp thực tế"])
     };
   }
 
@@ -139,15 +141,21 @@ class StorageService {
     try {
       const { data, error } = await window.supabaseClient.from('folders').select('*');
       if (!error && data && data.length > 0) {
-        const dbFolders = data.map(f => this.normalizeFolderFromDb(f));
         const prevJson = JSON.stringify(this.folders);
 
-        const map = new Map();
-        // 1. Keep existing local memory folders first
-        this.folders.forEach(f => map.set(f.id, f));
-        // 2. Merge cloud folders from Supabase
-        dbFolders.forEach(f => map.set(f.id, f));
-        const nextFolders = Array.from(map.values());
+        const localMap = new Map();
+        this.folders.forEach(f => localMap.set(f.id, f));
+
+        const mergedMap = new Map();
+        // 1. Keep local folders
+        this.folders.forEach(f => mergedMap.set(f.id, f));
+        // 2. Overlay cloud folders without wiping local properties
+        data.forEach(f => {
+          const existing = localMap.get(f.id);
+          mergedMap.set(f.id, this.normalizeFolderFromDb(f, existing));
+        });
+
+        const nextFolders = Array.from(mergedMap.values());
         const nextJson = JSON.stringify(nextFolders);
 
         if (prevJson !== nextJson) {
@@ -166,15 +174,21 @@ class StorageService {
     try {
       const { data, error } = await window.supabaseClient.from('files').select('*');
       if (!error && data && data.length > 0) {
-        const dbFiles = data.map(f => this.normalizeFileFromDb(f));
         const prevJson = JSON.stringify(this.files);
 
-        const map = new Map();
-        // 1. Keep existing local memory files first
-        this.files.forEach(f => map.set(f.id, f));
-        // 2. Merge cloud files from Supabase
-        dbFiles.forEach(f => map.set(f.id, f));
-        const nextFiles = Array.from(map.values());
+        const localMap = new Map();
+        this.files.forEach(f => localMap.set(f.id, f));
+
+        const mergedMap = new Map();
+        // 1. Keep local files first (preserving dataUrl and folderId)
+        this.files.forEach(f => mergedMap.set(f.id, f));
+        // 2. Overlay cloud files without erasing local folderId or dataUrl
+        data.forEach(f => {
+          const existing = localMap.get(f.id);
+          mergedMap.set(f.id, this.normalizeFileFromDb(f, existing));
+        });
+
+        const nextFiles = Array.from(mergedMap.values());
         const nextJson = JSON.stringify(nextFiles);
 
         if (prevJson !== nextJson) {
@@ -238,6 +252,13 @@ class StorageService {
       return null;
     }
 
+    // Default target folder for department files if not specified
+    let targetFolderId = folderId;
+    if (category === 'department' && !targetFolderId) {
+      const deptFolds = this.getFolders('department');
+      targetFolderId = deptFolds.length > 0 ? deptFolds[0].id : "fold_kddvkh_1";
+    }
+
     let formattedSize = (fileObj.size / (1024 * 1024)).toFixed(1) + " MB";
     if (fileObj.size < 1024 * 1024) {
       formattedSize = Math.round(fileObj.size / 1024) + " KB";
@@ -264,7 +285,7 @@ class StorageService {
       uploaderUid: currentUser.uid,
       uploadDate: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
       category: category,
-      folderId: folderId,
+      folderId: targetFolderId,
       docType: docType,
       statusTag: statusTag,
       url: fileUrl,
@@ -308,12 +329,12 @@ class StorageService {
 
     this.files.unshift(newFile);
 
-    if (folderId) {
-      const fold = this.folders.find(f => f.id === folderId);
+    if (targetFolderId) {
+      const fold = this.folders.find(f => f.id === targetFolderId);
       if (fold) {
         fold.filesCount = (fold.filesCount || 0) + 1;
         if (window.supabaseClient) {
-          window.supabaseClient.from('folders').update({ files_count: fold.filesCount }).eq('id', folderId).then(()=>{}).catch(()=>{});
+          window.supabaseClient.from('folders').update({ files_count: fold.filesCount }).eq('id', targetFolderId).then(()=>{}).catch(()=>{});
         }
       }
     }
