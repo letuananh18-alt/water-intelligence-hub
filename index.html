@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/styles.css?v=20260730_v64">
+  <link rel="stylesheet" href="css/styles.css?v=20260730_v65">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- PDF.js for 100% Real Text PDF Document Extracting & Canvas Page Rendering -->
@@ -535,7 +535,7 @@
             <div class="ai-chat-window">
               <div class="chat-header">
                 <h3 style="font-size: 15px; font-weight: 700;">AI Assistant - Trợ lý AI Tra cứu Tri thức KDDVKH</h3>
-                <span style="font-size: 12px; color: var(--accent-blue); font-weight: 600;">⚡ Cổng Kết Nối ChatGPT OpenAI & Google Gemini AI Gateway</span>
+                <span style="font-size: 12px; color: var(--accent-blue); font-weight: 600;">⚡ Trợ lý AI Phân tích Văn bản Thu Duc Water</span>
               </div>
 
               <div id="aiChatArea" class="chat-messages-area"></div>
@@ -581,7 +581,7 @@
                     <td>waterain8n@gmail.com</td>
                     <td>Ban Quản Trị - Phòng KDDVKH</td>
                     <td><span class="badge-tag type-pdf">ADMIN</span></td>
-                    <td>30/07/2026 23:43</td>
+                    <td>30/07/2026 23:48</td>
                   </tr>
                 </tbody>
               </table>
@@ -630,13 +630,13 @@
             <p><strong>Database:</strong> Supabase PostgreSQL (Postgres Realtime Engine)</p>
 
             <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--slate-200);">
-              <h3 style="font-size: 15px; font-weight: 800; color: var(--accent-blue); margin-bottom: 8px;">🤖 Cấu hình Cổng AI Gateway (OpenAI ChatGPT & Google Gemini)</h3>
+              <h3 style="font-size: 15px; font-weight: 800; color: var(--accent-blue); margin-bottom: 8px;">🤖 Cấu hình Mã Khóa Trợ lý AI Engine</h3>
               <p style="font-size: 12.5px; color: var(--slate-600); margin-bottom: 12px;">
-                Nhập OpenAI ChatGPT API Key (`sk-...`) hoặc Google Gemini Key (`AIzaSy...`) để cổng Web App chuyển trực tiếp dữ liệu tệp cho ChatGPT / Gemini xử lý:
+                Nhập Mã Khóa AI Engine (`sk-...`) để kích hoạt Trợ lý AI xử lý tài liệu tự động:
               </p>
               <div style="display: flex; gap: 10px; max-width: 580px; flex-wrap: wrap;">
-                <input type="password" id="geminiApiKeyInput" class="form-input" placeholder="Dán OpenAI Key (sk-...) hoặc Gemini Key (AIzaSy...)" style="padding: 10px 14px; flex: 1; min-width: 280px;">
-                <button id="btnSaveGeminiKey" class="btn-primary" style="padding: 10px 20px; font-size: 13px; width: auto; flex-shrink: 0;">Lưu Key AI Gateway</button>
+                <input type="password" id="geminiApiKeyInput" class="form-input" placeholder="Dán Mã Khóa AI Engine (sk-...)" style="padding: 10px 14px; flex: 1; min-width: 280px;">
+                <button id="btnSaveGeminiKey" class="btn-primary" style="padding: 10px 20px; font-size: 13px; width: auto; flex-shrink: 0;">Lưu Mã Khóa AI</button>
               </div>
               <div id="geminiKeyStatus" style="font-size: 12px; margin-top: 8px; font-weight: 600;"></div>
             </div>
@@ -671,7 +671,7 @@
         <div style="display: flex; gap: 10px;">
           <button id="btnAiSummarizeDoc" class="btn-primary" style="padding: 10px 18px; font-size: 13px; background: linear-gradient(135deg, #0052CC 0%, #00B8D9 100%); width: auto;">
             <i data-lucide="bot" style="width: 16px; height: 16px;"></i>
-            <span>🤖 Gửi ChatGPT 4o-mini Vision Tóm tắt</span>
+            <span>🤖 Trợ lý AI Phân tích Tóm tắt</span>
           </button>
           <a href="#" id="previewDownloadBtn" class="btn-primary" style="padding: 10px 20px; font-size: 13.5px; width: auto;">
             <i data-lucide="download" style="width: 16px; height: 16px;"></i>
@@ -686,12 +686,12 @@
   <div id="aiDocAnalyzerModal" class="modal-backdrop" style="display: none;">
     <div class="modal-content" style="max-width: 680px; width: 92%; border-radius: 16px;">
       <div class="modal-header">
-        <h3 id="aiAnalyzerModalTitle" class="modal-title" style="color: var(--accent-blue);">🤖 Phản Hồi Từ OpenAI ChatGPT GPT-4o-mini Engine</h3>
+        <h3 id="aiAnalyzerModalTitle" class="modal-title" style="color: var(--accent-blue);">🤖 Báo cáo Phân tích Trợ lý AI Thủ Đức Water</h3>
         <i data-lucide="x" class="close-btn" id="closeAiAnalyzerModalBtn"></i>
       </div>
       <div style="padding: 14px 0;">
         <div id="aiAnalyzerStatusMode" style="font-size: 12px; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 8px 14px; border-radius: 8px; margin-bottom: 14px;">
-          ⌛ Đang kết nối Cổng AI Gateway để gửi tệp cho GPT-4o-mini...
+          ⌛ Đang kết nối Trợ lý AI để phân tích tệp...
         </div>
         <div id="aiAnalyzerResultBody" style="background: white; border: 1px solid var(--slate-200); padding: 18px; border-radius: 12px; max-height: 440px; overflow-y: auto;">
           <!-- Dynamically populated by ai-analyzer-module.js -->
@@ -799,13 +799,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Application Logic with Supabase Backend -->
-  <script src="js/supabase-config.js?v=20260730_v64"></script>
-  <script src="js/tech-bg.js?v=20260730_v64"></script>
-  <script src="js/auth.js?v=20260730_v64"></script>
-  <script src="js/storage-service.js?v=20260730_v64"></script>
-  <script src="js/chat-service.js?v=20260730_v64"></script>
-  <script src="js/ai-assistant.js?v=20260730_v64"></script>
-  <script src="js/ai-analyzer-module.js?v=20260730_v64"></script>
-  <script src="js/app.js?v=20260730_v64"></script>
+  <script src="js/supabase-config.js?v=20260730_v65"></script>
+  <script src="js/tech-bg.js?v=20260730_v65"></script>
+  <script src="js/auth.js?v=20260730_v65"></script>
+  <script src="js/storage-service.js?v=20260730_v65"></script>
+  <script src="js/chat-service.js?v=20260730_v65"></script>
+  <script src="js/ai-assistant.js?v=20260730_v65"></script>
+  <script src="js/ai-analyzer-module.js?v=20260730_v65"></script>
+  <script src="js/app.js?v=20260730_v65"></script>
 </body>
 </html>
