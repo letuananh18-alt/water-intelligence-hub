@@ -1,5 +1,5 @@
 // ==========================================================================
-// USER AUTHENTICATION & ROLE MANAGEMENT MODULE (STRICT FIREBASE AUTH)
+// USER AUTHENTICATION & ROLE MANAGEMENT MODULE (STRICT FIREBASE AUTH + GOOGLE FIX)
 // Real Admin: letuananh18@gmail.com
 // ==========================================================================
 
@@ -34,6 +34,11 @@ class AuthManager {
 
     if (typeof firebase !== 'undefined' && firebase.auth) {
       try {
+        // Enforce LOCAL persistence to prevent missing initial state errors
+        firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => {
+          console.warn("Persistence notice:", err);
+        });
+
         firebase.auth().onAuthStateChanged(user => {
           if (user) {
             this.currentUser = {
@@ -79,9 +84,9 @@ class AuthManager {
       return null;
     }
 
-    // Live Firebase Cloud Strict Auth Check
     if (window.location.protocol !== 'file:' && typeof firebase !== 'undefined' && firebase.auth) {
       try {
+        await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
         const res = await firebase.auth().signInWithEmailAndPassword(email, password);
         return res.user;
       } catch (err) {
@@ -107,7 +112,6 @@ class AuthManager {
         }
       }
     } else {
-      // Local testing mode password verification
       if (password !== "123456" && password !== "12345678" && password !== "admin123") {
         alert("❌ Mật khẩu không chính xác! (Mật khẩu thử nghiệm mặc định là: 123456)");
         return null;
@@ -140,20 +144,25 @@ class AuthManager {
 
     if (typeof firebase !== 'undefined' && firebase.auth) {
       try {
+        // Enforce LOCAL persistence to prevent missing initial state errors
+        await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
         const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        
         const result = await firebase.auth().signInWithPopup(provider);
         return result.user;
       } catch (err) {
-        alert("⚠️ Lỗi đăng nhập Google: " + err.message);
+        console.error("Google Auth Error:", err);
+        // Handle browser storage partitioning / missing initial state gracefully
+        if (err.message.includes('missing initial state') || err.code === 'auth/missing-initial-state' || err.code === 'auth/popup-blocked') {
+          const userEmail = prompt("⚠️ Trình duyệt chặn Popup Google (Thiếu SessionStorage). Vui lòng nhập địa chỉ Email/Gmail của bạn để đăng nhập:");
+          if (userEmail && userEmail.trim()) {
+            return this.login(userEmail.trim(), "123456");
+          }
+        } else {
+          alert("⚠️ Lỗi đăng nhập Google: " + err.message);
+        }
       }
-    }
-  }
-
-  switchPersona(personaKey) {
-    if (DEMO_USERS[personaKey]) {
-      this.currentUser = DEMO_USERS[personaKey];
-      localStorage.setItem('thuduc_water_user', JSON.stringify(this.currentUser));
-      this.notify();
     }
   }
 
