@@ -79,6 +79,29 @@ class AppController {
   }
 
   bindSettingsEvents() {
+    const keyInput = document.getElementById('geminiApiKeyInput');
+    const saveBtn = document.getElementById('btnSaveGeminiKey');
+    const statusTxt = document.getElementById('geminiKeyStatus');
+
+    if (keyInput && window.aiAssistant) {
+      keyInput.value = window.aiAssistant.getApiKey();
+      if (statusTxt) {
+        statusTxt.textContent = window.aiAssistant.getApiKey() ? "✅ Đã kích hoạt Google Gemini AI Key" : "⚡ Chưa cấu hình Key (Đang dùng AI RAG Engine nội bộ)";
+        statusTxt.style.color = window.aiAssistant.getApiKey() ? "#059669" : "var(--slate-500)";
+      }
+    }
+
+    saveBtn?.addEventListener('click', () => {
+      if (keyInput && window.aiAssistant) {
+        window.aiAssistant.setApiKey(keyInput.value);
+        if (statusTxt) {
+          statusTxt.textContent = keyInput.value.trim() ? "✅ Đã lưu và kích hoạt Google Gemini AI Key thành công!" : "⚡ Đã xóa Key";
+          statusTxt.style.color = keyInput.value.trim() ? "#059669" : "var(--slate-500)";
+        }
+        alert("✨ Đã cập nhật cấu hình Trí tuệ Nhân tạo Google Gemini AI Engine!");
+      }
+    });
+
     document.getElementById('btnPurgeCloudTrash')?.addEventListener('click', () => {
       if (window.storageService) {
         window.storageService.purgeAllFiles();

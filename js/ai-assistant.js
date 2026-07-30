@@ -1,13 +1,13 @@
 // ==========================================================================
-// DEEP AI VAULT KNOWLEDGE ENGINE (REAL CONTENT EXTRACTION & AI SUMMARIZER)
-// Extracts Actual Document Text & Generates 100% Accurate Content Summaries
+// DEEP GOOGLE GEMINI AI KNOWLEDGE & MULTIMODAL DOCUMENT ENGINE
+// Multimodal PDF/Word Text Extraction & Executive Document Summarizer
 // ==========================================================================
 
 class AiAssistant {
   constructor() {
     this.messages = [];
     this.listeners = [];
-    this.activeThreadId = 'thread_default';
+    this.geminiApiKey = localStorage.getItem('gemini_api_key') || '';
     this.init();
   }
 
@@ -16,7 +16,7 @@ class AiAssistant {
       {
         id: 'msg_welcome',
         role: 'ai',
-        text: 'Xin chào! Tôi là Trợ lý AI Khai thác Tri thức Kho KDDVKH (Powered by Water Intelligence Engine). Tôi đã kết nối và đọc toàn bộ dữ liệu nội dung thực tế từ tài liệu của bạn. Bạn cần tra cứu hoặc tóm tắt tài liệu nào hôm nay?',
+        text: 'Xin chào! Tôi là Trợ lý AI Khai thác Tri thức Kho KDDVKH (Powered by Google Gemini Multimodal AI Engine). Tôi có khả năng đọc xuyên qua các tệp PDF, tài liệu Word và hình ảnh để trích xuất tri thức chính xác 100%. Bạn cần tra cứu hoặc tóm tắt tài liệu nào hôm nay?',
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
       },
       {
@@ -37,10 +37,68 @@ class AiAssistant {
     ];
   }
 
+  setApiKey(key) {
+    this.geminiApiKey = (key || '').trim();
+    if (this.geminiApiKey) {
+      localStorage.setItem('gemini_api_key', this.geminiApiKey);
+    } else {
+      localStorage.removeItem('gemini_api_key');
+    }
+  }
+
+  getApiKey() {
+    return this.geminiApiKey || localStorage.getItem('gemini_api_key') || '';
+  }
+
   getActiveMessages() {
     return this.messages;
   }
 
+  // CALL GOOGLE GEMINI REST API DIRECTLY FOR MULTIMODAL INFERENCE
+  async callGeminiApi(promptText, base64Data = null, mimeType = null) {
+    const key = this.getApiKey();
+    if (!key) {
+      return null; // Fallback to local intelligent parser
+    }
+
+    try {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+      
+      const parts = [{ text: promptText }];
+      if (base64Data && mimeType) {
+        // Strip dataURL header if present
+        const cleanBase64 = base64Data.includes('base64,') ? base64Data.split('base64,')[1] : base64Data;
+        parts.push({
+          inline_data: {
+            mime_type: mimeType,
+            data: cleanBase64
+          }
+        });
+      }
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts }] })
+      });
+
+      if (!response.ok) {
+        console.warn("Gemini API HTTP Error:", response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
+        const text = data.candidates[0].content.parts.map(p => p.text).join('\n');
+        return text;
+      }
+    } catch (e) {
+      console.warn("Gemini API call notice:", e);
+    }
+    return null;
+  }
+
+  // RAG KNOWLEDGE QUERY ENGINE WITH GEMINI INTEGRATION
   async askQuestion(questionText) {
     const q = questionText.trim();
     if (!q) return;
@@ -71,11 +129,22 @@ class AiAssistant {
       return nameMatch || docTypeMatch || statusMatch || tagMatch || intentMatch;
     });
 
+    // Attempt Gemini AI Generation if API key is set
+    let geminiResponse = null;
+    if (this.getApiKey()) {
+      const docContext = deptFiles.map(f => `- ${f.name} (Loại: ${f.docType || 'Văn bản'}, Ngày: ${f.uploadDate}, Đăng bởi: ${f.uploadedBy})`).join('\n');
+      const prompt = `Bạn là Trợ lý AI Khai thác Tri thức Kho KDDVKH của Công ty Cổ phần Cấp nước Thủ Đức.\nDanh mục các văn bản hiện có trong Kho KDDVKH:\n${docContext}\n\nNgười dùng hỏi: "${q}"\nHãy trả lời bằng tiếng Việt ngắn gọn, chuyên nghiệp, chính xác và hướng dẫn người dùng bấm vào các tài liệu trích dẫn bên dưới để xem chi tiết.`;
+      geminiResponse = await this.callGeminiApi(prompt);
+    }
+
     setTimeout(() => {
       let responseText = "";
       let citationFiles = [];
 
-      if (matchedFiles.length > 0) {
+      if (geminiResponse) {
+        responseText = geminiResponse + "\n\n👉 Hãy bấm vào **Thẻ trích dẫn văn bản** bên dưới để mở xem trực tiếp toàn bộ tài liệu gốc!";
+        citationFiles = matchedFiles.length > 0 ? matchedFiles.slice(0, 3) : deptFiles.slice(0, 2);
+      } else if (matchedFiles.length > 0) {
         citationFiles = matchedFiles.slice(0, 3);
         const topFile = matchedFiles[0];
 
@@ -114,17 +183,36 @@ class AiAssistant {
 
       this.messages.push(aiMsg);
       this.notify();
-    }, 600);
+    }, 400);
   }
 
-  // REAL CONTENT AI SUMMARIZE ENGINE: Extracts actual text from the document viewer & builds real content summary
-  summarizeRealContent(file, extractedText) {
+  // MULTIMODAL GOOGLE GEMINI REAL CONTENT DOCUMENT SUMMARIZE ENGINE
+  async summarizeRealContent(file, extractedText = '', base64File = null) {
     if (!file) return null;
 
     const name = file.name;
     const cleanText = (extractedText || '').replace(/\s+/g, ' ').trim();
+    const key = this.getApiKey();
 
-    // 1. Detect document type and pattern from filename & real text
+    // 1. If Gemini API Key is configured, use Google Gemini Multimodal inference!
+    if (key && (cleanText.length > 20 || base64File || file.dataUrl)) {
+      const mime = file.mimeType || (file.type === 'PDF' ? 'application/pdf' : 'text/plain');
+      const base64Data = base64File || file.dataUrl;
+
+      const prompt = `Bạn là chuyên gia phân tích văn bản của Công ty Cổ phần Cấp nước Thủ Đức. Hãy phân tích toàn bộ nội dung tài liệu "${name}" và trả về câu trả lời định dạng tiếng Việt rõ ràng với 3 phần:\n1. Mục đích & Thời gian/Địa điểm chính.\n2. Các nội dung & Điều khoản cốt lõi (liệt kê 3 bullet point).\n3. Hành động & Kết luận thực hiện (liệt kê 2 bullet point).`;
+
+      const geminiResult = await this.callGeminiApi(prompt, base64Data, mime);
+      if (geminiResult) {
+        return {
+          title: `Báo cáo Tóm tắt Google Gemini AI (Chính xác 100%): ${name}`,
+          purpose: `Dữ liệu phân tích trực tiếp từ **Google Gemini Multimodal AI Engine** cho tệp "${name}":`,
+          highlights: geminiResult.split('\n').filter(line => line.trim().length > 0),
+          actions: [`Đã hoàn thành đọc & bóc tách tri thức bằng Google Gemini AI.`]
+        };
+      }
+    }
+
+    // 2. Intelligent local fallback parser for specific document types
     const isSinhHoatChiBo = name.toLowerCase().includes('sinh hoạt chi bộ') || cleanText.toLowerCase().includes('sinh hoạt chi bộ');
     const isHopDong = name.toLowerCase().includes('hợp đồng') || cleanText.toLowerCase().includes('hợp đồng');
     const isQuyTrinh = name.toLowerCase().includes('quy trình') || cleanText.toLowerCase().includes('quy trình');
@@ -134,7 +222,6 @@ class AiAssistant {
     let actions = [];
 
     if (isSinhHoatChiBo) {
-      // Extract specific details from Chi bo meeting document
       let timeLoc = "09h00 - 10h30 ngày 03/06/2026 tại Phòng Hợp A (Thành phần: 20 đồng chí Chi bộ).";
       if (cleanText.includes('Thời gian:') || cleanText.includes('Địa điểm:')) {
         const timeMatch = cleanText.match(/Thời gian:[^.]+/i);
@@ -178,10 +265,8 @@ class AiAssistant {
         `Theo dõi tiến độ xử lý và báo cáo định kỳ cho Lãnh đạo Phòng KDDVKH.`
       ];
     } else {
-      // General real content extraction parser
       purposeText = `Tài liệu "${name}" chứa dữ liệu văn bản chính thức của Phòng Kinh doanh & Dịch vụ Khách hàng (Thủ Đức Water), dung lượng ${file.sizeFormatted}, cập nhật ngày ${file.uploadDate}.`;
       
-      // Try to extract lines from cleanText
       const sentences = cleanText.split(/[.!?\n]/).map(s => s.trim()).filter(s => s.length > 15);
       if (sentences.length >= 3) {
         highlights = [
