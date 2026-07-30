@@ -696,23 +696,39 @@ class AppController {
     });
 
     btnConfirmUploadMeta?.addEventListener('click', async () => {
-      if (this.pendingUploadFiles) {
+      if (this.pendingUploadFiles && this.pendingUploadFiles.length > 0) {
+        const btn = btnConfirmUploadMeta;
+        const originalHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+          btn.disabled = true;
+          btn.innerHTML = `<span>⌛ Đang đăng tệp lên Supabase Cloud...</span>`;
+        }
+
         const docType = document.getElementById('modalDocTypeSelect')?.value || 'Hợp đồng cấp nước';
         const statusTag = document.getElementById('modalStatusTagSelect')?.value || '🟢 Đã ban hành';
         
         const deptFolders = window.storageService.getFolders('department');
         const targetFolderId = this.currentDeptFolderId || (deptFolders[0] ? deptFolders[0].id : null);
+        const filesToUpload = [...this.pendingUploadFiles];
+
+        // Close modal immediately so UI is 100% responsive and never looks stuck
+        this.closeModal('uploadMetaModal');
+        this.pendingUploadFiles = null;
+
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = originalHtml;
+        }
 
         let successCount = 0;
-        for (const f of this.pendingUploadFiles) {
+        for (const f of filesToUpload) {
           const res = await window.storageService.addFile(f, 'department', targetFolderId, docType, statusTag);
           if (res) successCount++;
         }
 
-        this.closeModal('uploadMetaModal');
-        this.pendingUploadFiles = null;
+        this.renderCurrentView();
         if (successCount > 0) {
-          alert(`✅ Đã tải lên ${successCount} tệp thành công vào Thư mục phòng ban!`);
+          alert(`✅ Đã tải lên ${successCount} tệp PDF/Văn bản thành công vào Kho KDDVKH!`);
         }
       }
     });
