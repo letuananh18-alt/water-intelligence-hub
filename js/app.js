@@ -1,5 +1,5 @@
 // ==========================================================================
-// MAIN APPLICATION CONTROLLER (COMPACT FOLDERS & REAL DOCUMENT VIEWER)
+// MAIN APPLICATION CONTROLLER (LIVE FILE CONTENT PREVIEWER)
 // ==========================================================================
 
 function escapeHTML(str) {
@@ -339,7 +339,6 @@ class AppController {
     `).join('');
   }
 
-  // COMPACT & BALANCED FOLDER CARDS RENDERING
   renderDeptFolders() {
     const grid = document.getElementById('deptFoldersGrid');
     const allGrid = document.getElementById('allFoldersListGrid');
@@ -582,7 +581,7 @@ class AppController {
     });
   }
 
-  // REAL DOCUMENT VIEWER & PREVIEW RENDERER
+  // LIVE FILE CONTENT VIEWER IN BROWSER
   bindTableActions() {
     document.addEventListener('click', (e) => {
       if (e.target.classList.contains('delete-btn')) {
@@ -602,16 +601,22 @@ class AppController {
           const downloadBtn = document.getElementById('previewDownloadBtn');
           const modal = document.getElementById('filePreviewModal');
           
-          if (modalTitle) modalTitle.textContent = `Đang xem: ${file.name}`;
-          if (previewMeta) previewMeta.textContent = `Dung lượng: ${file.sizeFormatted} • Tải lên bởi: ${file.uploadedBy} (${file.uploadDate})`;
-          
+          const rawFile = window.storageService.getRawFile(id);
+          let fileUrl = file.url;
+          if (rawFile) {
+            fileUrl = URL.createObjectURL(rawFile);
+          }
+
+          if (modalTitle) modalTitle.textContent = `Xem tài liệu trực tiếp: ${file.name}`;
+          if (previewMeta) previewMeta.textContent = `Dung lượng: ${file.sizeFormatted} • Đăng bởi: ${file.uploadedBy}`;
+
           if (downloadBtn) {
-            downloadBtn.href = file.url || "#";
+            downloadBtn.href = fileUrl || "#";
             downloadBtn.download = file.name;
             downloadBtn.onclick = () => {
-              if (file.url && file.url !== "#") {
+              if (fileUrl && fileUrl !== "#") {
                 const tempLink = document.createElement('a');
-                tempLink.href = file.url;
+                tempLink.href = fileUrl;
                 tempLink.download = file.name;
                 document.body.appendChild(tempLink);
                 tempLink.click();
@@ -620,17 +625,37 @@ class AppController {
             };
           }
 
-          // REAL CONTENT PREVIEW GENERATION
           if (docViewer) {
             const ext = file.type.toUpperCase();
-            if (['JPG', 'PNG', 'JPEG', 'WEBP', 'SVG'].includes(ext) && file.url && file.url !== "#") {
+
+            // 1. IMAGE FILES (PNG, JPG, WEBP, SVG, GIF)
+            if (['JPG', 'PNG', 'JPEG', 'WEBP', 'SVG', 'GIF'].includes(ext) && fileUrl && fileUrl !== "#") {
               docViewer.innerHTML = `
-                <div style="text-align: center;">
-                  <img src="${file.url}" alt="${escapeHTML(file.name)}" style="max-width: 100%; max-height: 480px; border-radius: 8px; box-shadow: var(--shadow-md); object-fit: contain;">
+                <div style="text-align: center; padding: 10px;">
+                  <img src="${fileUrl}" alt="${escapeHTML(file.name)}" style="max-width: 100%; max-height: 500px; border-radius: 8px; box-shadow: var(--shadow-md); object-fit: contain;">
                 </div>
               `;
-            } else {
-              // RICH DOCUMENT READER PAPER VIEW
+            } 
+            // 2. PDF FILES (EMBEDDED INLINE PDF VIEWER)
+            else if (ext === 'PDF' && fileUrl && fileUrl !== "#") {
+              docViewer.innerHTML = `
+                <div style="width: 100%; height: 500px;">
+                  <iframe src="${fileUrl}#toolbar=1" width="100%" height="100%" style="border: none; border-radius: 8px;"></iframe>
+                </div>
+              `;
+            } 
+            // 3. TEXT & RAW CODE FILES (TXT, CSV, JSON, LOG, HTML)
+            else if (['TXT', 'CSV', 'JSON', 'LOG', 'MD', 'HTML', 'JS'].includes(ext) && rawFile) {
+              const reader = new FileReader();
+              reader.onload = (event) => {
+                docViewer.innerHTML = `
+                  <pre style="white-space: pre-wrap; font-family: monospace; font-size: 13px; background: white; padding: 20px; border-radius: 8px; border: 1px solid var(--slate-200); max-height: 480px; overflow-y: auto; text-align: left; color: var(--slate-800);">${escapeHTML(event.target.result)}</pre>
+                `;
+              };
+              reader.readAsText(rawFile);
+            } 
+            // 4. OFFICE / BINARY DOCUMENTS (DOCX, XLSX)
+            else {
               docViewer.innerHTML = `
                 <div class="doc-reader-paper">
                   <div class="doc-reader-header">
@@ -639,23 +664,16 @@ class AppController {
                     <div class="doc-reader-meta">
                       📌 <strong>Phân loại:</strong> ${escapeHTML(file.docType || 'Văn bản Nghiệp vụ KDDVKH')} | 
                       🏷️ <strong>Trạng thái:</strong> ${escapeHTML(file.statusTag || '🟢 Đã ban hành')} | 
-                      📅 <strong>Ngày phát hành:</strong> ${escapeHTML(file.uploadDate)}
+                      📅 <strong>Ngày đăng:</strong> ${escapeHTML(file.uploadDate)}
                     </div>
                   </div>
                   <div class="doc-reader-body">
-                    <p><strong>Kính gửi:</strong> Các đơn vị phòng ban trực thuộc Công ty Cổ phần Cấp nước Thủ Đức và Quý khách hàng.</p>
-                    <p>Văn bản <strong>"${escapeHTML(file.name)}"</strong> đã được kiểm duyệt và lưu trữ chính thức trên hệ thống Water Intelligence Hub thuộc Kho nội bộ Phòng Kinh doanh & Dịch vụ Khách hàng.</p>
-                    
-                    <div style="background: var(--slate-50); padding: 16px; border-left: 4px solid var(--accent-blue); border-radius: 4px; margin: 16px 0; font-size: 13px;">
-                      <strong>📑 Nội dung tóm tắt văn bản:</strong><br>
-                      • Tài liệu quy định chi tiết về quy trình kỹ thuật, hợp đồng dịch vụ và chỉ đạo nghiệp vụ.<br>
-                      • Mọi cá nhân, đơn vị liên quan có trách nhiệm chấp hành đúng theo nội dung ban hành.<br>
-                      • Tài liệu có giá trị lưu trữ và sử dụng trong toàn bộ hệ thống Cấp nước Thủ Đức.
+                    <p><strong>Nội dung tóm tắt xem trước văn bản:</strong></p>
+                    <div style="background: var(--slate-50); padding: 18px; border-left: 4px solid var(--accent-blue); border-radius: 6px; margin: 16px 0; font-size: 13.5px; line-height: 1.6;">
+                      • File <strong>${escapeHTML(file.name)}</strong> thuộc định dạng ${escapeHTML(file.type)} lưu trữ chính thức trên hệ thống.<br>
+                      • Dữ liệu văn bản gồm các điều khoản hợp đồng dịch vụ, tiêu chuẩn nước sạch và quy trình CSKH.<br>
+                      • Hãy bấm nút <strong>"Tải tệp này về máy"</strong> bên dưới nếu bạn muốn lưu bản đầy đủ về máy tính.
                     </div>
-
-                    <p style="font-size: 12px; color: var(--slate-500); margin-top: 20px; font-style: italic;">
-                      (Ghi chú: Để xem file gốc hoặc in ấn trực tiếp, vui lòng bấm nút "Tải tệp này về máy" bên dưới)
-                    </p>
                   </div>
                 </div>
               `;

@@ -1,10 +1,11 @@
 // ==========================================================================
-// FILE STORAGE & DUAL VAULT MANAGER SERVICE (KDDVKH ENHANCED)
+// FILE STORAGE & DUAL VAULT MANAGER SERVICE (REAL IN-MEMORY FILE BLOB PRESERVATION)
 // ==========================================================================
 
 class StorageService {
   constructor() {
     this.files = [];
+    this.rawFileMap = new Map(); // In-memory map to store actual File blobs
     this.folders = [
       { id: "fold_1", name: "Hợp đồng Dịch vụ Khách hàng 2026", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "10/06/2026", filesCount: 0 },
       { id: "fold_2", name: "Báo cáo Doanh thu & Cấp nước KDDVKH", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "12/06/2026", filesCount: 0 },
@@ -97,6 +98,10 @@ class StorageService {
     return list;
   }
 
+  getRawFile(fileId) {
+    return this.rawFileMap.get(fileId) || null;
+  }
+
   async addFile(fileObj, category = 'personal', folderId = null, docType = 'Hợp đồng cấp nước', statusTag = '🟢 Đã ban hành') {
     const currentUser = (window.authManager && window.authManager.getCurrentUser()) || { name: "Client User", uid: "user_client" };
     const isAdmin = window.authManager && window.authManager.isAdmin();
@@ -112,16 +117,21 @@ class StorageService {
     }
 
     const ext = fileObj.name.split('.').pop().toUpperCase();
+    const fileId = "f_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4);
     
     let fileUrl = "#";
     try {
       fileUrl = URL.createObjectURL(fileObj);
     } catch (e) {}
 
+    // Preserve real File object in memory
+    this.rawFileMap.set(fileId, fileObj);
+
     const newFile = {
-      id: "f_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
+      id: fileId,
       name: fileObj.name,
       type: ext || "FILE",
+      mimeType: fileObj.type,
       sizeBytes: fileObj.size,
       sizeFormatted: formattedSize,
       uploadedBy: currentUser.name || currentUser.email,
@@ -137,7 +147,6 @@ class StorageService {
 
     this.files.unshift(newFile);
 
-    // Update folder file count
     if (folderId) {
       const fold = this.folders.find(f => f.id === folderId);
       if (fold) fold.filesCount = (fold.filesCount || 0) + 1;
@@ -178,6 +187,7 @@ class StorageService {
         if (fold && fold.filesCount > 0) fold.filesCount -= 1;
       }
 
+      this.rawFileMap.delete(fileId);
       this.files = this.files.filter(f => f.id !== fileId);
       this.saveLocal();
       this.notify();
