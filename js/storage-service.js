@@ -1,5 +1,5 @@
 // ==========================================================================
-// FILE STORAGE & DUAL VAULT MANAGER SERVICE (PERMANENT FIRESTORE PERSISTENCE)
+// FILE STORAGE & DUAL VAULT MANAGER SERVICE (FULL CLIENT & ADMIN FIRESTORE PERSISTENCE)
 // ==========================================================================
 
 class StorageService {
@@ -35,14 +35,14 @@ class StorageService {
     // Default seed folders ONLY if localStorage AND Firestore have NEVER been used at all
     if (this.folders.length === 0) {
       this.folders = [
-        { id: "fold_kddvkh_1", name: "Hợp đồng Dịch vụ Khách hàng 2026", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "30/07/2026", filesCount: 0 },
-        { id: "fold_kddvkh_2", name: "Báo cáo Doanh thu & Cấp nước KDDVKH", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "30/07/2026", filesCount: 0 },
-        { id: "fold_kddvkh_3", name: "Biểu giá & Quy trình Dịch vụ Khách hàng", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "30/07/2026", filesCount: 0 }
+        { id: "fold_kddvkh_1", name: "Hợp đồng Dịch vụ Khách hàng 2026", category: "department", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", ownerUid: "admin_letuananh18", date: "30/07/2026", filesCount: 0 },
+        { id: "fold_kddvkh_2", name: "Báo cáo Doanh thu & Cấp nước KDDVKH", category: "department", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", ownerUid: "admin_letuananh18", date: "30/07/2026", filesCount: 0 },
+        { id: "fold_kddvkh_3", name: "Biểu giá & Quy trình Dịch vụ Khách hàng", category: "department", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", ownerUid: "admin_letuananh18", date: "30/07/2026", filesCount: 0 }
       ];
       this.saveLocal();
     }
 
-    // 2. Real-time Synchronization with Cloud Firestore
+    // 2. Real-time Synchronization with Cloud Firestore for both Client and Admin
     if (typeof firebase !== 'undefined' && firebase.firestore) {
       try {
         // Files Cloud Listener
@@ -53,7 +53,6 @@ class StorageService {
           });
           
           if (cloudFiles.length > 0) {
-            // Merge cloud files with local files (prevent losing files uploaded before sync)
             const map = new Map();
             this.files.forEach(f => map.set(f.id, f));
             cloudFiles.forEach(f => map.set(f.id, f));
@@ -71,7 +70,6 @@ class StorageService {
           });
 
           if (cloudFolders.length > 0) {
-            // If Cloud has folders, merge with local state
             const map = new Map();
             this.folders.forEach(f => map.set(f.id, f));
             cloudFolders.forEach(f => map.set(f.id, f));
@@ -79,7 +77,6 @@ class StorageService {
             this.saveLocal();
             this.notify();
           } else if (!this.hasInitializedCloud && this.folders.length > 0) {
-            // Seed local folders to Cloud Firestore if Cloud is completely empty for the first time
             this.folders.forEach(f => {
               firebase.firestore().collection("folders").doc(f.id).set(f).catch(e => {});
             });
@@ -102,6 +99,9 @@ class StorageService {
     if (category === 'personal') {
       const user = window.authManager ? window.authManager.getCurrentUser() : null;
       list = list.filter(f => f.category === 'personal' && (user ? (f.uploaderUid === user.uid || f.uploadedBy === user.name || f.uploadedBy === user.email) : true));
+      if (folderId) {
+        list = list.filter(f => f.folderId === folderId);
+      }
     } else if (category === 'department') {
       list = list.filter(f => f.category === 'department');
       if (folderId) {
@@ -129,8 +129,8 @@ class StorageService {
     return this.rawFileMap.get(fileId) || null;
   }
 
-  async addFile(fileObj, category = 'personal', folderId = null, docType = 'Hợp đồng cấp nước', statusTag = '🟢 Đã ban hành') {
-    const currentUser = (window.authManager && window.authManager.getCurrentUser()) || { name: "Lê Tuấn Anh", uid: "admin_letuananh18" };
+  async addFile(fileObj, category = 'personal', folderId = null, docType = 'Tài liệu cá nhân', statusTag = '🟢 Đã lưu') {
+    const currentUser = (window.authManager && window.authManager.getCurrentUser()) || { name: "Client User", uid: "user_client" };
     const isAdmin = window.authManager && window.authManager.isAdmin();
 
     if (category === 'department' && !isAdmin) {
@@ -200,7 +200,7 @@ class StorageService {
     this.saveLocal();
     this.notify();
 
-    // Direct Firestore Save
+    // Save Client & Admin files directly to Cloud Firestore
     if (typeof firebase !== 'undefined' && firebase.firestore) {
       try {
         await firebase.firestore().collection("files").doc(newFile.id).set(newFile);
@@ -224,7 +224,7 @@ class StorageService {
       return false;
     }
 
-    if (isAdmin || (user && file.uploaderUid === user.uid && file.category === 'personal')) {
+    if (isAdmin || (user && file.uploaderUid === user.uid)) {
       if (file.folderId) {
         const fold = this.folders.find(f => f.id === file.folderId);
         if (fold && fold.filesCount > 0) {
@@ -252,18 +252,29 @@ class StorageService {
     }
   }
 
-  getFolders() {
+  getFolders(category = 'all') {
+    const user = window.authManager ? window.authManager.getCurrentUser() : null;
+    const isAdmin = window.authManager && window.authManager.isAdmin();
+
+    if (category === 'department') {
+      return this.folders.filter(f => f.category === 'department' || f.department === 'dept_kddvkh');
+    } else if (category === 'personal') {
+      return this.folders.filter(f => f.category === 'personal' && (user ? f.ownerUid === user.uid : true));
+    }
     return this.folders;
   }
 
-  async createFolder(name) {
-    const currentUser = (window.authManager && window.authManager.getCurrentUser()) || { name: "Lê Tuấn Anh" };
+  async createFolder(name, category = 'department') {
+    const currentUser = (window.authManager && window.authManager.getCurrentUser()) || { name: "Khách hàng", uid: "user_client" };
     const folderId = "fold_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4);
+    
     const newFolder = {
       id: folderId,
       name: name.trim(),
-      department: "dept_kddvkh",
+      category: category,
+      department: category === 'department' ? "dept_kddvkh" : "personal",
       createdBy: currentUser.name || currentUser.email,
+      ownerUid: currentUser.uid,
       date: new Date().toLocaleDateString('vi-VN'),
       filesCount: 0
     };
@@ -314,14 +325,17 @@ class StorageService {
   }
 
   getStorageStats() {
-    const totalBytes = this.files.reduce((acc, curr) => acc + (curr.sizeBytes || 0), 0);
+    const user = window.authManager ? window.authManager.getCurrentUser() : null;
+    const userFiles = this.files.filter(f => f.uploaderUid === (user ? user.uid : '') || f.category === 'department');
+    
+    const totalBytes = userFiles.reduce((acc, curr) => acc + (curr.sizeBytes || 0), 0);
     const totalMB = (totalBytes / (1024 * 1024)).toFixed(1);
     const totalGB = (totalBytes / (1024 * 1024 * 1024)).toFixed(2);
     const maxGB = 500;
     const percentage = Math.min(100, Math.round((totalGB / maxGB) * 100));
 
     return {
-      totalFiles: this.files.length,
+      totalFiles: userFiles.length,
       usedFormatted: totalBytes >= 1024 * 1024 * 1024 ? `${totalGB} GB` : `${totalMB} MB`,
       maxGB: maxGB,
       percentage: percentage,
