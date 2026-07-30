@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/styles.css?v=20260731_v68">
+  <link rel="stylesheet" href="css/styles.css?v=20260731_v69">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- PDF.js for 100% Real Text PDF Document Extracting & Canvas Page Rendering -->
@@ -486,28 +486,46 @@
           </div>
         </section>
 
-        <!-- 4. TEAM CHAT VIEW -->
+        <!-- 4. TEAM CHAT VIEW (UPGRADED PHÒNG KDDVKH REALTIME TEAM CHAT WITH ATTACHMENTS) -->
         <section id="viewTeamChat" class="view-panel" style="display: none;">
           <div class="team-chat-container">
             <div class="ai-sidebar">
-              <div class="channel-section-header">Kênh KDDVKH & Khách Hàng</div>
-              <div class="thread-item active" data-channel="chan_general"># Phòng Kinh Doanh & DVKH</div>
-              <div class="thread-item" data-channel="chan_project_q2"># Hợp Đồng & Khách Hàng Mới</div>
-              <div class="thread-item" data-channel="chan_safety"># Giải Quyết Khiếu Nại & Hỗ Trợ</div>
+              <div class="channel-section-header">Kênh Nghiệp Vụ P.KDDVKH</div>
+              <div class="thread-item active" data-channel="chan_general">💬 # Trao đổi chung P.KDDVKH</div>
+              <div class="thread-item" data-channel="chan_contracts">📝 # Hợp đồng & Khách hàng mới</div>
+              <div class="thread-item" data-channel="chan_complaints">⚠️ # Xử lý Khiếu nại & Sự cố</div>
+              <div class="thread-item" data-channel="chan_rates">💰 # Biểu giá & Thu tiền nước</div>
             </div>
 
             <div class="ai-chat-window">
-              <div class="chat-header">
-                <h3 id="currentChatTitle" style="font-size: 15px; font-weight: 700;"># Phòng Kinh Doanh & DVKH</h3>
-                <span style="font-size: 12px; color: var(--slate-400);">Trực tuyến</span>
+              <div class="chat-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <h3 id="currentChatTitle" style="font-size: 15px; font-weight: 700; color: #0f172a;">💬 # Trao đổi chung P.KDDVKH</h3>
+                  <span id="currentChatDesc" style="font-size: 12px; color: var(--slate-500);">Kênh thảo luận công việc chung Phòng Kinh doanh & DVKH</span>
+                </div>
+                <button id="btnClearTeamChat" class="table-btn" style="font-size: 12px; padding: 5px 12px; background: white; border: 1px solid var(--slate-200); width: auto;">
+                  🧹 Xóa tin nhắn kênh
+                </button>
               </div>
 
               <div id="teamChatMessageList" class="chat-messages-area">
                 <div style="font-size: 13px; color: var(--slate-400); text-align: center; margin-top: 40px;">💬 Chưa có tin nhắn nào trong kênh này. Hãy gửi tin nhắn đầu tiên!</div>
               </div>
 
-              <div class="chat-input-bar">
-                <input type="text" id="teamChatInput" class="chat-input" placeholder="Nhập tin nhắn trao đổi nghiệp vụ KDDVKH...">
+              <!-- Attachment Preview Bar -->
+              <div id="teamChatAttachmentPreview" style="display: none; padding: 8px 16px; background: #e0f2fe; border-top: 1px solid #bae6fd; font-size: 12.5px; color: #0369a1; align-items: center; justify-content: space-between;">
+                <span id="teamChatAttachmentName">📎 Đã đính kèm tệp: file.pdf</span>
+                <button id="btnRemoveTeamChatAttachment" style="background: transparent; border: none; color: #ef4444; font-weight: 800; cursor: pointer;">✖</button>
+              </div>
+
+              <div class="chat-input-bar" style="display: flex; gap: 8px; align-items: center;">
+                <button id="btnAttachTeamChat" class="icon-btn" title="Đính kèm tệp văn bản/ảnh" style="background: var(--slate-100); width: 38px; height: 38px; border-radius: 8px;">
+                  <i data-lucide="paperclip" style="width: 18px; height: 18px; color: var(--slate-600);"></i>
+                </button>
+                <input type="file" id="teamChatAttachmentInput" style="display: none;">
+                
+                <input type="text" id="teamChatInput" class="chat-input" placeholder="Nhập tin nhắn trao đổi nghiệp vụ KDDVKH..." style="flex: 1;">
+                
                 <button class="btn-send-chat" id="btnSendTeamChat">
                   <i data-lucide="send" style="width: 18px; height: 18px;"></i>
                 </button>
@@ -516,7 +534,7 @@
           </div>
         </section>
 
-        <!-- 5. AI ASSISTANT VIEW (EXECUTIVE HIGH-TECH CHATBOT UI) -->
+        <!-- 5. AI ASSISTANT VIEW (CLEAN INTERACTIVE CHATBOT) -->
         <section id="viewAiAssistant" class="view-panel" style="display: none;">
           <div class="ai-assistant-container">
             <div class="ai-sidebar">
@@ -586,7 +604,7 @@
                     <td>waterain8n@gmail.com</td>
                     <td>Ban Quản Trị - Phòng KDDVKH</td>
                     <td><span class="badge-tag type-pdf">ADMIN</span></td>
-                    <td>31/07/2026 01:50</td>
+                    <td>31/07/2026 01:56</td>
                   </tr>
                 </tbody>
               </table>
@@ -804,13 +822,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Application Logic with Supabase Backend -->
-  <script src="js/supabase-config.js?v=20260731_v68"></script>
-  <script src="js/tech-bg.js?v=20260731_v68"></script>
-  <script src="js/auth.js?v=20260731_v68"></script>
-  <script src="js/storage-service.js?v=20260731_v68"></script>
-  <script src="js/chat-service.js?v=20260731_v68"></script>
-  <script src="js/ai-assistant.js?v=20260731_v68"></script>
-  <script src="js/ai-analyzer-module.js?v=20260731_v68"></script>
-  <script src="js/app.js?v=20260731_v68"></script>
+  <script src="js/supabase-config.js?v=20260731_v69"></script>
+  <script src="js/tech-bg.js?v=20260731_v69"></script>
+  <script src="js/auth.js?v=20260731_v69"></script>
+  <script src="js/storage-service.js?v=20260731_v69"></script>
+  <script src="js/chat-service.js?v=20260731_v69"></script>
+  <script src="js/ai-assistant.js?v=20260731_v69"></script>
+  <script src="js/ai-analyzer-module.js?v=20260731_v69"></script>
+  <script src="js/app.js?v=20260731_v69"></script>
 </body>
 </html>

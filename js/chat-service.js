@@ -1,15 +1,26 @@
 // ==========================================================================
-// REAL-TIME TEAM CHAT SERVICE (CLEAN RESETTABLE CHAT HISTORY)
+// REAL-TIME TEAM CHAT SERVICE FOR PHÒNG KDDVKH (WITH FILE ATTACHMENTS & CHANNELS)
 // ==========================================================================
 
 const INITIAL_CHANNELS = [
-  { id: "chan_general", name: "# Phòng Kỹ Thuật & Vận Hành", type: "channel", unread: 0 },
-  { id: "chan_project_q2", name: "# Dự Án Cấp Nước Q2", type: "channel", unread: 0 },
-  { id: "chan_safety", name: "# Quy Chuẩn An Toàn", type: "channel", unread: 0 }
+  { id: "chan_general", name: "💬 # Trao đổi chung P.KDDVKH", type: "channel", unread: 0, desc: "Kênh thảo luận công việc chung Phòng Kinh doanh & DVKH" },
+  { id: "chan_contracts", name: "📝 # Hợp đồng & Khách hàng mới", type: "channel", unread: 0, desc: "Trao đổi tiến độ ký hợp đồng và hồ sơ khách hàng mới" },
+  { id: "chan_complaints", name: "⚠️ # Xử lý Khiếu nại & Sự cố", type: "channel", unread: 0, desc: "Phối hợp xử lý sự cố cấp nước & khiếu nại thủy kế" },
+  { id: "chan_rates", name: "💰 # Biểu giá & Thu tiền nước", type: "channel", unread: 0, desc: "Thảo luận biểu giá dịch vụ và theo dõi doanh thu" }
 ];
 
 const INITIAL_MESSAGES = {
-  chan_general: []
+  chan_general: [
+    {
+      id: "msg_init_1",
+      senderName: "Lê Tuấn Anh",
+      senderRole: "Admin",
+      senderUid: "admin_18",
+      text: "Chào cả phòng KDDVKH! Kênh chat nội bộ đã được kích hoạt trên hệ thống Water Intelligence Hub. Mọi người có thể trao đổi công việc và gửi tệp đính kèm trực tiếp tại đây nhé!",
+      timestamp: "08:30",
+      attachment: null
+    }
+  ]
 };
 
 class ChatService {
@@ -22,7 +33,7 @@ class ChatService {
   }
 
   init() {
-    const savedMsg = localStorage.getItem('thuduc_water_chats');
+    const savedMsg = localStorage.getItem('thuduc_water_team_chats');
     if (savedMsg) {
       try {
         this.messages = JSON.parse(savedMsg);
@@ -33,11 +44,15 @@ class ChatService {
   }
 
   saveLocal() {
-    localStorage.setItem('thuduc_water_chats', JSON.stringify(this.messages));
+    localStorage.setItem('thuduc_water_team_chats', JSON.stringify(this.messages));
   }
 
   getActiveMessages() {
     return this.messages[this.activeTargetId] || [];
+  }
+
+  getActiveChannel() {
+    return this.channels.find(c => c.id === this.activeTargetId) || this.channels[0];
   }
 
   setActiveTarget(targetId) {
@@ -48,14 +63,14 @@ class ChatService {
   }
 
   sendMessage(text, attachment = null) {
-    const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
-    if (!currentUser || (!text.trim() && !attachment)) return;
+    const currentUser = window.authManager ? window.authManager.getCurrentUser() : { name: 'Lê Tuấn Anh', role: 'Admin', uid: 'admin_18' };
+    if (!text.trim() && !attachment) return;
 
     const newMsg = {
       id: "msg_" + Date.now(),
-      senderName: currentUser.name,
-      senderAvatar: currentUser.avatar,
-      senderUid: currentUser.uid,
+      senderName: currentUser.name || "Lê Tuấn Anh",
+      senderRole: currentUser.role || "Cán bộ KDDVKH",
+      senderUid: currentUser.uid || "admin_18",
       text: text.trim(),
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       attachment: attachment
@@ -66,6 +81,12 @@ class ChatService {
     }
 
     this.messages[this.activeTargetId].push(newMsg);
+    this.saveLocal();
+    this.notify();
+  }
+
+  clearChannelMessages() {
+    this.messages[this.activeTargetId] = [];
     this.saveLocal();
     this.notify();
   }

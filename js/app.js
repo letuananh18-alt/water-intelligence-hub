@@ -1139,17 +1139,59 @@ class AppController {
   bindChatEvents() {
     const btnSend = document.getElementById('btnSendTeamChat');
     const chatInput = document.getElementById('teamChatInput');
+    const btnAttach = document.getElementById('btnAttachTeamChat');
+    const fileInput = document.getElementById('teamChatAttachmentInput');
+    const previewBox = document.getElementById('teamChatAttachmentPreview');
+    const previewName = document.getElementById('teamChatAttachmentName');
+    const btnRemoveAttach = document.getElementById('btnRemoveTeamChatAttachment');
+    const btnClearChannel = document.getElementById('btnClearTeamChat');
 
     const handleSend = () => {
-      if (chatInput && chatInput.value.trim()) {
-        window.chatService.sendMessage(chatInput.value);
+      if (chatInput && (chatInput.value.trim() || this.pendingChatAttachment)) {
+        window.chatService.sendMessage(chatInput.value, this.pendingChatAttachment);
         chatInput.value = '';
+        this.pendingChatAttachment = null;
+        if (fileInput) fileInput.value = '';
+        if (previewBox) previewBox.style.display = 'none';
       }
     };
 
     btnSend?.addEventListener('click', handleSend);
     chatInput?.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') handleSend();
+    });
+
+    btnAttach?.addEventListener('click', () => {
+      fileInput?.click();
+    });
+
+    fileInput?.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        let formattedSize = (file.size / 1024).toFixed(1) + ' KB';
+        if (file.size > 1024 * 1024) formattedSize = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+        
+        this.pendingChatAttachment = {
+          name: file.name,
+          size: formattedSize,
+          type: file.name.split('.').pop().toUpperCase()
+        };
+
+        if (previewName) previewName.textContent = `📎 Đính kèm tệp: ${file.name} (${formattedSize})`;
+        if (previewBox) previewBox.style.display = 'flex';
+      }
+    });
+
+    btnRemoveAttach?.addEventListener('click', () => {
+      this.pendingChatAttachment = null;
+      if (fileInput) fileInput.value = '';
+      if (previewBox) previewBox.style.display = 'none';
+    });
+
+    btnClearChannel?.addEventListener('click', () => {
+      if (confirm("❓ Bạn có chắc chắn muốn xóa tất cả tin nhắn trong kênh này không?")) {
+        if (window.chatService) window.chatService.clearChannelMessages();
+      }
     });
 
     document.querySelectorAll('[data-channel]').forEach(item => {
@@ -1164,7 +1206,13 @@ class AppController {
 
   renderTeamChat() {
     const listEl = document.getElementById('teamChatMessageList');
+    const titleEl = document.getElementById('currentChatTitle');
+    const descEl = document.getElementById('currentChatDesc');
     if (!listEl || !window.chatService) return;
+
+    const activeChan = window.chatService.getActiveChannel();
+    if (titleEl && activeChan) titleEl.textContent = activeChan.name;
+    if (descEl && activeChan) descEl.textContent = activeChan.desc || "Kênh trao đổi nghiệp vụ KDDVKH";
 
     const msgs = window.chatService.getActiveMessages();
     const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
@@ -1174,13 +1222,41 @@ class AppController {
       return;
     }
 
-    listEl.innerHTML = msgs.map(msg => `
-      <div class="chat-bubble ${msg.senderUid === (currentUser ? currentUser.uid : '') ? 'bubble-user' : 'bubble-ai'}" style="margin-bottom: 12px;">
-        <div style="font-size: 11px; opacity: 0.8; margin-bottom: 4px; font-weight: 600;">${escapeHTML(msg.senderName)} • ${escapeHTML(msg.timestamp)}</div>
-        <div>${escapeHTML(msg.text)}</div>
-        ${msg.attachment ? `<div class="ai-summary-card" style="margin-top: 8px;">📎 <strong>${escapeHTML(msg.attachment.name)}</strong> (${escapeHTML(msg.attachment.size)})</div>` : ''}
-      </div>
-    `).join('');
+    listEl.innerHTML = msgs.map(msg => {
+      const isUser = msg.senderUid === (currentUser ? currentUser.uid : 'admin_18');
+      
+      let attachmentHtml = '';
+      if (msg.attachment) {
+        attachmentHtml = `
+          <div style="background: rgba(255,255,255,0.95); border: 1px solid #cbd5e1; padding: 10px 14px; border-radius: 8px; margin-top: 8px; font-size: 12.5px; color: #1e293b; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 16px;">📄</span>
+              <div>
+                <div style="font-weight: 700; color: #0f172a;">${escapeHTML(msg.attachment.name)}</div>
+                <div style="font-size: 11px; color: #64748b;">Dung lượng: ${escapeHTML(msg.attachment.size)}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      return `
+        <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-direction: ${isUser ? 'row-reverse' : 'row'}; align-items: flex-start;">
+          <div style="width: 34px; height: 34px; border-radius: 50%; background: ${isUser ? '#0284c7' : '#475569'}; color: white; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; flex-shrink: 0;">
+            ${escapeHTML((msg.senderName || 'U').charAt(0))}
+          </div>
+          <div style="max-width: 75%;">
+            <div style="font-size: 11px; color: #64748b; margin-bottom: 4px; font-weight: 600; text-align: ${isUser ? 'right' : 'left'};">
+              ${escapeHTML(msg.senderName)} <span style="background: #e2e8f0; color: #334155; padding: 1px 6px; border-radius: 4px; font-size: 10px;">${escapeHTML(msg.senderRole || 'Cán bộ')}</span> • ${escapeHTML(msg.timestamp)}
+            </div>
+            <div style="background: ${isUser ? 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)' : '#ffffff'}; color: ${isUser ? '#ffffff' : '#1e293b'}; border: ${isUser ? 'none' : '1px solid #e2e8f0'}; padding: 12px 16px; border-radius: ${isUser ? '16px 16px 2px 16px' : '16px 16px 16px 2px'}; font-size: 13.5px; line-height: 1.6; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+              ${escapeHTML(msg.text).replace(/\n/g, '<br>')}
+              ${attachmentHtml}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
 
     listEl.scrollTop = listEl.scrollHeight;
   }
