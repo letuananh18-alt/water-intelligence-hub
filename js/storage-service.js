@@ -125,6 +125,33 @@ class StorageService {
     }
   }
 
+  getStorageStats() {
+    const totalFiles = this.files ? this.files.length : 0;
+    let totalBytes = 0;
+    if (this.files) {
+      this.files.forEach(f => {
+        totalBytes += (f.sizeBytes || 0);
+      });
+    }
+
+    let usedFormatted = (totalBytes / (1024 * 1024)).toFixed(1) + " MB";
+    if (totalBytes < 1024 * 1024) {
+      usedFormatted = Math.round(totalBytes / 1024) + " KB";
+    }
+
+    const maxBytes = 500 * 1024 * 1024 * 1024; // 500 GB
+    const percentage = ((totalBytes / maxBytes) * 100).toFixed(2);
+    const sharedFiles = this.files ? this.files.filter(f => f.category === 'department' || !f.category).length : 0;
+
+    return {
+      totalFiles,
+      totalBytes,
+      usedFormatted,
+      percentage,
+      sharedFiles
+    };
+  }
+
   normalizeFolderFromDb(f, existingLocalFolder) {
     return {
       id: f.id,
@@ -220,6 +247,7 @@ class StorageService {
         });
 
         const nextFolders = Array.from(mergedMap.values());
+        this.folders = nextFolders;
         this.ensureDefaultFolders();
 
         const nextJson = JSON.stringify(this.folders);
