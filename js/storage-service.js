@@ -27,7 +27,35 @@ class StorageService {
       }
     }
 
-    if (this.folders.length === 0) {
+    this.ensureDefaultFolders();
+    this.ensureDefaultFiles();
+
+    // 2. Real-time Supabase Cloud Database & Storage Bucket Sync
+    if (window.supabaseClient) {
+      try {
+        await this.syncFoldersFromSupabase();
+        await this.syncFilesFromSupabase();
+        await this.syncStorageBucketFromSupabase();
+
+        // Subscribe to Supabase Realtime Changes
+        window.supabaseClient
+          .channel('schema-db-changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'folders' }, async () => {
+            await this.syncFoldersFromSupabase();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'files' }, async () => {
+            await this.syncFilesFromSupabase();
+            await this.syncStorageBucketFromSupabase();
+          })
+          .subscribe();
+      } catch (err) {
+        console.warn("Supabase Realtime notice:", err);
+      }
+    }
+  }
+
+  ensureDefaultFolders() {
+    if (!this.folders || this.folders.length === 0) {
       this.folders = [
         {
           id: "fold_kddvkh_1",
@@ -37,7 +65,7 @@ class StorageService {
           createdBy: "Lê Tuấn Anh (Admin)",
           ownerUid: "admin_waterain8n",
           date: "30/07/2026",
-          filesCount: 2
+          filesCount: 3
         },
         {
           id: "fold_kddvkh_2",
@@ -47,12 +75,14 @@ class StorageService {
           createdBy: "Lê Tuấn Anh (Admin)",
           ownerUid: "admin_waterain8n",
           date: "30/07/2026",
-          filesCount: 1
+          filesCount: 2
         }
       ];
     }
+  }
 
-    if (this.files.length === 0) {
+  ensureDefaultFiles() {
+    if (!this.files || this.files.length === 0) {
       this.files = [
         {
           id: "f_seed_kddvkh_1",
@@ -93,29 +123,6 @@ class StorageService {
       ];
       this.saveLocal();
     }
-
-    // 2. Real-time Supabase Cloud Database & Storage Bucket Sync
-    if (window.supabaseClient) {
-      try {
-        await this.syncFoldersFromSupabase();
-        await this.syncFilesFromSupabase();
-        await this.syncStorageBucketFromSupabase();
-
-        // Subscribe to Supabase Realtime Changes
-        window.supabaseClient
-          .channel('schema-db-changes')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'folders' }, async () => {
-            await this.syncFoldersFromSupabase();
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'files' }, async () => {
-            await this.syncFilesFromSupabase();
-            await this.syncStorageBucketFromSupabase();
-          })
-          .subscribe();
-      } catch (err) {
-        console.warn("Supabase Realtime notice:", err);
-      }
-    }
   }
 
   normalizeFolderFromDb(f, existingLocalFolder) {
@@ -144,8 +151,10 @@ class StorageService {
     };
   }
 
+  // ENSURE ALL DATABASE FILES DEFAULT TO 'department' SO NOTHING IS EVER HIDDEN
   normalizeFileFromDb(f, existingLocalFile) {
-    const targetFolderId = f.folderId || f.folder_id || (existingLocalFile ? existingLocalFile.folderId : null);
+    const targetFolderId = f.folderId || f.folder_id || (existingLocalFile ? existingLocalFile.folderId : "fold_kddvkh_1");
+    const category = f.category || (existingLocalFile ? existingLocalFile.category : 'department');
 
     return {
       id: f.id,
@@ -157,7 +166,7 @@ class StorageService {
       uploadedBy: f.uploadedBy || f.uploaded_by || (existingLocalFile ? existingLocalFile.uploadedBy : 'Lê Tuấn Anh'),
       uploaderUid: f.uploaderUid || f.uploader_uid || (existingLocalFile ? existingLocalFile.uploaderUid : 'admin_waterain8n'),
       uploadDate: f.uploadDate || f.upload_date || (existingLocalFile ? existingLocalFile.uploadDate : new Date().toLocaleDateString('vi-VN')),
-      category: f.category || (existingLocalFile ? existingLocalFile.category : 'personal'),
+      category: category,
       folderId: targetFolderId,
       docType: f.docType || f.doc_type || (existingLocalFile ? existingLocalFile.docType : 'Văn bản Nghiệp vụ'),
       statusTag: f.statusTag || f.status_tag || (existingLocalFile ? existingLocalFile.statusTag : '🟢 Đã ban hành'),
@@ -211,10 +220,10 @@ class StorageService {
         });
 
         const nextFolders = Array.from(mergedMap.values());
-        const nextJson = JSON.stringify(nextFolders);
+        this.ensureDefaultFolders();
 
+        const nextJson = JSON.stringify(this.folders);
         if (prevJson !== nextJson) {
-          this.folders = nextFolders;
           this.saveLocal();
           this.notify();
         }
@@ -298,7 +307,7 @@ class StorageService {
                   uploadedBy: "Lê Tuấn Anh (Admin)",
                   uploaderUid: "admin_waterain8n",
                   uploadDate: new Date(item.created_at || Date.now()).toLocaleDateString('vi-VN'),
-                  category: cat,
+                  category: 'department',
                   folderId: defaultFolderId,
                   docType: "Hợp đồng cấp nước",
                   statusTag: "🟢 Đã ban hành",
@@ -340,9 +349,9 @@ class StorageService {
         list = list.filter(f => f.folderId === folderId);
       }
     } else if (category === 'department') {
-      list = list.filter(f => f.category === 'department');
+      list = list.filter(f => f.category === 'department' || !f.category);
       if (folderId) {
-        list = list.filter(f => f.folderId === folderId);
+        list = list.filter(f => f.folderId === folderId || !f.folderId);
       }
     }
 
@@ -554,6 +563,7 @@ class StorageService {
   }
 
   getFolders(category = 'department') {
+    this.ensureDefaultFolders();
     return this.folders.filter(f => f.category === category);
   }
 
