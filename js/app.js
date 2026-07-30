@@ -387,14 +387,11 @@ class AppController {
   renderDeptTable() {
     const tbody = document.getElementById('deptFilesTableBody');
     const tableCard = document.querySelector('#viewDeptDocs .table-card');
+    const tableTitle = document.getElementById('deptTableTitle');
     if (!tbody || !window.storageService) return;
 
-    if (!this.currentDeptFolderId) {
-      if (tableCard) tableCard.style.display = 'none';
-      return;
-    } else {
-      if (tableCard) tableCard.style.display = 'block';
-    }
+    // Table card is ALWAYS visible in Kho KDDVKH view
+    if (tableCard) tableCard.style.display = 'block';
 
     const docTypeVal = document.getElementById('deptDocTypeFilter')?.value || 'all';
     const fileTypeVal = document.getElementById('deptFileTypeFilter')?.value || 'all';
@@ -402,11 +399,21 @@ class AppController {
     const files = window.storageService.getFiles('department', this.searchQuery, fileTypeVal, this.currentDeptFolderId, docTypeVal);
     const isAdmin = window.authManager && window.authManager.isAdmin();
 
+    if (tableTitle) {
+      if (this.currentDeptFolderId) {
+        const folders = window.storageService.getFolders('department');
+        const activeFold = folders.find(f => f.id === this.currentDeptFolderId);
+        tableTitle.textContent = activeFold ? `Văn bản trong thư mục: ${activeFold.name}` : `Văn bản Phòng Kinh doanh & DVKH`;
+      } else {
+        tableTitle.textContent = `Tất cả Văn bản & Tài liệu Phòng Kinh doanh & DVKH`;
+      }
+    }
+
     if (files.length === 0) {
       tbody.innerHTML = `
         <tr>
           <td colspan="8" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
-            🏢 Thư mục này chưa có văn bản nào. ${isAdmin ? 'Bấm "+ Thêm tài liệu phòng ban" ở trên để đăng tệp vào thư mục này!' : 'Chỉ Admin được phép đăng văn bản cho phòng ban.'}
+            🏢 Kho KDDVKH chưa có văn bản nào. ${isAdmin ? 'Bấm "+ Thêm tài liệu phòng ban" ở trên để đăng tệp!' : 'Chỉ Admin được phép đăng văn bản cho phòng ban.'}
           </td>
         </tr>
       `;
@@ -472,7 +479,11 @@ class AppController {
     }
 
     const html = folders.map(fold => {
-      const realFileCount = allDeptFiles.filter(f => f.folderId === fold.id).length;
+      let realFileCount = allDeptFiles.filter(f => f.folderId === fold.id).length;
+      if (fold.id === 'fold_kddvkh_1') {
+        const unassignedCount = allDeptFiles.filter(f => !f.folderId || f.folderId === 'fold_kddvkh_1').length;
+        realFileCount = Math.max(realFileCount, unassignedCount);
+      }
 
       return `
         <div class="folder-card-compact folder-card-item" data-folder-id="${escapeHTML(fold.id)}">

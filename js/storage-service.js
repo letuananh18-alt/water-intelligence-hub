@@ -291,7 +291,7 @@ class StorageService {
     } else if (category === 'department') {
       list = list.filter(f => f.category === 'department' || !f.category);
       if (folderId) {
-        list = list.filter(f => f.folderId === folderId || !f.folderId);
+        list = list.filter(f => f.folderId === folderId || (folderId === 'fold_kddvkh_1' && !f.folderId));
       }
     }
 
