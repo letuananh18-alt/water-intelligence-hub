@@ -98,7 +98,7 @@
         </div>
         <div class="nav-item" data-view="dept-docs">
           <i data-lucide="building-2"></i>
-          <span>Kho nội bộ phòng</span>
+          <span>Kho Kinh doanh & DVKH</span>
         </div>
         <div class="nav-item" data-view="team-chat">
           <i data-lucide="message-square"></i>
@@ -125,7 +125,7 @@
         </div>
         <div class="nav-item" data-view="users">
           <i data-lucide="users"></i>
-          <span>Người dùng</span>
+          <span>Người dùng & Phân quyền</span>
         </div>
         <div class="nav-item" data-view="settings">
           <i data-lucide="settings"></i>
@@ -215,9 +215,9 @@
 
             <div class="stat-card">
               <div class="stat-info">
-                <span class="stat-label">Tài liệu phòng ban</span>
+                <span class="stat-label">Kho KDDVKH</span>
                 <span class="stat-value">0</span>
-                <span class="stat-subtext">Kho nội bộ</span>
+                <span class="stat-subtext">Tài liệu phòng ban</span>
               </div>
               <div class="stat-icon-wrapper stat-icon-purple">
                 <i data-lucide="users"></i>
@@ -341,20 +341,34 @@
           </div>
         </section>
 
-        <!-- 3. DEPARTMENT VAULT VIEW (KHO NỘI BỘ PHÒNG) -->
+        <!-- 3. DEPARTMENT VAULT VIEW (KHO NỘI BỘ PHÒNG KINH DOANH & DỊCH VỤ KHÁCH HÀNG) -->
         <section id="viewDeptDocs" class="view-panel" style="display: none;">
           <div class="page-header">
             <div>
-              <h2 class="welcome-title">Kho nội bộ phòng ban</h2>
-              <p class="welcome-sub">Văn bản, sơ đồ kỹ thuật và quy trình cấp nước dùng chung do Admin quản lý</p>
+              <h2 class="welcome-title">Kho nội bộ Phòng Kinh doanh & Dịch vụ Khách hàng</h2>
+              <p class="welcome-sub">Hợp đồng, quy trình nghiệp vụ và báo cáo dịch vụ khách hàng do Admin quản lý</p>
             </div>
-            <button class="btn-primary" id="adminUploadDeptBtn" style="display: flex;">
-              <i data-lucide="plus"></i>
-              <span>Thêm tài liệu phòng ban</span>
-            </button>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn-primary" id="btnCreateNewFolder" style="background: white; color: var(--accent-blue); border: 1px solid var(--slate-200); box-shadow: var(--shadow-sm);">
+                <i data-lucide="folder-plus"></i>
+                <span>+ Tạo thư mục (New Folder)</span>
+              </button>
+              <button class="btn-primary" id="adminUploadDeptBtn" style="display: flex;">
+                <i data-lucide="plus"></i>
+                <span>Thêm tài liệu phòng ban</span>
+              </button>
+            </div>
           </div>
 
+          <!-- Department Folders Grid Section -->
+          <div class="card-title" style="margin-bottom: 12px; font-size: 15px; font-weight: 700;">📁 Danh sách Thư mục Phòng ban</div>
+          <div id="deptFoldersGrid" class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 24px;"></div>
+
+          <!-- Department Files Data Table -->
           <div class="table-card">
+            <div class="table-header-bar">
+              <h3 class="card-title">Văn bản & Tài liệu Phòng Kinh doanh & DVKH</h3>
+            </div>
             <div class="data-table-wrapper">
               <table class="data-table">
                 <thead>
@@ -383,15 +397,15 @@
         <section id="viewTeamChat" class="view-panel" style="display: none;">
           <div class="team-chat-container">
             <div class="ai-sidebar">
-              <div class="channel-section-header">Kênh Nhóm Phòng Ban</div>
-              <div class="thread-item active" data-channel="chan_general"># Phòng Kỹ Thuật & Vận Hành</div>
-              <div class="thread-item" data-channel="chan_project_q2"># Dự Án Cấp Nước Q2</div>
-              <div class="thread-item" data-channel="chan_safety"># Quy Chuẩn An Toàn</div>
+              <div class="channel-section-header">Kênh KDDVKH & Khách Hàng</div>
+              <div class="thread-item active" data-channel="chan_general"># Phòng Kinh Doanh & DVKH</div>
+              <div class="thread-item" data-channel="chan_project_q2"># Hợp Đồng & Khách Hàng Mới</div>
+              <div class="thread-item" data-channel="chan_safety"># Giải Quyết Khiếu Nại & Hỗ Trợ</div>
             </div>
 
             <div class="ai-chat-window">
               <div class="chat-header">
-                <h3 id="currentChatTitle" style="font-size: 15px; font-weight: 700;"># Phòng Kỹ Thuật & Vận Hành</h3>
+                <h3 id="currentChatTitle" style="font-size: 15px; font-weight: 700;"># Phòng Kinh Doanh & DVKH</h3>
                 <span style="font-size: 12px; color: var(--slate-400);">Trực tuyến</span>
               </div>
 
@@ -400,7 +414,7 @@
               </div>
 
               <div class="chat-input-bar">
-                <input type="text" id="teamChatInput" class="chat-input" placeholder="Nhập tin nhắn trò chuyện với đồng nghiệp...">
+                <input type="text" id="teamChatInput" class="chat-input" placeholder="Nhập tin nhắn trao đổi nghiệp vụ KDDVKH...">
                 <button class="btn-send-chat" id="btnSendTeamChat">
                   <i data-lucide="send" style="width: 18px; height: 18px;"></i>
                 </button>
@@ -418,23 +432,23 @@
                 <span>Cuộc trò chuyện mới</span>
               </button>
               <div class="chat-thread-list" id="aiThreadList">
-                <div class="thread-item active">Quy trình xử lý nước sạch</div>
-                <div class="thread-item">Báo cáo Q2 - Dự án cấp nước</div>
-                <div class="thread-item">Phân tích dữ liệu vận hành</div>
-                <div class="thread-item">Hướng dẫn an toàn lao động</div>
+                <div class="thread-item active">Quy trình dịch vụ khách hàng</div>
+                <div class="thread-item">Tóm tắt hợp đồng cấp nước</div>
+                <div class="thread-item">Biểu giá & Tiêu chuẩn nước sạch</div>
+                <div class="thread-item">Hướng dẫn xử lý sự cố</div>
               </div>
             </div>
 
             <div class="ai-chat-window">
               <div class="chat-header">
-                <h3 style="font-size: 15px; font-weight: 700;">AI Assistant - Trợ lý AI thông minh của bạn</h3>
+                <h3 style="font-size: 15px; font-weight: 700;">AI Assistant - Trợ lý AI KDDVKH</h3>
                 <span style="font-size: 12px; color: var(--accent-blue); font-weight: 600;">Sẵn sàng hỗ trợ 24/7</span>
               </div>
 
               <div id="aiChatArea" class="chat-messages-area"></div>
 
               <div class="chat-input-bar">
-                <input type="text" id="aiChatInput" class="chat-input" placeholder="Hỏi bất cứ điều gì về tài liệu của bạn...">
+                <input type="text" id="aiChatInput" class="chat-input" placeholder="Hỏi bất cứ điều gì về hợp đồng & tài liệu KDDVKH...">
                 <button class="btn-send-chat" id="btnSendAiChat">
                   <i data-lucide="send" style="width: 18px; height: 18px;"></i>
                 </button>
@@ -453,7 +467,7 @@
                 <tr>
                   <td><strong>Lê Tuấn Anh</strong></td>
                   <td>letuananh18@gmail.com</td>
-                  <td>Ban Quản Trị Hệ Thống</td>
+                  <td>Ban Quản Trị - Phòng KDDVKH</td>
                   <td><span class="badge-tag type-pdf">ADMIN</span></td>
                 </tr>
               </tbody>
@@ -464,17 +478,13 @@
         <!-- 7. FOLDERS / SETTINGS VIEWS -->
         <section id="viewFolders" class="view-panel" style="display: none;">
           <div class="page-header"><h2 class="welcome-title">Cấu trúc Thư mục</h2></div>
-          <div class="stats-grid">
-            <div class="stat-card"><div><strong>📁 Dự Án Cấp Nước 2026</strong><p>0 files</p></div></div>
-            <div class="stat-card"><div><strong>📁 Bản Vẽ Thiết Kế SCADA</strong><p>0 files</p></div></div>
-            <div class="stat-card"><div><strong>📁 Quy Chuẩn & Tiêu Chuẩn</strong><p>0 files</p></div></div>
-          </div>
+          <div class="stats-grid" id="allFoldersListGrid"></div>
         </section>
 
         <section id="viewSettings" class="view-panel" style="display: none;">
           <div class="page-header"><h2 class="welcome-title">Cài đặt hệ thống</h2></div>
           <div class="table-card" style="padding: 24px;">
-            <p><strong>Cấu hình Firebase Cloud Sync:</strong> Đã kết nối với dự án <code>thuduc-water-hub</code>.</p>
+            <p><strong>Phòng ban áp dụng:</strong> Phòng Kinh doanh & Dịch vụ Khách hàng (Thủ Đức Water).</p>
             <p><strong>Admin chính:</strong> letuananh18@gmail.com</p>
           </div>
         </section>
@@ -496,6 +506,25 @@
         <p id="previewFileMeta" style="font-size: 12px; color: var(--slate-400); margin-top: 6px;">PDF • 0 MB</p>
         <div style="margin-top: 20px;">
           <a href="#" id="previewDownloadBtn" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">Tải về máy</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOLDER ACTION MODAL -->
+  <div id="folderActionModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="folderModalTitle" class="modal-title">Chi tiết Thư mục</h3>
+        <i data-lucide="x" class="close-btn" id="closeFolderModalBtn"></i>
+      </div>
+      <div style="padding: 10px 0;">
+        <div style="font-size: 13px; color: var(--slate-600); margin-bottom: 8px;">Tên thư mục:</div>
+        <input type="text" id="folderNameInput" class="form-input" style="padding: 10px 14px; margin-bottom: 16px;">
+        <div id="folderMetaInfo" style="font-size: 12px; color: var(--slate-500); background: var(--slate-100); padding: 12px; border-radius: 8px; margin-bottom: 20px;"></div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button id="btnDeleteFolderModal" class="table-btn table-btn-delete" style="padding: 8px 14px;">Xóa thư mục</button>
+          <button id="btnSaveFolderModal" class="btn-primary" style="padding: 8px 16px; font-size: 13px; width: auto;">Lưu tên mới</button>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 // ==========================================================================
-// MAIN APPLICATION CONTROLLER (REAL FILE DOWNLOAD & DYNAMIC CATEGORY UPLOAD)
+// MAIN APPLICATION CONTROLLER (BUSINESS & CUSTOMER SERVICE DEPT + FOLDER MANAGEMENT)
 // ==========================================================================
 
 function escapeHTML(str) {
@@ -15,6 +15,7 @@ function escapeHTML(str) {
 class AppController {
   constructor() {
     this.currentView = 'dashboard';
+    this.selectedFolderId = null;
     this.init();
   }
 
@@ -25,6 +26,7 @@ class AppController {
       this.bindNavigationEvents();
       this.bindFileUploadEvents();
       this.bindTableActions();
+      this.bindFolderEvents();
       this.bindChatEvents();
       this.bindAiEvents();
 
@@ -70,10 +72,12 @@ class AppController {
       if (userRoleTxt) userRoleTxt.textContent = user.role;
       if (dashGreetingName) dashGreetingName.textContent = (user.name ? user.name.split(' ').pop() : user.email.split('@')[0]);
 
+      const isAdmin = window.authManager && window.authManager.isAdmin();
       const adminUploadDeptBtn = document.getElementById('adminUploadDeptBtn');
-      if (adminUploadDeptBtn) {
-        adminUploadDeptBtn.style.display = (window.authManager && window.authManager.isAdmin()) ? 'flex' : 'none';
-      }
+      const btnCreateNewFolder = document.getElementById('btnCreateNewFolder');
+
+      if (adminUploadDeptBtn) adminUploadDeptBtn.style.display = isAdmin ? 'flex' : 'none';
+      if (btnCreateNewFolder) btnCreateNewFolder.style.display = isAdmin ? 'flex' : 'none';
 
       this.renderCurrentView();
     }
@@ -104,7 +108,6 @@ class AppController {
       const email = prompt("ĐĂNG KÝ TÀI KHOẢN CLIENT MỚI\nNhập địa chỉ Email của bạn:");
       if (email && email.trim()) {
         window.authManager.login(email, "123456");
-        alert("✨ Đã đăng ký tài khoản Client thành công!");
       }
     });
   }
@@ -154,6 +157,7 @@ class AppController {
     this.renderRecentActivity();
     this.renderPersonalTable();
     this.renderDeptTable();
+    this.renderDeptFolders();
     this.renderUsersTable();
     this.renderTeamChat();
     this.renderAiChat();
@@ -297,7 +301,7 @@ class AppController {
       tbody.innerHTML = `
         <tr>
           <td colspan="6" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
-            🏢 Kho nội bộ chung chưa có văn bản nào. ${isAdmin ? 'Bấm "+ Thêm tài liệu phòng ban" ở trên để đăng bài!' : 'Chỉ Admin (letuananh18@gmail.com) được phép đăng văn bản chung cho phòng ban.'}
+            🏢 Kho KDDVKH chưa có văn bản nào. ${isAdmin ? 'Bấm "+ Thêm tài liệu phòng ban" ở trên để đăng bài!' : 'Chỉ Admin (letuananh18@gmail.com) được phép đăng văn bản chung cho Phòng Kinh doanh & DVKH.'}
           </td>
         </tr>
       `;
@@ -326,6 +330,34 @@ class AppController {
     `).join('');
   }
 
+  renderDeptFolders() {
+    const grid = document.getElementById('deptFoldersGrid');
+    const allGrid = document.getElementById('allFoldersListGrid');
+    if (!grid || !window.storageService) return;
+
+    const folders = window.storageService.getFolders();
+    const isAdmin = window.authManager && window.authManager.isAdmin();
+
+    const html = folders.map(fold => `
+      <div class="stat-card" style="position: relative; flex-direction: column; cursor: pointer; border-left: 4px solid var(--accent-blue);">
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <i data-lucide="folder" style="color: var(--accent-blue); width: 24px; height: 24px;"></i>
+            <strong style="font-size: 14px; color: var(--slate-900);">${escapeHTML(fold.name)}</strong>
+          </div>
+          ${isAdmin ? `<button class="icon-btn folder-opt-btn" data-folder-id="${escapeHTML(fold.id)}" title="Tùy chọn thư mục">⋮</button>` : ''}
+        </div>
+        <div style="font-size: 11px; color: var(--slate-400); margin-top: 10px; display: flex; justify-content: space-between; width: 100%;">
+          <span>Tạo bởi: ${escapeHTML(fold.createdBy)}</span>
+          <span>${escapeHTML(fold.date)}</span>
+        </div>
+      </div>
+    `).join('');
+
+    grid.innerHTML = html;
+    if (allGrid) allGrid.innerHTML = html;
+  }
+
   renderUsersTable() {
     const tbody = document.getElementById('usersTableBody');
     if (!tbody || !window.authManager) return;
@@ -335,10 +367,65 @@ class AppController {
       <tr>
         <td><strong>${escapeHTML(u.name)}</strong></td>
         <td>${escapeHTML(u.email)}</td>
-        <td>${escapeHTML(u.department || 'Phòng Kỹ thuật')}</td>
+        <td>${escapeHTML(u.department || 'Phòng Kinh doanh & Dịch vụ Khách hàng')}</td>
         <td><span class="badge-tag ${u.email === 'letuananh18@gmail.com' ? 'type-pdf' : 'type-docx'}">${u.email === 'letuananh18@gmail.com' ? 'ADMIN' : 'CLIENT'}</span></td>
       </tr>
     `).join('');
+  }
+
+  bindFolderEvents() {
+    const btnCreateFolder = document.getElementById('btnCreateNewFolder');
+    const folderModal = document.getElementById('folderActionModal');
+    const folderInput = document.getElementById('folderNameInput');
+    const folderMeta = document.getElementById('folderMetaInfo');
+
+    btnCreateFolder?.addEventListener('click', async () => {
+      const name = prompt("NHẬP TÊN THƯ MỤC MỚI KHU VỰC KDDVKH:");
+      if (name && name.trim()) {
+        await window.storageService.createFolder(name);
+        alert("✨ Đã tạo thư mục mới thành công!");
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('folder-opt-btn')) {
+        e.stopPropagation();
+        const id = e.target.getAttribute('data-folder-id');
+        const fold = window.storageService.getFolders().find(f => f.id === id);
+        if (fold) {
+          this.selectedFolderId = id;
+          if (folderInput) folderInput.value = fold.name;
+          if (folderMeta) {
+            folderMeta.innerHTML = `
+              📅 <strong>Ngày tạo:</strong> ${escapeHTML(fold.date)}<br>
+              👤 <strong>Người tạo:</strong> ${escapeHTML(fold.createdBy)}<br>
+              📂 <strong>Phòng ban:</strong> Phòng Kinh doanh & Dịch vụ Khách hàng
+            `;
+          }
+          if (folderModal) folderModal.style.display = 'flex';
+        }
+      }
+    });
+
+    document.getElementById('closeFolderModalBtn')?.addEventListener('click', () => {
+      if (folderModal) folderModal.style.display = 'none';
+    });
+
+    document.getElementById('btnSaveFolderModal')?.addEventListener('click', async () => {
+      if (this.selectedFolderId && folderInput && folderInput.value.trim()) {
+        await window.storageService.renameFolder(this.selectedFolderId, folderInput.value);
+        if (folderModal) folderModal.style.display = 'none';
+        alert("✅ Đã cập nhật tên thư mục!");
+      }
+    });
+
+    document.getElementById('btnDeleteFolderModal')?.addEventListener('click', async () => {
+      if (this.selectedFolderId && confirm("Bạn có chắc chắn muốn xóa thư mục này không?")) {
+        await window.storageService.deleteFolder(this.selectedFolderId);
+        if (folderModal) folderModal.style.display = 'none';
+        alert("🗑️ Đã xóa thư mục!");
+      }
+    });
   }
 
   bindFileUploadEvents() {
@@ -348,7 +435,6 @@ class AppController {
     const dropzone = document.getElementById('dashboardDropzone');
     const adminUploadDeptBtn = document.getElementById('adminUploadDeptBtn');
 
-    // Get active category based on currently open view tab
     const getActiveCategory = () => {
       if (this.currentView === 'dept-docs') return 'department';
       return 'personal';
@@ -389,7 +475,7 @@ class AppController {
           if (res) successCount++;
         });
         if (successCount > 0) {
-          alert(`✅ Đã tải lên ${successCount} tệp thành công vào ${category === 'department' ? 'Kho nội bộ phòng ban' : 'Kho cá nhân'}!`);
+          alert(`✅ Đã tải lên ${successCount} tệp thành công vào ${category === 'department' ? 'Kho Kinh doanh & DVKH' : 'Kho cá nhân'}!`);
         }
       }
     });
@@ -421,7 +507,6 @@ class AppController {
             downloadBtn.download = file.name;
             downloadBtn.onclick = (event) => {
               if (file.url && file.url !== "#") {
-                // Real browser file download trigger
                 const tempLink = document.createElement('a');
                 tempLink.href = file.url;
                 tempLink.download = file.name;

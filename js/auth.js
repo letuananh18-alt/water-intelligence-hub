@@ -1,5 +1,5 @@
 // ==========================================================================
-// USER AUTHENTICATION & ROLE MANAGEMENT MODULE (STRICT FIREBASE AUTH + GOOGLE FIX)
+// USER AUTHENTICATION & REAL-TIME USER DIRECTORY SYNC
 // Real Admin: letuananh18@gmail.com
 // ==========================================================================
 
@@ -10,7 +10,7 @@ const DEMO_USERS = {
     email: "letuananh18@gmail.com",
     role: "Admin / Quản trị hệ thống",
     avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    department: "Ban Quản Trị Hệ Thống"
+    department: "Phòng Kinh doanh & Dịch vụ Khách hàng"
   }
 };
 
@@ -34,10 +34,7 @@ class AuthManager {
 
     if (typeof firebase !== 'undefined' && firebase.auth) {
       try {
-        // Enforce LOCAL persistence to prevent missing initial state errors
-        firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => {
-          console.warn("Persistence notice:", err);
-        });
+        firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => {});
 
         firebase.auth().onAuthStateChanged(user => {
           if (user) {
@@ -47,18 +44,50 @@ class AuthManager {
               email: user.email,
               role: user.email === 'letuananh18@gmail.com' ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
               avatar: user.photoURL || DEMO_USERS.ADMIN.avatar,
-              department: "Phòng Kỹ thuật & Cấp nước"
+              department: "Phòng Kinh doanh & Dịch vụ Khách hàng"
             };
             
-            if (!this.usersList.some(u => u.email === user.email)) {
-              this.usersList.push(this.currentUser);
-            }
-
-            localStorage.setItem('thuduc_water_user', JSON.stringify(this.currentUser));
+            this.saveUserLocal(this.currentUser);
+            this.syncUserToCloud(this.currentUser);
             this.notify();
           }
         });
       } catch (e) {}
+    }
+
+    // Sync cloud users collection to usersList in real-time
+    if (typeof firebase !== 'undefined' && firebase.firestore) {
+      try {
+        firebase.firestore().collection("users").onSnapshot(snapshot => {
+          const list = [DEMO_USERS.ADMIN];
+          snapshot.forEach(doc => {
+            const uData = doc.data();
+            if (uData && uData.email && !list.some(x => x.email === uData.email)) {
+              list.push(uData);
+            }
+          });
+          this.usersList = list;
+          this.notify();
+        }, err => console.warn("Firestore users notice:", err));
+      } catch (e) {}
+    }
+  }
+
+  saveUserLocal(userObj) {
+    localStorage.setItem('thuduc_water_user', JSON.stringify(userObj));
+    if (!this.usersList.some(u => u.email === userObj.email)) {
+      this.usersList.push(userObj);
+    }
+  }
+
+  async syncUserToCloud(userObj) {
+    if (typeof firebase !== 'undefined' && firebase.firestore) {
+      try {
+        const docId = userObj.uid || userObj.email.replace(/[^a-zA-Z0-9]/g, '_');
+        await firebase.firestore().collection("users").doc(docId).set(userObj, { merge: true });
+      } catch (e) {
+        console.warn("User cloud sync notice:", e);
+      }
     }
   }
 
@@ -71,7 +100,7 @@ class AuthManager {
   }
 
   isAdmin() {
-    return this.currentUser && (this.currentUser.email === 'letuananh18@gmail.com' || this.currentUser.role.includes("Admin"));
+    return this.currentUser && (this.currentUser.email === 'letuananh18@gmail.com' || (this.currentUser.role && this.currentUser.role.includes("Admin")));
   }
 
   async login(email, password) {
@@ -90,15 +119,23 @@ class AuthManager {
         const res = await firebase.auth().signInWithEmailAndPassword(email, password);
         return res.user;
       } catch (err) {
-        console.error("Firebase Auth Error Code:", err.code);
         if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
           alert("❌ Mật khẩu không chính xác! Vui lòng kiểm tra lại.");
           return null;
         } else if (err.code === 'auth/user-not-found') {
-          if (confirm(`Email ${email} chưa được đăng ký trên Firebase Cloud. Bạn có muốn tạo tài khoản mới với mật khẩu vừa nhập không?`)) {
+          if (confirm(`Email ${email} chưa được đăng ký trên Firebase Cloud. Bạn có muốn tạo tài khoản mới ngay không?`)) {
             try {
               const newUserRes = await firebase.auth().createUserWithEmailAndPassword(email, password);
-              alert("✨ Tạo tài khoản mới thành công trên Cloud!");
+              const newUserObj = {
+                uid: newUserRes.user.uid,
+                name: email.split('@')[0],
+                email: email,
+                role: email === 'letuananh18@gmail.com' ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
+                avatar: DEMO_USERS.ADMIN.avatar,
+                department: "Phòng Kinh doanh & Dịch vụ Khách hàng"
+              };
+              await this.syncUserToCloud(newUserObj);
+              alert("✨ Tạo và lưu tài khoản mới thành công vào Danh sách Người dùng!");
               return newUserRes.user;
             } catch (cErr) {
               alert("⚠️ Không thể tạo tài khoản: " + cErr.message);
@@ -113,7 +150,7 @@ class AuthManager {
       }
     } else {
       if (password !== "123456" && password !== "12345678" && password !== "admin123") {
-        alert("❌ Mật khẩu không chính xác! (Mật khẩu thử nghiệm mặc định là: 123456)");
+        alert("❌ Mật khẩu không chính xác! (Mật khẩu mặc định là: 123456)");
         return null;
       }
 
@@ -123,14 +160,11 @@ class AuthManager {
         email: email,
         role: email === 'letuananh18@gmail.com' ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
         avatar: DEMO_USERS.ADMIN.avatar,
-        department: "Phòng Kỹ thuật"
+        department: "Phòng Kinh doanh & Dịch vụ Khách hàng"
       };
 
-      if (!this.usersList.some(u => u.email === email)) {
-        this.usersList.push(this.currentUser);
-      }
-
-      localStorage.setItem('thuduc_water_user', JSON.stringify(this.currentUser));
+      this.saveUserLocal(this.currentUser);
+      this.syncUserToCloud(this.currentUser);
       this.notify();
       return this.currentUser;
     }
@@ -144,18 +178,26 @@ class AuthManager {
 
     if (typeof firebase !== 'undefined' && firebase.auth) {
       try {
-        // Enforce LOCAL persistence to prevent missing initial state errors
         await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
         const provider = new firebase.auth.GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
         
         const result = await firebase.auth().signInWithPopup(provider);
+        if (result.user) {
+          const userObj = {
+            uid: result.user.uid,
+            name: result.user.displayName || result.user.email.split('@')[0],
+            email: result.user.email,
+            role: result.user.email === 'letuananh18@gmail.com' ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
+            avatar: result.user.photoURL || DEMO_USERS.ADMIN.avatar,
+            department: "Phòng Kinh doanh & Dịch vụ Khách hàng"
+          };
+          await this.syncUserToCloud(userObj);
+        }
         return result.user;
       } catch (err) {
-        console.error("Google Auth Error:", err);
-        // Handle browser storage partitioning / missing initial state gracefully
         if (err.message.includes('missing initial state') || err.code === 'auth/missing-initial-state' || err.code === 'auth/popup-blocked') {
-          const userEmail = prompt("⚠️ Trình duyệt chặn Popup Google (Thiếu SessionStorage). Vui lòng nhập địa chỉ Email/Gmail của bạn để đăng nhập:");
+          const userEmail = prompt("⚠️ Trình duyệt chặn Popup Google. Vui lòng nhập địa chỉ Email/Gmail của bạn để đăng nhập:");
           if (userEmail && userEmail.trim()) {
             return this.login(userEmail.trim(), "123456");
           }

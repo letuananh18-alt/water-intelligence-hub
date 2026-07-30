@@ -1,26 +1,35 @@
 // ==========================================================================
-// FILE STORAGE & DUAL VAULT MANAGER SERVICE (REAL FILE DOWNLOAD & CATEGORY)
+// FILE STORAGE & DUAL VAULT MANAGER SERVICE (STRICT SEPARATION & FOLDER MANAGEMENT)
 // ==========================================================================
 
 class StorageService {
   constructor() {
     this.files = [];
+    this.folders = [
+      { id: "fold_1", name: "Hợp đồng Dịch vụ Khách hàng 2026", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "10/06/2026", filesCount: 0 },
+      { id: "fold_2", name: "Báo cáo Doanh thu & Cấp nước KDDVKH", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "12/06/2026", filesCount: 0 }
+    ];
     this.listeners = [];
     this.init();
   }
 
   init() {
-    const saved = localStorage.getItem('thuduc_water_files');
-    if (saved) {
+    const savedFiles = localStorage.getItem('thuduc_water_files');
+    if (savedFiles) {
       try {
-        const parsed = JSON.parse(saved);
-        this.files = parsed.filter(f => f.tags && f.tags.includes('Tệp thực tế'));
+        this.files = JSON.parse(savedFiles).filter(f => f.tags && f.tags.includes('Tệp thực tế'));
       } catch (e) {
         this.files = [];
       }
-    } else {
-      this.files = [];
     }
+
+    const savedFolders = localStorage.getItem('thuduc_water_folders');
+    if (savedFolders) {
+      try {
+        this.folders = JSON.parse(savedFolders);
+      } catch (e) {}
+    }
+
     this.saveLocal();
 
     if (typeof firebase !== 'undefined' && firebase.firestore) {
@@ -38,15 +47,24 @@ class StorageService {
             this.saveLocal();
             this.notify();
           }
-        }, err => {
-          console.warn("Firestore snapshot notice:", err.message);
-        });
+        }, err => console.warn("Firestore files notice:", err));
+
+        firebase.firestore().collection("folders").onSnapshot(snapshot => {
+          const cloudFolders = [];
+          snapshot.forEach(doc => cloudFolders.push({ id: doc.id, ...doc.data() }));
+          if (cloudFolders.length > 0) {
+            this.folders = cloudFolders;
+            this.saveLocal();
+            this.notify();
+          }
+        }, err => console.warn("Firestore folders notice:", err));
       } catch (e) {}
     }
   }
 
   saveLocal() {
     localStorage.setItem('thuduc_water_files', JSON.stringify(this.files));
+    localStorage.setItem('thuduc_water_folders', JSON.stringify(this.folders));
   }
 
   getFiles(category = 'all', searchQuery = '', typeFilter = 'all') {
@@ -54,7 +72,8 @@ class StorageService {
 
     if (category === 'personal') {
       const user = window.authManager ? window.authManager.getCurrentUser() : null;
-      list = list.filter(f => f.category === 'personal' || (user && f.uploaderUid === user.uid));
+      // STRICT FILTER: Personal files ONLY (exclude department vault files)
+      list = list.filter(f => f.category === 'personal' && (user ? (f.uploaderUid === user.uid || f.uploadedBy === user.name || f.uploadedBy === user.email) : true));
     } else if (category === 'department') {
       list = list.filter(f => f.category === 'department');
     }
@@ -71,13 +90,12 @@ class StorageService {
     return list;
   }
 
-  async addFile(fileObj, category = 'personal') {
+  async addFile(fileObj, category = 'personal', folderId = null) {
     const currentUser = (window.authManager && window.authManager.getCurrentUser()) || { name: "Client User", uid: "user_client" };
     const isAdmin = window.authManager && window.authManager.isAdmin();
 
-    // STRICT RBAC CHECK: Client CANNOT upload to Department Vault
     if (category === 'department' && !isAdmin) {
-      alert("⛔ Bị từ chối: Client không có quyền tải lên Kho nội bộ phòng ban! Chỉ Admin (letuananh18@gmail.com) mới được phép.");
+      alert("⛔ Bị từ chối: Client không có quyền tải lên Kho nội bộ Phòng Kinh doanh & Dịch vụ Khách hàng!");
       return null;
     }
 
@@ -88,7 +106,6 @@ class StorageService {
 
     const ext = fileObj.name.split('.').pop().toUpperCase();
     
-    // Create Object URL for real browser downloading
     let fileUrl = "#";
     try {
       fileUrl = URL.createObjectURL(fileObj);
@@ -104,6 +121,7 @@ class StorageService {
       uploaderUid: currentUser.uid,
       uploadDate: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
       category: category,
+      folderId: folderId,
       url: fileUrl,
       tags: ["Tệp thực tế"]
     };
@@ -116,10 +134,10 @@ class StorageService {
       try {
         await firebase.firestore().collection("files").doc(newFile.id).set({
           ...newFile,
-          url: "#" // Don't upload huge blob string to firestore
+          url: "#"
         });
       } catch (err) {
-        console.warn("Firestore upload sync notice:", err.message);
+        console.warn("Firestore upload notice:", err);
       }
     }
 
@@ -134,7 +152,7 @@ class StorageService {
     const isAdmin = window.authManager && window.authManager.isAdmin();
 
     if (file.category === 'department' && !isAdmin) {
-      alert("⛔ Bị từ chối: Client không có quyền xóa tài liệu trong Kho nội bộ phòng ban!");
+      alert("⛔ Bị từ chối: Client không có quyền xóa tài liệu trong Kho nội bộ Phòng Kinh doanh & Dịch vụ Khách hàng!");
       return false;
     }
 
@@ -152,6 +170,61 @@ class StorageService {
     } else {
       alert("⛔ Bị từ chối: Bạn không có quyền xóa tài liệu của người khác.");
       return false;
+    }
+  }
+
+  // FOLDER MANAGEMENT METHODS FOR DEPARTMENT VAULT
+  getFolders() {
+    return this.folders;
+  }
+
+  async createFolder(name) {
+    const currentUser = (window.authManager && window.authManager.getCurrentUser()) || { name: "Lê Tuấn Anh" };
+    const newFolder = {
+      id: "fold_" + Date.now(),
+      name: name.trim(),
+      department: "dept_kddvkh",
+      createdBy: currentUser.name || currentUser.email,
+      date: new Date().toLocaleDateString('vi-VN'),
+      filesCount: 0
+    };
+
+    this.folders.unshift(newFolder);
+    this.saveLocal();
+    this.notify();
+
+    if (typeof firebase !== 'undefined' && firebase.firestore) {
+      try {
+        await firebase.firestore().collection("folders").doc(newFolder.id).set(newFolder);
+      } catch (e) {}
+    }
+    return newFolder;
+  }
+
+  async renameFolder(folderId, newName) {
+    const fold = this.folders.find(f => f.id === folderId);
+    if (fold) {
+      fold.name = newName.trim();
+      this.saveLocal();
+      this.notify();
+
+      if (typeof firebase !== 'undefined' && firebase.firestore) {
+        try {
+          await firebase.firestore().collection("folders").doc(folderId).update({ name: newName.trim() });
+        } catch (e) {}
+      }
+    }
+  }
+
+  async deleteFolder(folderId) {
+    this.folders = this.folders.filter(f => f.id !== folderId);
+    this.saveLocal();
+    this.notify();
+
+    if (typeof firebase !== 'undefined' && firebase.firestore) {
+      try {
+        await firebase.firestore().collection("folders").doc(folderId).delete();
+      } catch (e) {}
     }
   }
 
