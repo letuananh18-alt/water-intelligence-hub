@@ -141,11 +141,11 @@ class AuthManager {
   }
 
   isAdmin() {
-    return this.currentUser && (
-      this.currentUser.email === 'waterain8n@gmail.com' ||
-      this.currentUser.email === 'letuananh18@gmail.com' ||
-      (this.currentUser.role && this.currentUser.role.includes("Admin"))
-    );
+    if (!this.currentUser || !this.currentUser.email) return false;
+    const email = (this.currentUser.email || '').toLowerCase().trim();
+    return email === 'waterain8n@gmail.com' ||
+           email === 'letuananh18@gmail.com' ||
+           (this.currentUser.role && this.currentUser.role.toLowerCase().includes("admin"));
   }
 
   async login(email, password) {

@@ -658,12 +658,12 @@ class AppController {
 
     adminUploadDeptBtn?.addEventListener('click', () => {
       if (!window.authManager || !window.authManager.isAdmin()) {
-        alert("⛔ Bị từ chối: Bạn đang ở quyền Client. Chỉ Admin (waterain8n@gmail.com) mới có quyền tải lên Kho nội bộ phòng ban!");
+        alert("⛔ Bị từ chối: Chỉ Ban Quản trị Admin (waterain8n@gmail.com & letuananh18@gmail.com) mới có quyền tải lên Kho nội bộ phòng ban!");
         return;
       }
-      if (!this.currentDeptFolderId) {
-        alert("⚠️ Vui lòng nhấp mở một Thư mục cụ thể trước khi bấm 'Thêm tài liệu phòng ban'!");
-        return;
+      const deptFolders = window.storageService ? window.storageService.getFolders('department') : [];
+      if (!this.currentDeptFolderId && deptFolders.length > 0) {
+        this.currentDeptFolderId = deptFolders[0].id;
       }
       if (hiddenInput) hiddenInput.setAttribute('data-target-cat', 'department');
       hiddenInput?.click();
