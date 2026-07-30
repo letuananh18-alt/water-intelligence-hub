@@ -1,6 +1,6 @@
 // ==========================================================================
-// MAIN APPLICATION CONTROLLER (RESPONSIVE PC/MOBILE + ADMIN AUDIT MONITOR)
-// REALTIME DATA SYNC & EXACT FOLDER FILE COUNT CALCULATION
+// MAIN APPLICATION CONTROLLER (RESPONSIVE PC/MOBILE + AI KNOWLEDGE ENGINE)
+// REALTIME DATA SYNC & SEARCH HIGHLIGHTING & 1-CLICK AI SUMMARY
 // ==========================================================================
 
 function escapeHTML(str) {
@@ -13,6 +13,14 @@ function escapeHTML(str) {
     .replace(/'/g, "&#039;");
 }
 
+function highlightSearchTerm(text, query) {
+  if (!query || !query.trim() || typeof text !== 'string') return escapeHTML(text);
+  const q = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${q})`, 'gi');
+  const escapedText = escapeHTML(text);
+  return escapedText.replace(regex, '<mark class="search-highlight">$1</mark>');
+}
+
 class AppController {
   constructor() {
     this.currentView = 'dashboard';
@@ -20,6 +28,8 @@ class AppController {
     this.currentDeptFolderId = null;
     this.pendingUploadFiles = null;
     this.pendingUploadCategory = 'personal';
+    this.currentPreviewFileId = null;
+    this.searchQuery = '';
     this.init();
   }
 
@@ -37,6 +47,7 @@ class AppController {
         this.bindAiEvents();
         this.bindMobileSidebarEvents();
         this.bindSettingsEvents();
+        this.bindGlobalSearchEvents();
         this.refreshLucideIcons();
       } catch (err) {
         console.warn("App initialization notice:", err);
@@ -56,6 +67,14 @@ class AppController {
       }
 
       this.onUserChanged(window.authManager ? window.authManager.getCurrentUser() : null);
+    });
+  }
+
+  bindGlobalSearchEvents() {
+    const searchInput = document.getElementById('globalSearchInput');
+    searchInput?.addEventListener('input', (e) => {
+      this.searchQuery = e.target.value;
+      this.renderCurrentView();
     });
   }
 
@@ -245,15 +264,14 @@ class AppController {
     const tbody = document.getElementById('dashFilesTableBody');
     if (!tbody || !window.storageService) return;
 
-    // DASHBOARD TABLE EXCLUSIVELY DISPLAYS KHO KDDVKH DEPARTMENT DOCUMENTS! EXCLUDES PERSONAL FILES!
-    const files = window.storageService.getFiles('department').slice(0, 5);
+    const files = window.storageService.getFiles('department', this.searchQuery).slice(0, 5);
     const isAdmin = window.authManager && window.authManager.isAdmin();
 
     if (files.length === 0) {
       tbody.innerHTML = `
         <tr>
           <td colspan="5" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
-            📂 Kho Kinh doanh & DVKH chưa có văn bản nào. Bấm "Kho Kinh doanh & DVKH" ở menu trái để bắt đầu đăng tệp!
+            📂 Kho Kinh doanh & DVKH chưa có văn bản khớp với tìm kiếm.
           </td>
         </tr>
       `;
@@ -265,12 +283,12 @@ class AppController {
         <td>
           <div class="file-name-cell">
             <span class="file-type-icon type-${escapeHTML(file.type.toLowerCase())}">${escapeHTML(file.type)}</span>
-            <span>${escapeHTML(file.name)}</span>
+            <span>${highlightSearchTerm(file.name, this.searchQuery)}</span>
           </div>
         </td>
         <td>${escapeHTML(file.sizeFormatted)}</td>
         <td>${escapeHTML(file.uploadDate)}</td>
-        <td>${escapeHTML(file.uploadedBy)}</td>
+        <td>${highlightSearchTerm(file.uploadedBy, this.searchQuery)}</td>
         <td style="text-align: right;">
           <div class="table-actions" style="justify-content: flex-end;">
             <button class="table-btn preview-btn" data-id="${escapeHTML(file.id)}">Xem & Tải về</button>
@@ -285,8 +303,7 @@ class AppController {
     const listEl = document.getElementById('recentActivityList');
     if (!listEl || !window.storageService) return;
 
-    // RECENT ACTIVITY EXCLUSIVELY DISPLAYS KHO KDDVKH DEPARTMENT DOCUMENTS! EXCLUDES PERSONAL FILES!
-    const files = window.storageService.getFiles('department').slice(0, 4);
+    const files = window.storageService.getFiles('department', this.searchQuery).slice(0, 4);
     if (files.length === 0) {
       listEl.innerHTML = `<div style="font-size: 13px; color: var(--slate-400); text-align: center; padding: 25px;">Chưa có hoạt động mới nào trong Kho KDDVKH.</div>`;
       return;
@@ -296,8 +313,8 @@ class AppController {
       <div class="activity-item">
         <div class="file-type-icon type-${escapeHTML(f.type.toLowerCase())}">${escapeHTML(f.type)}</div>
         <div class="activity-details">
-          <div class="activity-filename">${escapeHTML(f.name)}</div>
-          <div class="activity-meta">${escapeHTML(f.uploadedBy)} đã tải lên • ${escapeHTML(f.uploadDate)}</div>
+          <div class="activity-filename">${highlightSearchTerm(f.name, this.searchQuery)}</div>
+          <div class="activity-meta">${highlightSearchTerm(f.uploadedBy, this.searchQuery)} đã tải lên • ${escapeHTML(f.uploadDate)}</div>
         </div>
       </div>
     `).join('');
@@ -308,7 +325,7 @@ class AppController {
     const tbody = document.getElementById('personalFilesTableBody');
     if (!tbody || !window.storageService) return;
 
-    const files = window.storageService.getFiles('personal');
+    const files = window.storageService.getFiles('personal', this.searchQuery);
     if (files.length === 0) {
       tbody.innerHTML = `
         <tr>
@@ -326,7 +343,7 @@ class AppController {
         <td>
           <div class="file-name-cell">
             <span class="file-type-icon type-${escapeHTML(file.type.toLowerCase())}">${escapeHTML(file.type)}</span>
-            <span>${escapeHTML(file.name)}</span>
+            <span>${highlightSearchTerm(file.name, this.searchQuery)}</span>
           </div>
         </td>
         <td><span class="badge-tag type-${escapeHTML(file.type.toLowerCase())}">${escapeHTML(file.type)}</span></td>
@@ -357,7 +374,7 @@ class AppController {
     const docTypeVal = document.getElementById('deptDocTypeFilter')?.value || 'all';
     const fileTypeVal = document.getElementById('deptFileTypeFilter')?.value || 'all';
 
-    const files = window.storageService.getFiles('department', '', fileTypeVal, this.currentDeptFolderId, docTypeVal);
+    const files = window.storageService.getFiles('department', this.searchQuery, fileTypeVal, this.currentDeptFolderId, docTypeVal);
     const isAdmin = window.authManager && window.authManager.isAdmin();
 
     if (files.length === 0) {
@@ -376,13 +393,13 @@ class AppController {
         <td>
           <div class="file-name-cell">
             <span class="file-type-icon type-${escapeHTML(file.type.toLowerCase())}">${escapeHTML(file.type)}</span>
-            <span>${escapeHTML(file.name)}</span>
+            <span>${highlightSearchTerm(file.name, this.searchQuery)}</span>
           </div>
         </td>
         <td><span class="badge-tag type-docx">${escapeHTML(file.docType || 'Hợp đồng cấp nước')}</span></td>
         <td><span class="badge-tag" style="background: var(--slate-100); color: var(--slate-800);">${escapeHTML(file.statusTag || '🟢 Đã ban hành')}</span></td>
         <td>${escapeHTML(file.sizeFormatted)}</td>
-        <td>${escapeHTML(file.uploadedBy)}</td>
+        <td>${highlightSearchTerm(file.uploadedBy, this.searchQuery)}</td>
         <td>${escapeHTML(file.uploadDate)}</td>
         <td style="text-align: right;">
           <div class="table-actions" style="justify-content: flex-end;">
@@ -426,7 +443,6 @@ class AppController {
     }
 
     const html = folders.map(fold => {
-      // DYNAMIC REALTIME FILE COUNT PER FOLDER
       const realFileCount = allDeptFiles.filter(f => f.folderId === fold.id).length;
 
       return `
@@ -480,7 +496,6 @@ class AppController {
     }
 
     if (auditTbody && window.storageService) {
-      // Audit log ONLY displays client upload activity meta without exposing file contents
       const allFiles = window.storageService.files;
       const clientUploads = allFiles.filter(f => f.category === 'personal');
 
@@ -662,7 +677,6 @@ class AppController {
         const docType = document.getElementById('modalDocTypeSelect')?.value || 'Hợp đồng cấp nước';
         const statusTag = document.getElementById('modalStatusTagSelect')?.value || '🟢 Đã ban hành';
         
-        // Auto assign to selected department folder or default to first folder
         const deptFolders = window.storageService.getFolders('department');
         const targetFolderId = this.currentDeptFolderId || (deptFolders[0] ? deptFolders[0].id : null);
 
@@ -682,19 +696,54 @@ class AppController {
   }
 
   bindTableActions() {
+    // 1. Nút AI Tóm Tắt 3 Giây trong Preview Modal
+    document.getElementById('btnAiSummarizeDoc')?.addEventListener('click', () => {
+      if (!this.currentPreviewFileId || !window.storageService || !window.aiAssistant) return;
+      const file = window.storageService.files.find(f => f.id === this.currentPreviewFileId);
+      if (file) {
+        const summary = window.aiAssistant.summarizeDocument(file);
+        const docViewer = document.getElementById('docViewerContainer');
+        if (docViewer && summary) {
+          const summaryHtml = `
+            <div class="ai-summary-box">
+              <div class="ai-summary-header">
+                <i data-lucide="bot" style="width: 20px; height: 20px;"></i>
+                <span>🤖 ${escapeHTML(summary.title)}</span>
+              </div>
+              <div class="ai-summary-purpose">${escapeHTML(summary.purpose)}</div>
+              
+              <div class="ai-summary-section-title">📌 Các điều khoản & Quy trình cốt lõi:</div>
+              <ul class="ai-summary-list">
+                ${summary.highlights.map(h => `<li>${escapeHTML(h)}</li>`).join('')}
+              </ul>
+
+              <div class="ai-summary-section-title">⚡ Hành động & Thời hạn thực hiện:</div>
+              <ul class="ai-summary-list">
+                ${summary.actions.map(a => `<li>${escapeHTML(a)}</li>`).join('')}
+              </ul>
+            </div>
+          `;
+          docViewer.innerHTML = summaryHtml + docViewer.innerHTML;
+          this.refreshLucideIcons();
+        }
+      }
+    });
+
     document.addEventListener('click', async (e) => {
-      if (e.target.classList.contains('delete-btn')) {
-        const id = e.target.getAttribute('data-id');
+      const btn = e.target.closest('.preview-btn') || e.target;
+      if (btn.classList.contains('delete-btn')) {
+        const id = btn.getAttribute('data-id');
         if (confirm("Bạn có chắc chắn muốn xóa tài liệu này không?")) {
           await window.storageService.deleteFile(id);
           this.renderCurrentView();
         }
       }
 
-      if (e.target.classList.contains('preview-btn')) {
-        const id = e.target.getAttribute('data-id');
+      if (btn.classList.contains('preview-btn')) {
+        const id = btn.getAttribute('data-id');
         const file = window.storageService.files.find(f => f.id === id);
         if (file) {
+          this.currentPreviewFileId = id;
           const modalTitle = document.getElementById('previewModalTitle');
           const docViewer = document.getElementById('docViewerContainer');
           const previewMeta = document.getElementById('previewFileMeta');
@@ -793,7 +842,6 @@ class AppController {
 
               (async () => {
                 let success = false;
-                // 1. Try from memory rawFile
                 if (rawFile) {
                   try {
                     const buffer = await rawFile.arrayBuffer();
@@ -801,7 +849,6 @@ class AppController {
                   } catch (e) {}
                 }
 
-                // 2. Try from Base64 dataUrl
                 if (!success && file.dataUrl && file.dataUrl.includes('base64,')) {
                   try {
                     const base64Str = file.dataUrl.split('base64,')[1];
@@ -815,7 +862,6 @@ class AppController {
                   } catch (e) {}
                 }
 
-                // 3. Try fetching from public file.url
                 if (!success && file.url && file.url !== "#") {
                   try {
                     const resp = await fetch(file.url);
@@ -824,7 +870,6 @@ class AppController {
                   } catch (e) {}
                 }
 
-                // 4. Fallback to Microsoft Office Online Iframe Viewer
                 if (!success) {
                   if (file.url && file.url !== "#" && file.url.startsWith("http")) {
                     docViewer.innerHTML = `
@@ -949,6 +994,13 @@ class AppController {
     aiInput?.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') handleSend();
     });
+
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('suggested-prompt-pill')) {
+        const text = e.target.textContent.replace(/^🔍|^📊|^📋/, '').trim();
+        window.aiAssistant.askQuestion(text);
+      }
+    });
   }
 
   renderAiChat() {
@@ -960,9 +1012,32 @@ class AppController {
       if (m.role === 'pill') {
         return `<div class="suggested-prompt-pill">${escapeHTML(m.text)}</div>`;
       }
+
+      let citationsHtml = '';
+      if (m.citations && m.citations.length > 0) {
+        citationsHtml = `
+          <div class="ai-doc-citation-list">
+            <div style="font-size: 11px; font-weight: 800; color: var(--accent-blue); text-transform: uppercase; margin-top: 6px;">📌 TÀI LIỆU TRÍCH DẪN TỪ KHO KDDVKH:</div>
+            ${m.citations.map(c => `
+              <div class="ai-doc-citation-card preview-btn" data-id="${escapeHTML(c.id)}">
+                <div class="citation-info">
+                  <span class="file-type-icon type-${escapeHTML(c.type.toLowerCase())}">${escapeHTML(c.type)}</span>
+                  <div>
+                    <div class="citation-title">${escapeHTML(c.name)}</div>
+                    <div class="citation-sub">${escapeHTML(c.docType || 'Văn bản Nghiệp vụ')} • ${escapeHTML(c.uploadDate)}</div>
+                  </div>
+                </div>
+                <button class="table-btn preview-btn" data-id="${escapeHTML(c.id)}" style="font-size: 11px; padding: 4px 10px;">👁️ Xem trực tiếp</button>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
       return `
         <div class="chat-bubble ${m.role === 'user' ? 'bubble-user' : 'bubble-ai'}">
           <div>${escapeHTML(m.text).replace(/\n/g, '<br>')}</div>
+          ${citationsHtml}
         </div>
       `;
     }).join('');

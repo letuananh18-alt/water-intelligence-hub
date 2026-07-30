@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/styles.css?v=20260730_v30">
+  <link rel="stylesheet" href="css/styles.css?v=20260730_v31">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- Mammoth.js for Direct Client-side Word (.docx) Document Previewing -->
@@ -197,7 +197,7 @@
 
         <div class="global-search">
           <i data-lucide="search" class="search-icon"></i>
-          <input type="text" id="globalSearchInput" class="search-input" placeholder="Tìm kiếm tài liệu, thư mục, quy trình...">
+          <input type="text" id="globalSearchInput" class="search-input" placeholder="Tìm kiếm từ khóa trong tên tệp, quy trình, hợp đồng...">
         </div>
 
         <div class="topbar-actions">
@@ -225,7 +225,7 @@
                 <span>Xin chào, <span id="dashGreetingName">Tuấn Anh</span>!</span>
                 <span>👋</span>
               </h2>
-              <p class="welcome-sub">Chào mừng bạn quay trở lại với Water Intelligence Hub (Powered by Supabase Cloud)</p>
+              <p class="welcome-sub">Chào mừng bạn quay trở lại với Water Intelligence Hub (Powered by Supabase Cloud & AI Engine)</p>
             </div>
           </div>
 
@@ -512,14 +512,14 @@
 
             <div class="ai-chat-window">
               <div class="chat-header">
-                <h3 style="font-size: 15px; font-weight: 700;">AI Assistant - Trợ lý AI KDDVKH</h3>
-                <span style="font-size: 12px; color: var(--accent-blue); font-weight: 600;">Sẵn sàng hỗ trợ 24/7</span>
+                <h3 style="font-size: 15px; font-weight: 700;">AI Assistant - Trợ lý AI Tra cứu Tri thức KDDVKH</h3>
+                <span style="font-size: 12px; color: var(--accent-blue); font-weight: 600;">⚡ Đã kết nối CSDL Kho KDDVKH</span>
               </div>
 
               <div id="aiChatArea" class="chat-messages-area"></div>
 
               <div class="chat-input-bar">
-                <input type="text" id="aiChatInput" class="chat-input" placeholder="Hỏi bất cứ điều gì về hợp đồng & tài liệu KDDVKH...">
+                <input type="text" id="aiChatInput" class="chat-input" placeholder="Hỏi bất kỳ điều gì về hợp đồng, quy trình & văn bản Kho KDDVKH...">
                 <button class="btn-send-chat" id="btnSendAiChat">
                   <i data-lucide="send" style="width: 18px; height: 18px;"></i>
                 </button>
@@ -559,7 +559,7 @@
                     <td>waterain8n@gmail.com</td>
                     <td>Ban Quản Trị - Phòng KDDVKH</td>
                     <td><span class="badge-tag type-pdf">ADMIN</span></td>
-                    <td>30/07/2026 21:00</td>
+                    <td>30/07/2026 21:15</td>
                   </tr>
                 </tbody>
               </table>
@@ -618,7 +618,7 @@
     </div>
   </div>
 
-  <!-- ENHANCED REAL DOCUMENT VIEWER MODAL -->
+  <!-- ENHANCED REAL DOCUMENT VIEWER MODAL WITH AI 1-CLICK SUMMARY -->
   <div id="filePreviewModal" class="modal-backdrop" style="display: none;">
     <div class="modal-content preview-modal-content">
       <div class="modal-header">
@@ -631,12 +631,18 @@
         <!-- Rendered dynamically by JS -->
       </div>
 
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 10px;">
         <span id="previewFileMeta" style="font-size: 12px; color: var(--slate-500);"></span>
-        <a href="#" id="previewDownloadBtn" class="btn-primary" style="padding: 10px 20px; font-size: 13.5px; width: auto;">
-          <i data-lucide="download" style="width: 16px; height: 16px;"></i>
-          <span>Tải tệp này về máy</span>
-        </a>
+        <div style="display: flex; gap: 10px;">
+          <button id="btnAiSummarizeDoc" class="btn-primary" style="padding: 10px 18px; font-size: 13px; background: linear-gradient(135deg, #0052CC 0%, #00B8D9 100%); width: auto;">
+            <i data-lucide="bot" style="width: 16px; height: 16px;"></i>
+            <span>🤖 AI Tóm tắt 3 giây</span>
+          </button>
+          <a href="#" id="previewDownloadBtn" class="btn-primary" style="padding: 10px 20px; font-size: 13.5px; width: auto;">
+            <i data-lucide="download" style="width: 16px; height: 16px;"></i>
+            <span>Tải tệp này về máy</span>
+          </a>
+        </div>
       </div>
     </div>
   </div>
@@ -700,12 +706,12 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Application Logic with Supabase Backend -->
-  <script src="js/supabase-config.js?v=20260730_v30"></script>
-  <script src="js/tech-bg.js?v=20260730_v30"></script>
-  <script src="js/auth.js?v=20260730_v30"></script>
-  <script src="js/storage-service.js?v=20260730_v30"></script>
-  <script src="js/chat-service.js?v=20260730_v30"></script>
-  <script src="js/ai-assistant.js?v=20260730_v30"></script>
-  <script src="js/app.js?v=20260730_v30"></script>
+  <script src="js/supabase-config.js?v=20260730_v31"></script>
+  <script src="js/tech-bg.js?v=20260730_v31"></script>
+  <script src="js/auth.js?v=20260730_v31"></script>
+  <script src="js/storage-service.js?v=20260730_v31"></script>
+  <script src="js/chat-service.js?v=20260730_v31"></script>
+  <script src="js/ai-assistant.js?v=20260730_v31"></script>
+  <script src="js/app.js?v=20260730_v31"></script>
 </body>
 </html>

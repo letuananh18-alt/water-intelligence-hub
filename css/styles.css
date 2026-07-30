@@ -1378,3 +1378,105 @@ a:hover {
     padding: 16px;
   }
 }
+
+/* ==========================================================================
+   AI CITATION CARDS, 1-CLICK EXECUTIVE SUMMARY & SEARCH HIGHLIGHTING
+   ========================================================================== */
+
+/* Search Keyword Highlighting */
+mark.search-highlight {
+  background-color: #FEF08A;
+  color: #854D0E;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 800;
+}
+
+/* AI Document Citation Cards */
+.ai-doc-citation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ai-doc-citation-card {
+  background: white;
+  border: 1px solid var(--slate-200);
+  border-left: 4px solid var(--accent-blue);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ai-doc-citation-card:hover {
+  background: #EBF3FF;
+  border-color: var(--accent-blue);
+  transform: translateY(-1px);
+}
+
+.citation-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.citation-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--slate-900);
+}
+
+.citation-sub {
+  font-size: 11px;
+  color: var(--slate-500);
+}
+
+/* 1-Click Executive AI Summary Box */
+.ai-summary-box {
+  background: linear-gradient(135deg, #F0F7FF 0%, #E6F0FA 100%);
+  border: 1px solid #BAE6FD;
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.ai-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--accent-blue);
+  margin-bottom: 10px;
+}
+
+.ai-summary-section-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--slate-700);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+
+.ai-summary-purpose {
+  font-size: 13.5px;
+  color: var(--slate-800);
+  line-height: 1.6;
+}
+
+.ai-summary-list {
+  padding-left: 18px;
+  margin: 6px 0;
+  font-size: 13px;
+  color: var(--slate-700);
+  line-height: 1.6;
+}
+
