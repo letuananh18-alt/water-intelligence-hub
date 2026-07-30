@@ -1,13 +1,13 @@
 // ==========================================================================
-// REAL-TIME TEAM CHAT & DYNAMIC REAL USER DIRECT MESSAGING (1:1 DM)
-// Dynamically Syncs Real Registered Users from AuthManager / Supabase Database
+// REAL-TIME TEAM CHAT & CUSTOM GROUP CHANNELS WITH MEMBER SELECTION
+// Dynamically Syncs Real Registered Users & Supports Private Group Channels
 // ==========================================================================
 
 const INITIAL_CHANNELS = [
-  { id: "chan_general", name: "💬 # Trao đổi chung P.KDDVKH", type: "channel", desc: "Kênh thảo luận công việc chung Phòng Kinh doanh & DVKH" },
-  { id: "chan_contracts", name: "📝 # Hợp đồng & Khách hàng mới", type: "channel", desc: "Trao đổi tiến độ ký hợp đồng và hồ sơ khách hàng mới" },
-  { id: "chan_complaints", name: "⚠️ # Xử lý Khiếu nại & Sự cố", type: "channel", desc: "Phối hợp xử lý sự cố cấp nước & khiếu nại thủy kế" },
-  { id: "chan_rates", name: "💰 # Biểu giá & Thu tiền nước", type: "channel", desc: "Thảo luận biểu giá dịch vụ và theo dõi doanh thu" }
+  { id: "chan_general", name: "💬 # Trao đổi chung P.KDDVKH", type: "channel", desc: "Kênh thảo luận công việc chung Phòng Kinh doanh & DVKH", members: ["all"] },
+  { id: "chan_contracts", name: "📝 # Hợp đồng & Khách hàng mới", type: "channel", desc: "Trao đổi tiến độ ký hợp đồng và hồ sơ khách hàng mới", members: ["all"] },
+  { id: "chan_complaints", name: "⚠️ # Xử lý Khiếu nại & Sự cố", type: "channel", desc: "Phối hợp xử lý sự cố cấp nước & khiếu nại thủy kế", members: ["all"] },
+  { id: "chan_rates", name: "💰 # Biểu giá & Thu tiền nước", type: "channel", desc: "Thảo luận biểu giá dịch vụ và theo dõi doanh thu", members: ["all"] }
 ];
 
 const INITIAL_MESSAGES = {
@@ -17,7 +17,7 @@ const INITIAL_MESSAGES = {
       senderName: "Hệ thống Water Hub",
       senderRole: "System",
       senderUid: "system",
-      text: "Chào mừng bạn đến với Kênh Trò chuyện Nội bộ P.KDDVKH. Danh sách tài khoản bên dưới được đồng bộ thời gian thực từ CSDL Người dùng đã đăng ký!",
+      text: "Chào mừng bạn đến với Kênh Trò chuyện Nội bộ P.KDDVKH. Bạn có thể bấm nút '+ Tạo kênh nhóm' để tạo các nhóm làm việc chuyên đề và add riêng các cán bộ vào nhóm!",
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       attachment: null
     }
@@ -26,7 +26,7 @@ const INITIAL_MESSAGES = {
 
 class ChatService {
   constructor() {
-    this.channels = INITIAL_CHANNELS;
+    this.channels = [...INITIAL_CHANNELS];
     this.messages = INITIAL_MESSAGES;
     this.activeTargetId = "chan_general";
     this.listeners = [];
@@ -42,10 +42,24 @@ class ChatService {
         this.messages = INITIAL_MESSAGES;
       }
     }
+
+    const savedCustomChans = localStorage.getItem('thuduc_water_custom_channels');
+    if (savedCustomChans) {
+      try {
+        const customChans = JSON.parse(savedCustomChans);
+        customChans.forEach(c => {
+          if (!this.channels.some(x => x.id === c.id)) {
+            this.channels.push(c);
+          }
+        });
+      } catch (e) {}
+    }
   }
 
   saveLocal() {
     localStorage.setItem('thuduc_water_team_chats', JSON.stringify(this.messages));
+    const customChans = this.channels.filter(c => c.id.startsWith('chan_custom_'));
+    localStorage.setItem('thuduc_water_custom_channels', JSON.stringify(customChans));
   }
 
   // DYNAMICALLY FETCH REAL REGISTERED USERS FROM AUTH MANAGER / SUPABASE
@@ -53,12 +67,10 @@ class ChatService {
     const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
     const allUsers = window.authManager ? window.authManager.getUsersList() : [];
 
-    // Filter out current logged-in user so you don't DM yourself
     const currentEmail = currentUser ? (currentUser.email || '').toLowerCase() : '';
     const otherUsers = allUsers.filter(u => u && u.email && u.email.toLowerCase() !== currentEmail);
 
     if (otherUsers.length === 0) {
-      // Default fallback real accounts if only 1 user exists in local session
       return [
         { id: "dm_admin_letuananh", name: "Lê Tuấn Anh", email: "letuananh18@gmail.com", role: "Admin / Quản trị hệ thống", status: "🟢 Trực tuyến", desc: "Trò chuyện riêng 1:1 với Lê Tuấn Anh" },
         { id: "dm_cskh_officer", name: "Cán bộ CSKH P.KDDVKH", email: "cskh@capnuocthuduc.vn", role: "Chuyên viên Khách hàng", status: "🟢 Trực tuyến", desc: "Trò chuyện riêng 1:1 với Cán bộ CSKH" }
@@ -73,6 +85,39 @@ class ChatService {
       status: "🟢 Trực tuyến",
       desc: `Trò chuyện riêng 1:1 với ${u.name || u.email}`
     }));
+  }
+
+  // CREATE CUSTOM GROUP CHANNEL WITH SELECTED MEMBERS
+  createCustomChannel(name, desc, memberEmails = []) {
+    const channelId = "chan_custom_" + Date.now();
+    const newChan = {
+      id: channelId,
+      name: `👥 # ${name.trim()}`,
+      type: "custom_channel",
+      desc: desc.trim() || `Kênh nhóm chuyên đề: ${name.trim()}`,
+      members: memberEmails
+    };
+
+    this.channels.push(newChan);
+    this.messages[channelId] = [
+      {
+        id: "msg_init_c_" + Date.now(),
+        senderName: "Hệ thống Water Hub",
+        senderRole: "System",
+        senderUid: "system",
+        text: `🎉 Kênh nhóm "${name.trim()}" đã được khởi tạo với ${memberEmails.length} thành viên tham gia!`,
+        timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        attachment: null
+      }
+    ];
+
+    this.saveLocal();
+    this.setActiveTarget(channelId);
+    return newChan;
+  }
+
+  getChannels() {
+    return this.channels;
   }
 
   getActiveMessages() {

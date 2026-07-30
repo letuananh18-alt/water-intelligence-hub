@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/styles.css?v=20260731_v71">
+  <link rel="stylesheet" href="css/styles.css?v=20260731_v72">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- PDF.js for 100% Real Text PDF Document Extracting & Canvas Page Rendering -->
@@ -486,15 +486,21 @@
           </div>
         </section>
 
-        <!-- 4. TEAM CHAT VIEW (UPGRADED CHANNELS + DIRECT 1:1 MESSAGING BETWEEN USER ACCOUNTS) -->
+        <!-- 4. TEAM CHAT VIEW (DYNAMIC GROUPS & PRIVATE 1:1 MESSAGING) -->
         <section id="viewTeamChat" class="view-panel" style="display: none;">
           <div class="team-chat-container">
             <div class="ai-sidebar">
-              <div class="channel-section-header">📢 KÊNH PHÒNG BAN (NHÓM)</div>
-              <div class="thread-item active" data-target="chan_general">💬 # Trao đổi chung P.KDDVKH</div>
-              <div class="thread-item" data-target="chan_contracts">📝 # Hợp đồng & Khách hàng mới</div>
-              <div class="thread-item" data-target="chan_complaints">⚠️ # Xử lý Khiếu nại & Sự cố</div>
-              <div class="thread-item" data-target="chan_rates">💰 # Biểu giá & Thu tiền nước</div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div class="channel-section-header" style="margin-bottom: 0;">📢 KÊNH PHÒNG BAN (NHÓM)</div>
+                <button id="btnCreateNewChannel" style="background: var(--accent-blue); color: white; border: none; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; cursor: pointer;" title="Tạo kênh làm việc riêng mới">+ Tạo Kênh</button>
+              </div>
+
+              <div id="teamChatChannelsList">
+                <div class="thread-item active" data-target="chan_general">💬 # Trao đổi chung P.KDDVKH</div>
+                <div class="thread-item" data-target="chan_contracts">📝 # Hợp đồng & Khách hàng mới</div>
+                <div class="thread-item" data-target="chan_complaints">⚠️ # Xử lý Khiếu nại & Sự cố</div>
+                <div class="thread-item" data-target="chan_rates">💰 # Biểu giá & Thu tiền nước</div>
+              </div>
 
               <div class="channel-section-header" style="margin-top: 20px;">💬 TIN NHẮN TRỰC TIẾP (1:1 CÁ NHÂN)</div>
               <div id="teamChatDirectUsersList">
@@ -609,7 +615,7 @@
                     <td>waterain8n@gmail.com</td>
                     <td>Ban Quản Trị - Phòng KDDVKH</td>
                     <td><span class="badge-tag type-pdf">ADMIN</span></td>
-                    <td>31/07/2026 01:59</td>
+                    <td>31/07/2026 02:04</td>
                   </tr>
                 </tbody>
               </table>
@@ -678,6 +684,38 @@
         </section>
 
       </main>
+    </div>
+  </div>
+
+  <!-- MODAL: CREATE CUSTOM GROUP CHANNEL WITH MEMBER SELECTION -->
+  <div id="createChannelModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">➕ Tạo Kênh Làm Việc Nhóm Mới</h3>
+        <i data-lucide="x" class="close-btn" id="closeCreateChannelModalBtn"></i>
+      </div>
+      <div style="padding: 10px 0;">
+        <div style="margin-bottom: 14px;">
+          <label class="form-label">Tên kênh làm việc nhóm (chủ đề):</label>
+          <input type="text" id="newChannelName" class="form-input" placeholder="Ví dụ: Xử lý sự cố tuyến ống D200 Phạm Văn Đồng" style="padding: 10px 14px;">
+        </div>
+
+        <div style="margin-bottom: 14px;">
+          <label class="form-label">Mô tả / Mục tiêu của kênh nhóm:</label>
+          <input type="text" id="newChannelDesc" class="form-input" placeholder="Ví dụ: Nhóm trao đổi khắc phục sự cố rò rỉ nước khẩn cấp" style="padding: 10px 14px;">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label class="form-label">Chọn cán bộ tham gia nhóm làm việc này:</label>
+          <div id="newChannelMembersList" style="max-height: 180px; overflow-y: auto; background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: 8px; padding: 10px;">
+            <!-- Dynamically populated by JS -->
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button id="btnConfirmCreateChannel" class="btn-primary" style="padding: 10px 20px; width: auto;">Xác nhận Tạo Kênh Nhóm</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -827,13 +865,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Application Logic with Supabase Backend -->
-  <script src="js/supabase-config.js?v=20260731_v71"></script>
-  <script src="js/tech-bg.js?v=20260731_v71"></script>
-  <script src="js/auth.js?v=20260731_v71"></script>
-  <script src="js/storage-service.js?v=20260731_v71"></script>
-  <script src="js/chat-service.js?v=20260731_v71"></script>
-  <script src="js/ai-assistant.js?v=20260731_v71"></script>
-  <script src="js/ai-analyzer-module.js?v=20260731_v71"></script>
-  <script src="js/app.js?v=20260731_v71"></script>
+  <script src="js/supabase-config.js?v=20260731_v72"></script>
+  <script src="js/tech-bg.js?v=20260731_v72"></script>
+  <script src="js/auth.js?v=20260731_v72"></script>
+  <script src="js/storage-service.js?v=20260731_v72"></script>
+  <script src="js/chat-service.js?v=20260731_v72"></script>
+  <script src="js/ai-assistant.js?v=20260731_v72"></script>
+  <script src="js/ai-analyzer-module.js?v=20260731_v72"></script>
+  <script src="js/app.js?v=20260731_v72"></script>
 </body>
 </html>

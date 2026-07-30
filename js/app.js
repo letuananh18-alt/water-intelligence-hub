@@ -1146,6 +1146,60 @@ class AppController {
     const btnRemoveAttach = document.getElementById('btnRemoveTeamChatAttachment');
     const btnClearChannel = document.getElementById('btnClearTeamChat');
 
+    const btnCreateChan = document.getElementById('btnCreateNewChannel');
+    const createModal = document.getElementById('createChannelModal');
+    const btnCloseModal = document.getElementById('closeCreateChannelModalBtn');
+    const btnConfirmCreate = document.getElementById('btnConfirmCreateChannel');
+    const membersListEl = document.getElementById('newChannelMembersList');
+
+    btnCreateChan?.addEventListener('click', () => {
+      if (!createModal) return;
+      
+      // Populate member checkboxes
+      const realUsers = window.chatService ? window.chatService.getRealDirectUsers() : [];
+      if (membersListEl) {
+        membersListEl.innerHTML = realUsers.map(u => `
+          <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; cursor: pointer;">
+            <input type="checkbox" class="channel-member-checkbox" value="${escapeHTML(u.email || u.id)}">
+            <span>👤 <strong>${escapeHTML(u.name)}</strong> (${escapeHTML(u.email)})</span>
+          </label>
+        `).join('');
+      }
+
+      createModal.style.display = 'flex';
+    });
+
+    btnCloseModal?.addEventListener('click', () => {
+      if (createModal) createModal.style.display = 'none';
+    });
+
+    btnConfirmCreate?.addEventListener('click', () => {
+      const nameInput = document.getElementById('newChannelName');
+      const descInput = document.getElementById('newChannelDesc');
+      const name = nameInput ? nameInput.value.trim() : '';
+      const desc = descInput ? descInput.value.trim() : '';
+
+      if (!name) {
+        alert("⚠️ Vui lòng nhập Tên kênh nhóm!");
+        return;
+      }
+
+      const selectedEmails = [];
+      document.querySelectorAll('.channel-member-checkbox:checked').forEach(cb => {
+        selectedEmails.push(cb.value);
+      });
+
+      if (window.chatService) {
+        window.chatService.createCustomChannel(name, desc, selectedEmails);
+      }
+
+      if (nameInput) nameInput.value = '';
+      if (descInput) descInput.value = '';
+      if (createModal) createModal.style.display = 'none';
+
+      this.renderTeamChat();
+    });
+
     const handleSend = () => {
       if (chatInput && (chatInput.value.trim() || this.pendingChatAttachment)) {
         window.chatService.sendMessage(chatInput.value, this.pendingChatAttachment);
@@ -1193,30 +1247,35 @@ class AppController {
         if (window.chatService) window.chatService.clearChannelMessages();
       }
     });
-
-    document.querySelectorAll('[data-target]').forEach(item => {
-      item.addEventListener('click', () => {
-        const targetId = item.getAttribute('data-target');
-        document.querySelectorAll('[data-target]').forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
-        if (window.chatService) window.chatService.setActiveTarget(targetId);
-      });
-    });
   }
 
   renderTeamChatSidebar() {
+    const chansContainer = document.getElementById('teamChatChannelsList');
     const dmContainer = document.getElementById('teamChatDirectUsersList');
-    if (!dmContainer || !window.chatService) return;
+    if (!window.chatService) return;
 
+    // Render channels (system + custom)
+    const channels = window.chatService.getChannels();
+    if (chansContainer) {
+      chansContainer.innerHTML = channels.map(c => `
+        <div class="thread-item ${window.chatService.activeTargetId === c.id ? 'active' : ''}" data-target="${escapeHTML(c.id)}">
+          ${escapeHTML(c.name)}
+        </div>
+      `).join('');
+    }
+
+    // Render direct 1:1 user accounts
     const realUsers = window.chatService.getRealDirectUsers();
-    dmContainer.innerHTML = realUsers.map(u => `
-      <div class="thread-item ${window.chatService.activeTargetId === u.id ? 'active' : ''}" data-target="${escapeHTML(u.id)}">
-        👤 ${escapeHTML(u.name)} <span style="font-size: 10px; color: #10b981; float: right;">● ${escapeHTML(u.status || 'Trực tuyến')}</span>
-      </div>
-    `).join('');
+    if (dmContainer) {
+      dmContainer.innerHTML = realUsers.map(u => `
+        <div class="thread-item ${window.chatService.activeTargetId === u.id ? 'active' : ''}" data-target="${escapeHTML(u.id)}">
+          👤 ${escapeHTML(u.name)} <span style="font-size: 10px; color: #10b981; float: right;">● ${escapeHTML(u.status || 'Trực tuyến')}</span>
+        </div>
+      `).join('');
+    }
 
-    // Rebind click events for dynamically rendered direct user accounts
-    dmContainer.querySelectorAll('[data-target]').forEach(item => {
+    // Rebind click events for all targets
+    document.querySelectorAll('[data-target]').forEach(item => {
       item.addEventListener('click', () => {
         const targetId = item.getAttribute('data-target');
         document.querySelectorAll('[data-target]').forEach(i => i.classList.remove('active'));
