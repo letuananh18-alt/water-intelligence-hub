@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Water Intelligence Hub - Thủ Đức Water Portal</title>
   <meta name="description" content="Nền tảng lưu trữ và quản lý dữ liệu thông minh - Thủ Đức Water">
-  <link rel="stylesheet" href="css/styles.css?v=20260730_v11">
+  <link rel="stylesheet" href="css/styles.css?v=20260730_v12">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -189,7 +189,7 @@
                 <span>Xin chào, <span id="dashGreetingName">Tuấn Anh</span>!</span>
                 <span>👋</span>
               </h2>
-              <p class="welcome-sub">Chào mừng bạn quay trở lại với Water Intelligence Hub</p>
+              <p class="welcome-sub">Chào mừng bạn quay trở lại với Water Intelligence Hub (Powered by Supabase Cloud)</p>
             </div>
           </div>
 
@@ -199,7 +199,7 @@
               <div class="stat-info">
                 <span class="stat-label">Tổng tài liệu</span>
                 <span class="stat-value" id="statTotalFiles">0</span>
-                <span class="stat-subtext">Đã kết nối Firebase Cloud</span>
+                <span class="stat-subtext">Đã kết nối Supabase Cloud</span>
               </div>
               <div class="stat-icon-wrapper stat-icon-blue">
                 <i data-lucide="folder"></i>
@@ -233,9 +233,9 @@
 
             <div class="stat-card">
               <div class="stat-info">
-                <span class="stat-label">Bảo mật</span>
+                <span class="stat-label">Bảo mật PostgreSQL</span>
                 <span class="stat-value" style="color: #059669; font-size: 20px;">An toàn</span>
-                <span class="stat-subtext" style="color: var(--slate-500);">Dữ liệu được bảo vệ</span>
+                <span class="stat-subtext" style="color: var(--slate-500);">Supabase Realtime Sync</span>
               </div>
               <div class="stat-icon-wrapper stat-icon-green">
                 <i data-lucide="shield-check"></i>
@@ -497,7 +497,7 @@
           <div class="page-header">
             <div>
               <h2 class="welcome-title">Quản lý Người dùng & Giám sát Hệ thống</h2>
-              <p class="welcome-sub">Theo dõi thời gian đăng nhập Client & Nhật ký tải lên (Bảo vệ 100% nội dung riêng tư)</p>
+              <p class="welcome-sub">Theo dõi thời gian đăng nhập Client & Nhật ký tải lên (Powered by Supabase Cloud)</p>
             </div>
           </div>
 
@@ -523,7 +523,7 @@
                     <td>letuananh18@gmail.com</td>
                     <td>Ban Quản Trị - Phòng KDDVKH</td>
                     <td><span class="badge-tag type-pdf">ADMIN</span></td>
-                    <td>30/07/2026 11:35</td>
+                    <td>30/07/2026 14:15</td>
                   </tr>
                 </tbody>
               </table>
@@ -569,6 +569,7 @@
           <div class="table-card" style="padding: 24px;">
             <p><strong>Phòng ban áp dụng:</strong> Phòng Kinh doanh & Dịch vụ Khách hàng (Thủ Đức Water).</p>
             <p><strong>Admin chính:</strong> letuananh18@gmail.com</p>
+            <p><strong>Database:</strong> Supabase PostgreSQL (Postgres Realtime Engine)</p>
           </div>
         </section>
 
@@ -654,19 +655,16 @@
     </div>
   </div>
 
-  <!-- Official Firebase v10 SDK Compat Libraries -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+  <!-- Official Supabase v2 SDK Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- Application Logic with Cache Bashing Version Tag v20260730_v11 -->
-  <script src="js/firebase-config.js?v=20260730_v11"></script>
-  <script src="js/tech-bg.js?v=20260730_v11"></script>
-  <script src="js/auth.js?v=20260730_v11"></script>
-  <script src="js/storage-service.js?v=20260730_v11"></script>
-  <script src="js/chat-service.js?v=20260730_v11"></script>
-  <script src="js/ai-assistant.js?v=20260730_v11"></script>
-  <script src="js/app.js?v=20260730_v11"></script>
+  <!-- Application Logic with Supabase Backend -->
+  <script src="js/supabase-config.js?v=20260730_v12"></script>
+  <script src="js/tech-bg.js?v=20260730_v12"></script>
+  <script src="js/auth.js?v=20260730_v12"></script>
+  <script src="js/storage-service.js?v=20260730_v12"></script>
+  <script src="js/chat-service.js?v=20260730_v12"></script>
+  <script src="js/ai-assistant.js?v=20260730_v12"></script>
+  <script src="js/app.js?v=20260730_v12"></script>
 </body>
 </html>

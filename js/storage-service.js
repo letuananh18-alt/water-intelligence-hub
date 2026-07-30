@@ -1,5 +1,5 @@
 // ==========================================================================
-// FILE STORAGE & DUAL VAULT MANAGER SERVICE (FULL CLIENT & ADMIN FIRESTORE PERSISTENCE)
+// FILE STORAGE & DUAL VAULT MANAGER SERVICE (SUPABASE POSTGRESQL + REALTIME)
 // ==========================================================================
 
 class StorageService {
@@ -12,8 +12,8 @@ class StorageService {
     this.init();
   }
 
-  init() {
-    // 1. Load from LocalStorage Cache first (Instant UI render)
+  async init() {
+    // 1. Load Local Cache first for instant render
     const savedFiles = localStorage.getItem('thuduc_water_files');
     if (savedFiles !== null) {
       try {
@@ -32,7 +32,6 @@ class StorageService {
       }
     }
 
-    // Default seed folders ONLY if localStorage AND Firestore have NEVER been used at all
     if (this.folders.length === 0) {
       this.folders = [
         { id: "fold_kddvkh_1", name: "Hợp đồng Dịch vụ Khách hàng 2026", category: "department", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", ownerUid: "admin_letuananh18", date: "30/07/2026", filesCount: 0 },
@@ -42,50 +41,56 @@ class StorageService {
       this.saveLocal();
     }
 
-    // 2. Real-time Synchronization with Cloud Firestore for both Client and Admin
-    if (typeof firebase !== 'undefined' && firebase.firestore) {
+    // 2. Real-time PostgreSQL Sync with Supabase Cloud
+    if (window.supabaseClient) {
       try {
-        // Files Cloud Listener
-        firebase.firestore().collection("files").onSnapshot(snapshot => {
-          const cloudFiles = [];
-          snapshot.forEach(doc => {
-            cloudFiles.push({ id: doc.id, ...doc.data() });
-          });
-          
-          if (cloudFiles.length > 0) {
-            const map = new Map();
-            this.files.forEach(f => map.set(f.id, f));
-            cloudFiles.forEach(f => map.set(f.id, f));
-            this.files = Array.from(map.values());
-            this.saveLocal();
-            this.notify();
-          }
-        }, err => console.warn("Firestore files notice:", err));
+        await this.syncFoldersFromSupabase();
+        await this.syncFilesFromSupabase();
 
-        // Folders Cloud Listener
-        firebase.firestore().collection("folders").onSnapshot(snapshot => {
-          const cloudFolders = [];
-          snapshot.forEach(doc => {
-            cloudFolders.push({ id: doc.id, ...doc.data() });
-          });
-
-          if (cloudFolders.length > 0) {
-            const map = new Map();
-            this.folders.forEach(f => map.set(f.id, f));
-            cloudFolders.forEach(f => map.set(f.id, f));
-            this.folders = Array.from(map.values());
-            this.saveLocal();
-            this.notify();
-          } else if (!this.hasInitializedCloud && this.folders.length > 0) {
-            this.folders.forEach(f => {
-              firebase.firestore().collection("folders").doc(f.id).set(f).catch(e => {});
-            });
-          }
-
-          this.hasInitializedCloud = true;
-        }, err => console.warn("Firestore folders notice:", err));
-      } catch (e) {}
+        // Subscribe to Supabase Realtime Postgres Changes
+        window.supabaseClient
+          .channel('schema-db-changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'folders' }, async () => {
+            await this.syncFoldersFromSupabase();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'files' }, async () => {
+            await this.syncFilesFromSupabase();
+          })
+          .subscribe();
+      } catch (err) {
+        console.warn("Supabase Realtime notice:", err);
+      }
     }
+  }
+
+  async syncFoldersFromSupabase() {
+    if (!window.supabaseClient) return;
+    try {
+      const { data, error } = await window.supabaseClient.from('folders').select('*');
+      if (!error && data && data.length > 0) {
+        const map = new Map();
+        this.folders.forEach(f => map.set(f.id, f));
+        data.forEach(f => map.set(f.id, f));
+        this.folders = Array.from(map.values());
+        this.saveLocal();
+        this.notify();
+      }
+    } catch (e) {}
+  }
+
+  async syncFilesFromSupabase() {
+    if (!window.supabaseClient) return;
+    try {
+      const { data, error } = await window.supabaseClient.from('files').select('*');
+      if (!error && data && data.length > 0) {
+        const map = new Map();
+        this.files.forEach(f => map.set(f.id, f));
+        data.forEach(f => map.set(f.id, f));
+        this.files = Array.from(map.values());
+        this.saveLocal();
+        this.notify();
+      }
+    } catch (e) {}
   }
 
   saveLocal() {
@@ -174,11 +179,13 @@ class StorageService {
 
     if (fileObj.size < 8 * 1024 * 1024) {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         newFile.dataUrl = e.target.result;
         this.saveLocal();
-        if (typeof firebase !== 'undefined' && firebase.firestore) {
-          firebase.firestore().collection("files").doc(newFile.id).set(newFile).catch(err=>{});
+        if (window.supabaseClient) {
+          try {
+            await window.supabaseClient.from('files').upsert(newFile);
+          } catch (err) {}
         }
         this.notify();
       };
@@ -191,8 +198,8 @@ class StorageService {
       const fold = this.folders.find(f => f.id === folderId);
       if (fold) {
         fold.filesCount = (fold.filesCount || 0) + 1;
-        if (typeof firebase !== 'undefined' && firebase.firestore) {
-          firebase.firestore().collection("folders").doc(folderId).update({ filesCount: fold.filesCount }).catch(e=>{});
+        if (window.supabaseClient) {
+          window.supabaseClient.from('folders').update({ filesCount: fold.filesCount }).eq('id', folderId).then(()=>{}).catch(()=>{});
         }
       }
     }
@@ -200,12 +207,11 @@ class StorageService {
     this.saveLocal();
     this.notify();
 
-    // Save Client & Admin files directly to Cloud Firestore
-    if (typeof firebase !== 'undefined' && firebase.firestore) {
+    if (window.supabaseClient) {
       try {
-        await firebase.firestore().collection("files").doc(newFile.id).set(newFile);
+        await window.supabaseClient.from('files').upsert(newFile);
       } catch (err) {
-        console.warn("Firestore upload notice:", err);
+        console.warn("Supabase file upload notice:", err);
       }
     }
 
@@ -229,8 +235,8 @@ class StorageService {
         const fold = this.folders.find(f => f.id === file.folderId);
         if (fold && fold.filesCount > 0) {
           fold.filesCount -= 1;
-          if (typeof firebase !== 'undefined' && firebase.firestore) {
-            firebase.firestore().collection("folders").doc(file.folderId).update({ filesCount: fold.filesCount }).catch(e=>{});
+          if (window.supabaseClient) {
+            window.supabaseClient.from('folders').update({ filesCount: fold.filesCount }).eq('id', file.folderId).then(()=>{}).catch(()=>{});
           }
         }
       }
@@ -240,9 +246,9 @@ class StorageService {
       this.saveLocal();
       this.notify();
 
-      if (typeof firebase !== 'undefined' && firebase.firestore) {
+      if (window.supabaseClient) {
         try {
-          await firebase.firestore().collection("files").doc(fileId).delete();
+          await window.supabaseClient.from('files').delete().eq('id', fileId);
         } catch (e) {}
       }
       return true;
@@ -283,11 +289,11 @@ class StorageService {
     this.saveLocal();
     this.notify();
 
-    if (typeof firebase !== 'undefined' && firebase.firestore) {
+    if (window.supabaseClient) {
       try {
-        await firebase.firestore().collection("folders").doc(newFolder.id).set(newFolder);
+        await window.supabaseClient.from('folders').upsert(newFolder);
       } catch (e) {
-        console.warn("Firestore createFolder notice:", e);
+        console.warn("Supabase createFolder notice:", e);
       }
     }
     return newFolder;
@@ -300,9 +306,9 @@ class StorageService {
       this.saveLocal();
       this.notify();
 
-      if (typeof firebase !== 'undefined' && firebase.firestore) {
+      if (window.supabaseClient) {
         try {
-          await firebase.firestore().collection("folders").doc(folderId).update({ name: newName.trim() });
+          await window.supabaseClient.from('folders').update({ name: newName.trim() }).eq('id', folderId);
         } catch (e) {}
       }
     }
@@ -314,11 +320,11 @@ class StorageService {
     this.saveLocal();
     this.notify();
 
-    if (typeof firebase !== 'undefined' && firebase.firestore) {
+    if (window.supabaseClient) {
       try {
-        await firebase.firestore().collection("folders").doc(folderId).delete();
+        await window.supabaseClient.from('folders').delete().eq('id', folderId);
       } catch (e) {
-        console.warn("Firestore deleteFolder notice:", e);
+        console.warn("Supabase deleteFolder notice:", e);
       }
     }
     return true;
