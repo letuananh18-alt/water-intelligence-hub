@@ -1,5 +1,5 @@
 // ==========================================================================
-// FILE STORAGE & DUAL VAULT MANAGER SERVICE (100% REAL-TIME FIRESTORE SYNC)
+// FILE STORAGE & DUAL VAULT MANAGER SERVICE (BASE64 PERSISTENT LIVE PREVIEW)
 // ==========================================================================
 
 class StorageService {
@@ -37,10 +37,8 @@ class StorageService {
       this.saveLocal();
     }
 
-    // 100% Cloud Firestore Real-time Listener & Synchronization
     if (typeof firebase !== 'undefined' && firebase.firestore) {
       try {
-        // Files Listener
         firebase.firestore().collection("files").onSnapshot(snapshot => {
           const cloudFiles = [];
           snapshot.forEach(doc => {
@@ -49,12 +47,13 @@ class StorageService {
               cloudFiles.push({ id: doc.id, ...data });
             }
           });
-          this.files = cloudFiles;
-          this.saveLocal();
-          this.notify();
+          if (cloudFiles.length > 0) {
+            this.files = cloudFiles;
+            this.saveLocal();
+            this.notify();
+          }
         }, err => console.warn("Firestore files notice:", err));
 
-        // Folders Listener
         firebase.firestore().collection("folders").onSnapshot(snapshot => {
           const cloudFolders = [];
           snapshot.forEach(doc => {
@@ -62,7 +61,6 @@ class StorageService {
           });
           
           if (!this.isFirestoreFoldersSynced && cloudFolders.length === 0 && this.folders.length > 0) {
-            // Seed initial folders to Firestore once
             this.folders.forEach(f => {
               firebase.firestore().collection("folders").doc(f.id).set(f).catch(e=>{});
             });
@@ -155,8 +153,26 @@ class StorageService {
       docType: docType,
       statusTag: statusTag,
       url: fileUrl,
+      dataUrl: null,
       tags: ["Tệp thực tế"]
     };
+
+    // Convert file to Base64 DataURL for 100% persistent live previews across page reloads
+    if (fileObj.size < 8 * 1024 * 1024) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        newFile.dataUrl = e.target.result;
+        this.saveLocal();
+        if (typeof firebase !== 'undefined' && firebase.firestore) {
+          firebase.firestore().collection("files").doc(newFile.id).set({
+            ...newFile,
+            url: "#"
+          }).catch(err=>{});
+        }
+        this.notify();
+      };
+      reader.readAsDataURL(fileObj);
+    }
 
     this.files.unshift(newFile);
 

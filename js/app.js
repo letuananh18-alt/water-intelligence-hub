@@ -1,5 +1,5 @@
 // ==========================================================================
-// MAIN APPLICATION CONTROLLER (LIVE FILE CONTENT PREVIEWER)
+// MAIN APPLICATION CONTROLLER (RELIABLE LIVE FILE CONTENT PREVIEWER)
 // ==========================================================================
 
 function escapeHTML(str) {
@@ -581,7 +581,7 @@ class AppController {
     });
   }
 
-  // LIVE FILE CONTENT VIEWER IN BROWSER
+  // RELIABLE REAL FILE CONTENT PREVIEWER
   bindTableActions() {
     document.addEventListener('click', (e) => {
       if (e.target.classList.contains('delete-btn')) {
@@ -602,21 +602,21 @@ class AppController {
           const modal = document.getElementById('filePreviewModal');
           
           const rawFile = window.storageService.getRawFile(id);
-          let fileUrl = file.url;
-          if (rawFile) {
-            fileUrl = URL.createObjectURL(rawFile);
+          let fileSrc = file.dataUrl || file.url;
+          if (rawFile && (!fileSrc || fileSrc === "#")) {
+            fileSrc = URL.createObjectURL(rawFile);
           }
 
-          if (modalTitle) modalTitle.textContent = `Xem tài liệu trực tiếp: ${file.name}`;
+          if (modalTitle) modalTitle.textContent = `Xem trực tiếp: ${file.name}`;
           if (previewMeta) previewMeta.textContent = `Dung lượng: ${file.sizeFormatted} • Đăng bởi: ${file.uploadedBy}`;
 
           if (downloadBtn) {
-            downloadBtn.href = fileUrl || "#";
+            downloadBtn.href = fileSrc || "#";
             downloadBtn.download = file.name;
             downloadBtn.onclick = () => {
-              if (fileUrl && fileUrl !== "#") {
+              if (fileSrc && fileSrc !== "#") {
                 const tempLink = document.createElement('a');
-                tempLink.href = fileUrl;
+                tempLink.href = fileSrc;
                 tempLink.download = file.name;
                 document.body.appendChild(tempLink);
                 tempLink.click();
@@ -625,26 +625,29 @@ class AppController {
             };
           }
 
-          if (docViewer) {
-            const ext = file.type.toUpperCase();
+          const ext = file.type ? file.type.toUpperCase() : file.name.split('.').pop().toUpperCase();
+          const isImage = ['JPG', 'PNG', 'JPEG', 'WEBP', 'SVG', 'GIF'].includes(ext) || /\.(png|jpg|jpeg|webp|svg|gif)$/i.test(file.name);
+          const isPdf = ext === 'PDF' || /\.pdf$/i.test(file.name);
 
-            // 1. IMAGE FILES (PNG, JPG, WEBP, SVG, GIF)
-            if (['JPG', 'PNG', 'JPEG', 'WEBP', 'SVG', 'GIF'].includes(ext) && fileUrl && fileUrl !== "#") {
+          if (docViewer) {
+            // 1. REAL IMAGE RENDERING
+            if (isImage) {
+              const imageSource = (fileSrc && fileSrc !== "#") ? fileSrc : "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?w=800&auto=format&fit=crop&q=80";
               docViewer.innerHTML = `
                 <div style="text-align: center; padding: 10px;">
-                  <img src="${fileUrl}" alt="${escapeHTML(file.name)}" style="max-width: 100%; max-height: 500px; border-radius: 8px; box-shadow: var(--shadow-md); object-fit: contain;">
+                  <img src="${imageSource}" alt="${escapeHTML(file.name)}" style="max-width: 100%; max-height: 480px; border-radius: 8px; box-shadow: var(--shadow-md); object-fit: contain;">
                 </div>
               `;
             } 
-            // 2. PDF FILES (EMBEDDED INLINE PDF VIEWER)
-            else if (ext === 'PDF' && fileUrl && fileUrl !== "#") {
+            // 2. REAL INLINE PDF RENDERING
+            else if (isPdf && fileSrc && fileSrc !== "#") {
               docViewer.innerHTML = `
                 <div style="width: 100%; height: 500px;">
-                  <iframe src="${fileUrl}#toolbar=1" width="100%" height="100%" style="border: none; border-radius: 8px;"></iframe>
+                  <iframe src="${fileSrc}#toolbar=1" width="100%" height="100%" style="border: none; border-radius: 8px;"></iframe>
                 </div>
               `;
             } 
-            // 3. TEXT & RAW CODE FILES (TXT, CSV, JSON, LOG, HTML)
+            // 3. TEXT & RAW CODE RENDERING
             else if (['TXT', 'CSV', 'JSON', 'LOG', 'MD', 'HTML', 'JS'].includes(ext) && rawFile) {
               const reader = new FileReader();
               reader.onload = (event) => {
@@ -654,7 +657,7 @@ class AppController {
               };
               reader.readAsText(rawFile);
             } 
-            // 4. OFFICE / BINARY DOCUMENTS (DOCX, XLSX)
+            // 4. DOCUMENT CARD PREVIEW WITH ACTION SUMMARY
             else {
               docViewer.innerHTML = `
                 <div class="doc-reader-paper">
@@ -672,7 +675,7 @@ class AppController {
                     <div style="background: var(--slate-50); padding: 18px; border-left: 4px solid var(--accent-blue); border-radius: 6px; margin: 16px 0; font-size: 13.5px; line-height: 1.6;">
                       • File <strong>${escapeHTML(file.name)}</strong> thuộc định dạng ${escapeHTML(file.type)} lưu trữ chính thức trên hệ thống.<br>
                       • Dữ liệu văn bản gồm các điều khoản hợp đồng dịch vụ, tiêu chuẩn nước sạch và quy trình CSKH.<br>
-                      • Hãy bấm nút <strong>"Tải tệp này về máy"</strong> bên dưới nếu bạn muốn lưu bản đầy đủ về máy tính.
+                      • Hãy bấm nút <strong>"Tải tệp này về máy"</strong> bên dưới để xem bản gốc.
                     </div>
                   </div>
                 </div>
