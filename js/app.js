@@ -1236,37 +1236,54 @@ class AppController {
     const area = document.getElementById('aiChatArea');
     if (!area || !window.aiAssistant) return;
 
+    const formatBotChatMarkdownHtml = (rawText) => {
+      if (!rawText) return '';
+
+      return rawText
+        // Remove raw markdown headings (### Title -> Clean h4 title)
+        .replace(/^#{1,6}\s+(.*$)/gim, '<h4 style="font-size: 14.5px; font-weight: 800; color: #0284c7; margin-top: 14px; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1.5px solid #e0f2fe; display: flex; align-items: center; gap: 6px;"><span>📄</span> <span>$1</span></h4>')
+        // Bold text (**text**)
+        .replace(/\*\*(.*?)\*\*/g, '<strong style="color: #0f172a; font-weight: 700;">$1</strong>')
+        // Numbered list items (1. **Title**: text)
+        .replace(/^\d+\.\s+\*\*(.*?)\*\*(.*)$/gim, '<div style="margin-top: 10px; margin-bottom: 6px; font-size: 13.5px;"><span style="font-weight: 800; color: #0369a1;">▶ $1</span><span style="color: #334155;">$2</span></div>')
+        // Bullet list items (- or *)
+        .replace(/^[*-]\s+(.*)$/gim, '<div style="font-size: 13.5px; color: #334155; line-height: 1.6; margin-bottom: 4px; padding-left: 10px; border-left: 3px solid #38bdf8;">• $1</div>')
+        // Line breaks & paragraphs
+        .replace(/\n\n/g, '<br><br>')
+        .replace(/\n/g, '<br>');
+    };
+
     const msgs = window.aiAssistant.getActiveMessages();
     area.innerHTML = msgs.map(m => {
       if (m.role === 'pill') {
         return `<div class="suggested-prompt-pill">${escapeHTML(m.text)}</div>`;
       }
 
-      let citationsHtml = '';
-      if (m.citations && m.citations.length > 0) {
-        citationsHtml = `
-          <div class="ai-doc-citation-list">
-            <div style="font-size: 11px; font-weight: 800; color: var(--accent-blue); text-transform: uppercase; margin-top: 6px;">📌 TÀI LIỆU TRÍCH DẪN TỪ KHO KDDVKH:</div>
-            ${m.citations.map(c => `
-              <div class="ai-doc-citation-card preview-btn" data-id="${escapeHTML(c.id)}">
-                <div class="citation-info">
-                  <span class="file-type-icon type-${escapeHTML(c.type.toLowerCase())}">${escapeHTML(c.type)}</span>
-                  <div>
-                    <div class="citation-title">${escapeHTML(c.name)}</div>
-                    <div class="citation-sub">${escapeHTML(c.docType || 'Văn bản Nghiệp vụ')} • ${escapeHTML(c.uploadDate)}</div>
-                  </div>
-                </div>
-                <button class="table-btn preview-btn" data-id="${escapeHTML(c.id)}" style="font-size: 11px; padding: 4px 10px;">👁️ Xem trực tiếp</button>
-              </div>
-            `).join('')}
+      if (m.role === 'user') {
+        return `
+          <div class="chat-bubble bubble-user" style="margin-bottom: 16px; margin-left: auto; max-width: 80%; background: #0284c7; color: white; padding: 12px 18px; border-radius: 16px 16px 2px 16px; font-size: 13.5px; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.2);">
+            <div>${escapeHTML(m.text)}</div>
           </div>
         `;
       }
 
+      // AI Bot Executive Response Card
+      const formattedContent = formatBotChatMarkdownHtml(m.text);
+
       return `
-        <div class="chat-bubble ${m.role === 'user' ? 'bubble-user' : 'bubble-ai'}">
-          <div>${escapeHTML(m.text).replace(/\n/g, '<br>')}</div>
-          ${citationsHtml}
+        <div class="ai-bot-chat-row" style="display: flex; gap: 12px; margin-bottom: 20px; align-items: flex-start;">
+          <div class="ai-bot-avatar" style="width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: white; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(2, 132, 199, 0.25);">
+            🤖
+          </div>
+          <div class="ai-bot-message-card" style="flex: 1; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px 22px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); max-width: 88%;">
+            <div style="font-size: 11.5px; font-weight: 800; color: #0284c7; margin-bottom: 10px; letter-spacing: 0.5px; text-transform: uppercase; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+              <span>🤖 TRỢ LÝ AI THỦ ĐỨC WATER</span>
+              <span style="font-weight: 500; color: #94a3b8;">• ${m.timestamp || ''}</span>
+            </div>
+            <div style="font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; font-size: 13.5px; color: #1e293b; line-height: 1.7;">
+              ${formattedContent}
+            </div>
+          </div>
         </div>
       `;
     }).join('');
