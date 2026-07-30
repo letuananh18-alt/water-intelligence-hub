@@ -1,14 +1,13 @@
 // ==========================================================================
-// FILE STORAGE & DUAL VAULT MANAGER SERVICE (BASE64 PERSISTENT LIVE PREVIEW)
+// FILE STORAGE & DUAL VAULT MANAGER SERVICE (STRICT FIRESTORE MIRRORING)
 // ==========================================================================
 
 class StorageService {
   constructor() {
     this.files = [];
-    this.folders = [];
+    this.folders = []; // Strictly empty by default - no hardcoded sample folders
     this.rawFileMap = new Map();
     this.listeners = [];
-    this.isFirestoreFoldersSynced = false;
     this.init();
   }
 
@@ -25,20 +24,19 @@ class StorageService {
     const savedFolders = localStorage.getItem('thuduc_water_folders');
     if (savedFolders !== null) {
       try {
-        this.folders = JSON.parse(savedFolders);
+        // Filter out legacy hardcoded sample folders (fold_1, fold_2, fold_3)
+        this.folders = JSON.parse(savedFolders).filter(f => f.id !== 'fold_1' && f.id !== 'fold_2' && f.id !== 'fold_3');
       } catch (e) {
         this.folders = [];
       }
     } else {
-      this.folders = [
-        { id: "fold_1", name: "Hợp đồng Dịch vụ Khách hàng 2026", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "10/06/2026", filesCount: 0 },
-        { id: "fold_2", name: "Báo cáo Doanh thu & Cấp nước KDDVKH", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "12/06/2026", filesCount: 0 }
-      ];
-      this.saveLocal();
+      this.folders = [];
     }
 
+    // 100% Real-time Cloud Firestore Mirroring with Zero Default Seeding
     if (typeof firebase !== 'undefined' && firebase.firestore) {
       try {
+        // Real-time Files Listener
         firebase.firestore().collection("files").onSnapshot(snapshot => {
           const cloudFiles = [];
           snapshot.forEach(doc => {
@@ -47,28 +45,25 @@ class StorageService {
               cloudFiles.push({ id: doc.id, ...data });
             }
           });
-          if (cloudFiles.length > 0) {
-            this.files = cloudFiles;
-            this.saveLocal();
-            this.notify();
-          }
+          this.files = cloudFiles;
+          this.saveLocal();
+          this.notify();
         }, err => console.warn("Firestore files notice:", err));
 
+        // Real-time Folders Listener
         firebase.firestore().collection("folders").onSnapshot(snapshot => {
           const cloudFolders = [];
           snapshot.forEach(doc => {
-            cloudFolders.push({ id: doc.id, ...doc.data() });
+            const id = doc.id;
+            // Automatically purge legacy hardcoded sample folders if they exist in Firestore
+            if (id === 'fold_1' || id === 'fold_2' || id === 'fold_3') {
+              firebase.firestore().collection("folders").doc(id).delete().catch(e => {});
+            } else {
+              cloudFolders.push({ id: id, ...doc.data() });
+            }
           });
           
-          if (!this.isFirestoreFoldersSynced && cloudFolders.length === 0 && this.folders.length > 0) {
-            this.folders.forEach(f => {
-              firebase.firestore().collection("folders").doc(f.id).set(f).catch(e=>{});
-            });
-          } else {
-            this.folders = cloudFolders;
-          }
-
-          this.isFirestoreFoldersSynced = true;
+          this.folders = cloudFolders;
           this.saveLocal();
           this.notify();
         }, err => console.warn("Firestore folders notice:", err));
@@ -157,7 +152,6 @@ class StorageService {
       tags: ["Tệp thực tế"]
     };
 
-    // Convert file to Base64 DataURL for 100% persistent live previews across page reloads
     if (fileObj.size < 8 * 1024 * 1024) {
       const reader = new FileReader();
       reader.onload = (e) => {
