@@ -1,5 +1,6 @@
 // ==========================================================================
 // USER AUTHENTICATION & REAL-TIME USER DIRECTORY SYNC
+// SESSION-ONLY PERSISTENCE (Requires login every time browser is closed)
 // Real Admin: letuananh18@gmail.com
 // ==========================================================================
 
@@ -23,18 +24,25 @@ class AuthManager {
   }
 
   init() {
-    const saved = localStorage.getItem('thuduc_water_user');
-    if (saved) {
+    // Purge legacy persistent localStorage login token to ensure browser-close requires fresh login
+    localStorage.removeItem('thuduc_water_user');
+
+    // Read session-only storage (auto-cleared on browser/tab close)
+    const savedSession = sessionStorage.getItem('thuduc_water_user_session');
+    if (savedSession) {
       try {
-        this.currentUser = JSON.parse(saved);
+        this.currentUser = JSON.parse(savedSession);
       } catch (e) {
         this.currentUser = null;
       }
+    } else {
+      this.currentUser = null;
     }
 
     if (typeof firebase !== 'undefined' && firebase.auth) {
       try {
-        firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => {});
+        // Enforce SESSION-ONLY persistence: token is wiped when browser/tab is closed
+        firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(err => {});
 
         firebase.auth().onAuthStateChanged(user => {
           if (user) {
@@ -47,7 +55,7 @@ class AuthManager {
               department: "Phòng Kinh doanh & Dịch vụ Khách hàng"
             };
             
-            this.saveUserLocal(this.currentUser);
+            this.saveUserSession(this.currentUser);
             this.syncUserToCloud(this.currentUser);
             this.notify();
           }
@@ -73,8 +81,8 @@ class AuthManager {
     }
   }
 
-  saveUserLocal(userObj) {
-    localStorage.setItem('thuduc_water_user', JSON.stringify(userObj));
+  saveUserSession(userObj) {
+    sessionStorage.setItem('thuduc_water_user_session', JSON.stringify(userObj));
     if (!this.usersList.some(u => u.email === userObj.email)) {
       this.usersList.push(userObj);
     }
@@ -115,7 +123,7 @@ class AuthManager {
 
     if (window.location.protocol !== 'file:' && typeof firebase !== 'undefined' && firebase.auth) {
       try {
-        await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+        await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION);
         const res = await firebase.auth().signInWithEmailAndPassword(email, password);
         return res.user;
       } catch (err) {
@@ -163,7 +171,7 @@ class AuthManager {
         department: "Phòng Kinh doanh & Dịch vụ Khách hàng"
       };
 
-      this.saveUserLocal(this.currentUser);
+      this.saveUserSession(this.currentUser);
       this.syncUserToCloud(this.currentUser);
       this.notify();
       return this.currentUser;
@@ -178,7 +186,7 @@ class AuthManager {
 
     if (typeof firebase !== 'undefined' && firebase.auth) {
       try {
-        await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+        await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION);
         const provider = new firebase.auth.GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
         
@@ -215,6 +223,7 @@ class AuthManager {
       } catch (e) {}
     }
     this.currentUser = null;
+    sessionStorage.removeItem('thuduc_water_user_session');
     localStorage.removeItem('thuduc_water_user');
     this.notify();
   }
