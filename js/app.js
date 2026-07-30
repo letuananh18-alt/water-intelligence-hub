@@ -1204,7 +1204,31 @@ class AppController {
     });
   }
 
+  renderTeamChatSidebar() {
+    const dmContainer = document.getElementById('teamChatDirectUsersList');
+    if (!dmContainer || !window.chatService) return;
+
+    const realUsers = window.chatService.getRealDirectUsers();
+    dmContainer.innerHTML = realUsers.map(u => `
+      <div class="thread-item ${window.chatService.activeTargetId === u.id ? 'active' : ''}" data-target="${escapeHTML(u.id)}">
+        👤 ${escapeHTML(u.name)} <span style="font-size: 10px; color: #10b981; float: right;">● ${escapeHTML(u.status || 'Trực tuyến')}</span>
+      </div>
+    `).join('');
+
+    // Rebind click events for dynamically rendered direct user accounts
+    dmContainer.querySelectorAll('[data-target]').forEach(item => {
+      item.addEventListener('click', () => {
+        const targetId = item.getAttribute('data-target');
+        document.querySelectorAll('[data-target]').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        if (window.chatService) window.chatService.setActiveTarget(targetId);
+      });
+    });
+  }
+
   renderTeamChat() {
+    this.renderTeamChatSidebar();
+
     const listEl = document.getElementById('teamChatMessageList');
     const titleEl = document.getElementById('currentChatTitle');
     const descEl = document.getElementById('currentChatDesc');
