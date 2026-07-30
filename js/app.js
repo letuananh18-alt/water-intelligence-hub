@@ -48,6 +48,7 @@ class AppController {
         this.bindMobileSidebarEvents();
         this.bindSettingsEvents();
         this.bindGlobalSearchEvents();
+        this.bindReportEvents();
         this.refreshLucideIcons();
       } catch (err) {
         console.warn("App initialization notice:", err);
@@ -229,6 +230,7 @@ class AppController {
       'team-chat': 'viewTeamChat',
       'ai-assistant': 'viewAiAssistant',
       'folders': 'viewFolders',
+      'reports': 'viewReports',
       'users': 'viewUsers',
       'settings': 'viewSettings'
     };
@@ -249,6 +251,7 @@ class AppController {
     this.renderPersonalTable();
     this.renderDeptTable();
     this.renderDeptFolders();
+    this.renderReports();
     this.renderUsersTable();
     this.renderTeamChat();
     this.renderAiChat();
@@ -1457,6 +1460,126 @@ class AppController {
     }).join('');
 
     area.scrollTop = area.scrollHeight;
+  }
+
+  renderReports() {
+    const deptFiles = window.storageService ? window.storageService.getFiles('department') : [];
+    
+    // 1. Calculate Summary Metrics
+    const totalCount = deptFiles.length;
+    const contractCount = deptFiles.filter(f => (f.docType || '').includes('Hợp đồng')).length;
+    const processCount = deptFiles.filter(f => (f.docType || '').includes('Quy trình') || (f.docType || '').includes('Biểu giá')).length;
+    
+    let totalSizeBytes = 0;
+    deptFiles.forEach(f => {
+      totalSizeBytes += (f.sizeInBytes || 1024 * 500);
+    });
+    let formattedSize = (totalSizeBytes / (1024 * 1024)).toFixed(1) + ' MB';
+
+    document.getElementById('rptTotalDocs') && (document.getElementById('rptTotalDocs').textContent = totalCount);
+    document.getElementById('rptContractDocs') && (document.getElementById('rptContractDocs').textContent = contractCount);
+    document.getElementById('rptProcessDocs') && (document.getElementById('rptProcessDocs').textContent = processCount);
+    document.getElementById('rptTotalStorage') && (document.getElementById('rptTotalStorage').textContent = formattedSize);
+
+    // 2. Render Category Percentage Chart
+    const categories = ['Hợp đồng cấp nước', 'Biểu giá dịch vụ', 'Quy trình CSKH', 'Văn bản chỉ đạo', 'Biên bản sự cố'];
+    const catListEl = document.getElementById('chartCategoryList');
+    if (catListEl) {
+      catListEl.innerHTML = categories.map(cat => {
+        const count = deptFiles.filter(f => (f.docType || 'Hợp đồng cấp nước') === cat).length;
+        const pct = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
+        return `
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 4px;">
+              <span>${cat}</span>
+              <span><strong>${count} tệp</strong> (${pct}%)</span>
+            </div>
+            <div style="background: #e2e8f0; border-radius: 6px; height: 8px; overflow: hidden;">
+              <div style="background: linear-gradient(90deg, #0284c7 0%, #38bdf8 100%); width: ${pct}%; height: 100%; border-radius: 6px; transition: width 0.4s ease;"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 3. Render File Format Chart
+    const formats = [
+      { name: 'PDF Document', ext: 'pdf', color: '#ef4444' },
+      { name: 'Word Document (DOCX)', ext: 'docx', color: '#2563eb' },
+      { name: 'Excel Sheet (XLSX)', ext: 'xlsx', color: '#16a34a' },
+      { name: 'Hình ảnh (PNG/JPG)', ext: 'jpg', color: '#d97706' }
+    ];
+    const fmtListEl = document.getElementById('chartFormatList');
+    if (fmtListEl) {
+      fmtListEl.innerHTML = formats.map(fmt => {
+        const count = deptFiles.filter(f => (f.type || '').toLowerCase() === fmt.ext.toLowerCase()).length;
+        const pct = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
+        return `
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 4px;">
+              <span>${fmt.name}</span>
+              <span><strong>${count} tệp</strong> (${pct}%)</span>
+            </div>
+            <div style="background: #e2e8f0; border-radius: 6px; height: 8px; overflow: hidden;">
+              <div style="background: ${fmt.color}; width: ${pct}%; height: 100%; border-radius: 6px; transition: width 0.4s ease;"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 4. Render Status Counts
+    const cntBanHanh = deptFiles.filter(f => (f.statusTag || '').includes('ban hành')).length;
+    const cntKhan = deptFiles.filter(f => (f.statusTag || '').includes('Khẩn')).length;
+    const cntChoDuyet = deptFiles.filter(f => (f.statusTag || '').includes('Chờ duyệt')).length;
+    const cntMat = deptFiles.filter(f => (f.statusTag || '').includes('Mật')).length;
+
+    document.getElementById('cntBanHanh') && (document.getElementById('cntBanHanh').textContent = cntBanHanh);
+    document.getElementById('pctBanHanh') && (document.getElementById('pctBanHanh').textContent = (totalCount > 0 ? Math.round(cntBanHanh / totalCount * 100) : 0) + '%');
+
+    document.getElementById('cntKhan') && (document.getElementById('cntKhan').textContent = cntKhan);
+    document.getElementById('pctKhan') && (document.getElementById('pctKhan').textContent = (totalCount > 0 ? Math.round(cntKhan / totalCount * 100) : 0) + '%');
+
+    document.getElementById('cntChoDuyet') && (document.getElementById('cntChoDuyet').textContent = cntChoDuyet);
+    document.getElementById('pctChoDuyet') && (document.getElementById('pctChoDuyet').textContent = (totalCount > 0 ? Math.round(cntChoDuyet / totalCount * 100) : 0) + '%');
+
+    document.getElementById('cntMat') && (document.getElementById('cntMat').textContent = cntMat);
+    document.getElementById('pctMat') && (document.getElementById('pctMat').textContent = (totalCount > 0 ? Math.round(cntMat / totalCount * 100) : 0) + '%');
+  }
+
+  bindReportEvents() {
+    const btnExport = document.getElementById('btnExportReport');
+    btnExport?.addEventListener('click', () => {
+      const deptFiles = window.storageService ? window.storageService.getFiles('department') : [];
+      if (deptFiles.length === 0) {
+        alert("⚠️ Hiện chưa có dữ liệu văn bản nào trong Kho KDDVKH để xuất báo cáo!");
+        return;
+      }
+
+      let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+      csvContent += "STT,Tên Văn Bản,Phân Loại,Trạng Thái,Kích Thước,Ngày Ban Hành,Người Đăng\n";
+
+      deptFiles.forEach((f, idx) => {
+        const row = [
+          idx + 1,
+          `"${(f.name || '').replace(/"/g, '""')}"`,
+          `"${f.docType || 'Hợp đồng cấp nước'}"`,
+          `"${f.statusTag || '🟢 Đã ban hành'}"`,
+          `"${f.size || '1.2 MB'}"`,
+          `"${f.uploadDate || ''}"`,
+          `"${f.uploadedBy || 'Lê Tuấn Anh'}"`
+        ].join(",");
+        csvContent += row + "\n";
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Bao_Cao_Thong_Ke_Kho_KDDVKH_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
   }
 }
 
