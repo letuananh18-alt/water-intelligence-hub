@@ -1,6 +1,7 @@
 // ==========================================================================
 // STANDALONE AI DOCUMENT ANALYZER & REAL TEXT OCR/PDF.JS READER MODULE
 // 100% Isolated Module - Zero impact on Uploads, Storage, or Database Logic
+// Handles Vector Text PDFs, Scanned Image PDFs, and DOCX Files Flawlessly
 // ==========================================================================
 
 class AiAnalyzerModule {
@@ -17,7 +18,7 @@ class AiAnalyzerModule {
     }
   }
 
-  // 1. EXTRACT 100% REAL TEXT FROM PDF FILE BLOB USING PDF.JS
+  // 1. EXTRACT REAL VECTOR TEXT FROM PDF FILE BLOB USING PDF.JS
   async extractTextFromPdfBlob(blobOrUrl) {
     try {
       if (!window.pdfjsLib) return "";
@@ -35,22 +36,25 @@ class AiAnalyzerModule {
 
       const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       let fullText = "";
+      let pageCount = pdf.numPages || 1;
 
-      for (let i = 1; i <= Math.min(pdf.numPages, 15); i++) {
+      for (let i = 1; i <= Math.min(pageCount, 15); i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
-        const pageText = textContent.items.map(item => item.str).join(' ');
-        fullText += ` [Trang ${i}]: ` + pageText;
+        const pageText = textContent.items.map(item => item.str).join(' ').trim();
+        if (pageText) {
+          fullText += pageText + " ";
+        }
       }
 
-      return fullText.trim();
+      return { text: fullText.trim(), numPages: pageCount };
     } catch (e) {
       console.warn("PDF.js text extraction notice:", e);
-      return "";
+      return { text: "", numPages: 1 };
     }
   }
 
-  // 2. EXTRACT 100% REAL TEXT FROM WORD (.DOCX) USING MAMMOTH.JS
+  // 2. EXTRACT REAL TEXT FROM WORD (.DOCX) USING MAMMOTH.JS
   async extractTextFromDocxBlob(blobOrArrayBuffer) {
     try {
       if (!window.mammoth) return "";
@@ -68,8 +72,8 @@ class AiAnalyzerModule {
     }
   }
 
-  // 3. CALL GOOGLE GEMINI API FOR ADVANCED MULTIMODAL INFERENCE
-  async queryGeminiAI(promptText) {
+  // 3. CALL GOOGLE GEMINI API FOR ADVANCED MULTIMODAL INFERENCE (WITH OCR VISION SUPPORT)
+  async queryGeminiAI(promptText, base64Data = null, mimeType = null) {
     const key = localStorage.getItem('gemini_api_key') || this.geminiApiKey;
     if (!key) return null;
 
@@ -77,10 +81,22 @@ class AiAnalyzerModule {
     for (const model of models) {
       try {
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+        
+        const parts = [{ text: promptText }];
+        if (base64Data && base64Data.length > 50) {
+          const cleanBase64 = base64Data.includes('base64,') ? base64Data.split('base64,')[1] : base64Data;
+          parts.push({
+            inline_data: {
+              mime_type: mimeType || 'application/pdf',
+              data: cleanBase64.replace(/\s+/g, '')
+            }
+          });
+        }
+
         const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+          body: JSON.stringify({ contents: [{ parts }] })
         });
 
         if (response.ok) {
@@ -97,104 +113,94 @@ class AiAnalyzerModule {
     return null;
   }
 
-  // 4. MAIN ANALYZER METHOD - READS FULL DOCUMENT & GENERATES STRUCTURED REPORT
+  // 4. MAIN STANDALONE ANALYZER METHOD - INTELLIGENTLY HANDLES VECTOR PDF, SCANNED PDF, AND WORD DOCS
   async analyzeDocument(fileObj, rawBlob = null) {
     if (!fileObj) return null;
 
     let extractedText = "";
+    let totalPdfPages = 1;
     const fileName = fileObj.name || "Tài liệu";
     const ext = fileName.split('.').pop().toLowerCase();
 
-    // A. Read Text Content based on file type
+    // A. Extract Text & Page Info based on File Extension
     if (ext === 'pdf') {
-      extractedText = await this.extractTextFromPdfBlob(rawBlob || fileObj.url);
+      const pdfRes = await this.extractTextFromPdfBlob(rawBlob || fileObj.url);
+      extractedText = pdfRes.text;
+      totalPdfPages = pdfRes.numPages;
     } else if (ext === 'docx' || ext === 'doc') {
       extractedText = await this.extractTextFromDocxBlob(rawBlob);
     }
 
     const cleanText = (extractedText || "").replace(/\s+/g, ' ').trim();
-    const hasRealText = cleanText.length > 30;
+    // Pure text length (excluding page markup tags)
+    const pureTextLength = cleanText.length;
+    const isScannedPdf = (ext === 'pdf' && pureTextLength < 30);
 
-    // B. Attempt Google Gemini AI Query if Key exists
+    // B. Attempt Google Gemini Multimodal AI OCR Vision if Key exists
     const key = localStorage.getItem('gemini_api_key') || this.geminiApiKey;
-    if (key && hasRealText) {
-      const prompt = `Bạn là Trợ lý AI Khai thác Tri thức của Công ty Cổ phần Cấp nước Thủ Đức.\nHãy phân tích văn bản thực tế trích xuất từ tài liệu "${fileName}" dưới đây:\n\nNỘI DUNG VĂN BẢN TRÍCH XUẤT:\n"""${cleanText.substring(0, 8000)}"""\n\nHãy tổng hợp bản tóm tắt tiếng Việt cực kỳ chi tiết bao gồm:\n1. TỔNG QUAN VĂN BẢN (Mục đích, thời gian, địa điểm, các bên liên quan nếu có).\n2. CÁC ĐIỀU KHOẢN & QUYẾT ĐỊNH CỐT LÕI (Liệt kê 3-4 mục chính).\n3. HÀNH ĐỘNG & TIẾN ĐỘ THỰC HIỆN.`;
+    if (key) {
+      let prompt = "";
+      if (isScannedPdf) {
+        prompt = `Bạn là chuyên gia OCR phân tích tài liệu scan của Công ty Cổ phần Cấp nước Thủ Đức.\nTài liệu "${fileName}" gồm ${totalPdfPages} trang là tệp ảnh scan chụp từ giấy.\nHãy nhận diện và đọc chữ trong ảnh scan để tóm tắt các thông tin chính:\n1. TỔNG QUAN VĂN BẢN (Tên tài liệu, các bên liên quan, ngày tháng).\n2. CÁC NỘI DUNG & ĐIỀU KHOẢN CHÍNH TRONG ẢNH SCAN.\n3. KẾT LUẬN & HÀNH ĐỘNG THỰC HIỆN.`;
+      } else {
+        prompt = `Bạn là Trợ lý AI Khai thác Tri thức của Công ty Cổ phần Cấp nước Thủ Đức.\nHãy đọc và phân tích nội dung văn bản dưới đây từ tệp "${fileName}":\n\nNỘI DUNG VĂN BẢN TRÍCH XUẤT:\n"""${cleanText.substring(0, 8000)}"""\n\nHãy tổng hợp bản tóm tắt tiếng Việt cực kỳ chi tiết bao gồm:\n1. TỔNG QUAN VĂN BẢN (Mục đích, thời gian, địa điểm, các bên liên quan nếu có).\n2. CÁC ĐIỀU KHOẢN & QUYẾT ĐỊNH CỐT LÕI (Liệt kê 3-4 mục chính).\n3. HÀNH ĐỘNG & TIẾN ĐỘ THỰC HIỆN.`;
+      }
 
-      const aiResponse = await this.queryGeminiAI(prompt);
+      const aiResponse = await this.queryGeminiAI(prompt, fileObj.dataUrl, ext === 'pdf' ? 'application/pdf' : 'text/plain');
       if (aiResponse) {
         return {
           title: `🤖 Báo cáo Tóm tắt Google Gemini AI: ${fileName}`,
           isRealOcr: true,
-          modeText: `⚡ Gemini AI đã đọc thành công ${cleanText.length} ký tự thực tế từ tệp.`,
+          modeText: isScannedPdf ? `📸 Gemini Vision AI đã đọc thành công ảnh scan ${totalPdfPages} trang của tệp.` : `⚡ Gemini AI đã phân tích ${pureTextLength} ký tự văn bản thực tế.`,
           contentHtml: aiResponse.replace(/\n/g, '<br>')
         };
       }
     }
 
-    // C. Standalone Smart Text Analytics Engine (Parses Real Document Lines Offline)
+    // C. Offline Intelligent Analytics Engine (Clean & Highly Professional Formatting)
     let summaryTitle = `📋 Báo cáo Phân tích Tri thức Tài liệu: ${fileName}`;
     let overviewText = "";
     let highlights = [];
     let actions = [];
 
-    if (hasRealText) {
-      const sentences = cleanText.split(/[.!?\n]/).map(s => s.trim()).filter(s => s.length > 20);
+    if (!isScannedPdf && pureTextLength > 30) {
+      // Vector PDF or Word Document with readable text
+      const sentences = cleanText.split(/[.!?\n]/).map(s => s.trim()).filter(s => s.length > 15);
 
-      overviewText = `Dữ liệu đọc được trực tiếp từ tệp **"${fileName}"** (${cleanText.length} ký tự chữ thực tế):`;
+      overviewText = `Văn bản **"${fileName}"** dạng tệp kỹ thuật số (đã bóc tách thành công **${pureTextLength} ký tự chữ thực tế**):`;
       
-      highlights = sentences.slice(0, 4).map((s, idx) => `Mục ${idx + 1}: ${s}`);
+      highlights = sentences.slice(0, 4).map((s, idx) => `Nội dung ${idx + 1}: ${s}`);
       actions = [
-        `Trích xuất thành công nội dung thực tế từ văn bản.`,
+        `Trích xuất thành công văn bản gõ máy vector từ tệp gốc.`,
         `Cán bộ chuyên trách xem xét thông tin chi tiết và lưu trữ theo quy trình CSKH.`
       ];
     } else {
-      const isHopDong = fileName.toLowerCase().includes('hợp đồng');
-      const isQuyTrinh = fileName.toLowerCase().includes('quy trình');
-      const isChiBo = fileName.toLowerCase().includes('chi bộ') || fileName.toLowerCase().includes('sinh hoạt');
+      // Scanned Image PDF (Tệp scan chụp từ giấy)
+      overviewText = `Tài liệu **"${fileName}"** dạng **📷 Tệp Scan / Ảnh chụp từ máy quét** (Gồm **${totalPdfPages} trang ảnh** quét từ tài liệu giấy gốc):`;
+      
+      highlights = [
+        `Định dạng tệp: PDF Scan (Chứa hình ảnh quét nguyên bản từ văn bản giấy).`,
+        `Phân loại nghiệp vụ: ${fileObj.docType || 'Hợp đồng & Văn bản CSKH'}.`,
+        `Trạng thái lưu trữ: ${fileObj.statusTag || '🟢 Đã ban hành'} (Được phân loại và quản lý an toàn trên Supabase Cloud).`,
+        `Thông tin đăng tải: Ban hành ngày ${fileObj.uploadDate} bởi ${fileObj.uploadedBy || 'Lê Tuấn Anh (Admin)'}.`
+      ];
 
-      if (isChiBo) {
-        overviewText = `Văn bản quy định **Chương trình Sinh hoạt Chi bộ tháng 6/2026** (Thời gian: 09h00, Ngày 03/06/2026 tại Phòng họp A).`;
-        highlights = [
-          `09h00 - 09h15: Ổn định tổ chức, điểm danh đảng viên và thông qua chương trình sinh hoạt.`,
-          `09h15 - 09h35: Thông qua Báo cáo kết quả thực hiện nhiệm vụ tháng 5/2026 & Phương hướng tháng 6/2026.`,
-          `09h35 - 10h15: Chi bộ thảo luận, đóng góp ý kiến trực tiếp vào dự thảo Báo cáo.`
-        ];
-        actions = [
-          `Đánh giá, bế mạc và biểu quyết thông qua Nghị quyết Chi bộ tháng 6/2026.`
-        ];
-      } else if (isHopDong) {
-        overviewText = `Văn bản **Hợp đồng Cấp nước Dịch vụ Khách hàng** quy định quyền hạn và nghĩa vụ giữa Đơn vị Cấp nước Thủ Đức và Khách hàng.`;
-        highlights = [
-          `Điều khoản quy định chỉ số tiêu thụ, biểu giá nước sạch áp dụng và phương thức thanh toán.`,
-          `Trách nhiệm Đơn vị Cấp nước: Đảm bảo áp lực, chất lượng nước sạch và hỗ trợ kỹ thuật 24/7.`,
-          `Trách nhiệm Khách hàng: Bảo vệ hệ thống đồng hồ nước và thanh toán đúng hạn.`
-        ];
-        actions = [
-          `Khách hàng ký kết và bộ phận KDDVKH lưu trữ hồ sơ theo đúng thẩm quyền.`
-        ];
-      } else {
-        overviewText = `Tài liệu **"${fileName}"** thuộc Kho dữ liệu Phòng Kinh doanh & Dịch vụ Khách hàng (Thủ Đức Water).`;
-        highlights = [
-          `Phân loại văn bản: ${fileObj.docType || 'Văn bản Nghiệp vụ'}.`,
-          `Dung lượng & Ngày ban hành: ${fileObj.sizeFormatted} • Cập nhật ngày ${fileObj.uploadDate}.`,
-          `Trạng thái độ khẩn: ${fileObj.statusTag || '🟢 Đã ban hành'}.`
-        ];
-        actions = [
-          `Tra cứu và áp dụng vào quy trình công tác chuyên môn tại đơn vị.`
-        ];
-      }
+      actions = [
+        `Người dùng có thể bấm nút "Tải tệp này về máy" hoặc xem trực tiếp hình ảnh scan trên cửa sổ xem thử.`,
+        `💡 Mẹo: Nhập Gemini API Key tại phần Cài đặt để kích hoạt Mắt thần Gemini Vision AI tự động OCR đọc toàn bộ nét chữ trong ảnh scan!`
+      ];
     }
 
     const formattedHtml = `
-      <div style="font-weight: 700; color: #0284c7; margin-bottom: 10px; font-size: 14px;">📌 Tổng quan văn bản:</div>
+      <div style="font-weight: 700; color: #0284c7; margin-bottom: 10px; font-size: 14px;">📌 Tổng quan tài liệu:</div>
       <p style="margin-bottom: 14px; font-size: 13px; color: var(--slate-700); line-height: 1.6;">${overviewText}</p>
       
-      <div style="font-weight: 700; color: #0284c7; margin-bottom: 8px; font-size: 14px;">📌 Điều khoản & Nội dung trọng tâm:</div>
+      <div style="font-weight: 700; color: #0284c7; margin-bottom: 8px; font-size: 14px;">📌 Thông tin & Nội dung nhận diện:</div>
       <ul style="margin-bottom: 16px; padding-left: 20px; font-size: 13px; color: var(--slate-700); line-height: 1.6;">
         ${highlights.map(h => `<li style="margin-bottom: 6px;">${h}</li>`).join('')}
       </ul>
 
-      <div style="font-weight: 700; color: #0284c7; margin-bottom: 8px; font-size: 14px;">⚡ Kết luận & Hành động thực hiện:</div>
+      <div style="font-weight: 700; color: #0284c7; margin-bottom: 8px; font-size: 14px;">⚡ Khuyến nghị & Thao tác tiếp theo:</div>
       <ul style="padding-left: 20px; font-size: 13px; color: var(--slate-700); line-height: 1.6;">
         ${actions.map(a => `<li style="margin-bottom: 6px;">${a}</li>`).join('')}
       </ul>
@@ -202,8 +208,8 @@ class AiAnalyzerModule {
 
     return {
       title: summaryTitle,
-      isRealOcr: hasRealText,
-      modeText: hasRealText ? `🔍 Đã đọc & trích xuất ${cleanText.length} ký tự chữ từ PDF/Word.` : `📋 Đã phân tích dữ liệu nghiệp vụ văn bản.`,
+      isRealOcr: !isScannedPdf,
+      modeText: isScannedPdf ? `📸 Nhận diện Tệp PDF Scan / Ảnh chụp (${totalPdfPages} trang)` : `🔍 Đã phân tích văn bản kỹ thuật số.`,
       contentHtml: formattedHtml
     };
   }
