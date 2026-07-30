@@ -1,23 +1,20 @@
 // ==========================================================================
-// FILE STORAGE & DUAL VAULT MANAGER SERVICE (REAL IN-MEMORY FILE BLOB PRESERVATION)
+// FILE STORAGE & DUAL VAULT MANAGER SERVICE (100% REAL-TIME FIRESTORE SYNC)
 // ==========================================================================
 
 class StorageService {
   constructor() {
     this.files = [];
-    this.rawFileMap = new Map(); // In-memory map to store actual File blobs
-    this.folders = [
-      { id: "fold_1", name: "Hợp đồng Dịch vụ Khách hàng 2026", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "10/06/2026", filesCount: 0 },
-      { id: "fold_2", name: "Báo cáo Doanh thu & Cấp nước KDDVKH", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "12/06/2026", filesCount: 0 },
-      { id: "fold_3", name: "Biểu giá & Quy trình Dịch vụ Khách hàng", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "15/06/2026", filesCount: 0 }
-    ];
+    this.folders = [];
+    this.rawFileMap = new Map();
     this.listeners = [];
+    this.isFirestoreFoldersSynced = false;
     this.init();
   }
 
   init() {
     const savedFiles = localStorage.getItem('thuduc_water_files');
-    if (savedFiles) {
+    if (savedFiles !== null) {
       try {
         this.files = JSON.parse(savedFiles).filter(f => f.tags && f.tags.includes('Tệp thực tế'));
       } catch (e) {
@@ -26,16 +23,24 @@ class StorageService {
     }
 
     const savedFolders = localStorage.getItem('thuduc_water_folders');
-    if (savedFolders) {
+    if (savedFolders !== null) {
       try {
         this.folders = JSON.parse(savedFolders);
-      } catch (e) {}
+      } catch (e) {
+        this.folders = [];
+      }
+    } else {
+      this.folders = [
+        { id: "fold_1", name: "Hợp đồng Dịch vụ Khách hàng 2026", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "10/06/2026", filesCount: 0 },
+        { id: "fold_2", name: "Báo cáo Doanh thu & Cấp nước KDDVKH", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "12/06/2026", filesCount: 0 }
+      ];
+      this.saveLocal();
     }
 
-    this.saveLocal();
-
+    // 100% Cloud Firestore Real-time Listener & Synchronization
     if (typeof firebase !== 'undefined' && firebase.firestore) {
       try {
+        // Files Listener
         firebase.firestore().collection("files").onSnapshot(snapshot => {
           const cloudFiles = [];
           snapshot.forEach(doc => {
@@ -44,21 +49,30 @@ class StorageService {
               cloudFiles.push({ id: doc.id, ...data });
             }
           });
-          if (cloudFiles.length > 0) {
-            this.files = cloudFiles;
-            this.saveLocal();
-            this.notify();
-          }
+          this.files = cloudFiles;
+          this.saveLocal();
+          this.notify();
         }, err => console.warn("Firestore files notice:", err));
 
+        // Folders Listener
         firebase.firestore().collection("folders").onSnapshot(snapshot => {
           const cloudFolders = [];
-          snapshot.forEach(doc => cloudFolders.push({ id: doc.id, ...doc.data() }));
-          if (cloudFolders.length > 0) {
+          snapshot.forEach(doc => {
+            cloudFolders.push({ id: doc.id, ...doc.data() });
+          });
+          
+          if (!this.isFirestoreFoldersSynced && cloudFolders.length === 0 && this.folders.length > 0) {
+            // Seed initial folders to Firestore once
+            this.folders.forEach(f => {
+              firebase.firestore().collection("folders").doc(f.id).set(f).catch(e=>{});
+            });
+          } else {
             this.folders = cloudFolders;
-            this.saveLocal();
-            this.notify();
           }
+
+          this.isFirestoreFoldersSynced = true;
+          this.saveLocal();
+          this.notify();
         }, err => console.warn("Firestore folders notice:", err));
       } catch (e) {}
     }
@@ -124,7 +138,6 @@ class StorageService {
       fileUrl = URL.createObjectURL(fileObj);
     } catch (e) {}
 
-    // Preserve real File object in memory
     this.rawFileMap.set(fileId, fileObj);
 
     const newFile = {
@@ -149,7 +162,12 @@ class StorageService {
 
     if (folderId) {
       const fold = this.folders.find(f => f.id === folderId);
-      if (fold) fold.filesCount = (fold.filesCount || 0) + 1;
+      if (fold) {
+        fold.filesCount = (fold.filesCount || 0) + 1;
+        if (typeof firebase !== 'undefined' && firebase.firestore) {
+          firebase.firestore().collection("folders").doc(folderId).update({ filesCount: fold.filesCount }).catch(e=>{});
+        }
+      }
     }
 
     this.saveLocal();
@@ -184,7 +202,12 @@ class StorageService {
     if (isAdmin || (user && file.uploaderUid === user.uid && file.category === 'personal')) {
       if (file.folderId) {
         const fold = this.folders.find(f => f.id === file.folderId);
-        if (fold && fold.filesCount > 0) fold.filesCount -= 1;
+        if (fold && fold.filesCount > 0) {
+          fold.filesCount -= 1;
+          if (typeof firebase !== 'undefined' && firebase.firestore) {
+            firebase.firestore().collection("folders").doc(file.folderId).update({ filesCount: fold.filesCount }).catch(e=>{});
+          }
+        }
       }
 
       this.rawFileMap.delete(fileId);
@@ -210,8 +233,9 @@ class StorageService {
 
   async createFolder(name) {
     const currentUser = (window.authManager && window.authManager.getCurrentUser()) || { name: "Lê Tuấn Anh" };
+    const folderId = "fold_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4);
     const newFolder = {
-      id: "fold_" + Date.now(),
+      id: folderId,
       name: name.trim(),
       department: "dept_kddvkh",
       createdBy: currentUser.name || currentUser.email,
@@ -226,7 +250,9 @@ class StorageService {
     if (typeof firebase !== 'undefined' && firebase.firestore) {
       try {
         await firebase.firestore().collection("folders").doc(newFolder.id).set(newFolder);
-      } catch (e) {}
+      } catch (e) {
+        console.warn("Firestore createFolder notice:", e);
+      }
     }
     return newFolder;
   }
@@ -255,8 +281,11 @@ class StorageService {
     if (typeof firebase !== 'undefined' && firebase.firestore) {
       try {
         await firebase.firestore().collection("folders").doc(folderId).delete();
-      } catch (e) {}
+      } catch (e) {
+        console.warn("Firestore deleteFolder notice:", e);
+      }
     }
+    return true;
   }
 
   getStorageStats() {
