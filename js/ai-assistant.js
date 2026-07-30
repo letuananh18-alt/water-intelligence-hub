@@ -1,6 +1,6 @@
 // ==========================================================================
-// THU DUC WATER PROPRIETARY AI ASSISTANT KNOWLEDGE ENGINE (24/7 KDDVKH RAG ENGINE)
-// Queries Supabase Cloud Department Vault & Generates Intelligent 24/7 Knowledge Responses
+// THU DUC WATER INTERACTIVE AI ASSISTANT CHATBOT ENGINE
+// Conversational AI Assistant - Direct Natural Chat without Cluttered File Dumping
 // 100% Isolated Module - Zero impact on Uploads, Storage, or Database Logic
 // ==========================================================================
 
@@ -16,28 +16,23 @@ class AiAssistant {
       {
         id: 'msg_welcome',
         role: 'ai',
-        text: 'Xin chào! Tôi là Trợ lý AI Tra cứu & Khai thác Tri thức Kho Kinh doanh & Dịch vụ Khách hàng (Thủ Đức Water). Tôi sẵn sàng hỗ trợ bạn tra cứu quy trình, hợp đồng, biểu giá dịch vụ và các văn bản chỉ đạo 24/7. Bạn cần tra cứu tài liệu nào hôm nay?',
+        text: 'Kính chào anh/chị! Em là Trợ lý hỗ trợ anh/chị tra cứu thông tin các dữ liệu nội bộ. Anh/chị cần hỗ trợ tra cứu hay giải đáp thông tin gì hôm nay ạ?',
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
       },
       {
         id: 'pill_1',
         role: 'pill',
-        text: '🔍 Tra cứu quy trình xử lý sự cố cấp nước & thủy kế'
+        text: '🔍 Quy trình xử lý sự cố cấp nước'
       },
       {
         id: 'pill_2',
         role: 'pill',
-        text: '💰 Tra cứu biểu giá nước sạch & phí dịch vụ khách hàng 2026'
+        text: '💰 Biểu giá nước sạch & phí dịch vụ 2026'
       },
       {
         id: 'pill_3',
         role: 'pill',
-        text: '📋 Hướng dẫn thủ tục lắp đặt & ký hợp đồng cấp nước mới'
-      },
-      {
-        id: 'pill_4',
-        role: 'pill',
-        text: '📂 Danh mục tất cả văn bản hiện có trong Kho KDDVKH'
+        text: '📋 Thủ tục ký hợp đồng cấp nước mới'
       }
     ];
   }
@@ -51,7 +46,7 @@ class AiAssistant {
     this.notify();
   }
 
-  // 24/7 RAG KNOWLEDGE QUERY ENGINE CONNECTED TO THU DUC WATER AI GATEWAY
+  // INTERACTIVE CHATBOT QUERY ENGINE (NO FILE DUMPING OR CLUTTERED CITATIONS)
   async askQuestion(questionText) {
     const q = questionText.trim();
     if (!q) return;
@@ -68,74 +63,51 @@ class AiAssistant {
 
     // 1. Gather Context from Department Storage Files
     const deptFiles = window.storageService ? window.storageService.getFiles('department') : [];
-    const queryLower = q.toLowerCase();
+    const docContext = deptFiles.map(f => `- Tên tệp: "${f.name}" | Loại: "${f.docType || 'Văn bản KDDVKH'}"`).join('\n');
 
-    const matchedFiles = deptFiles.filter(f => {
-      const nameMatch = f.name.toLowerCase().includes(queryLower);
-      const docTypeMatch = f.docType && f.docType.toLowerCase().includes(queryLower);
-      const statusMatch = f.statusTag && f.statusTag.toLowerCase().includes(queryLower);
-      const tagMatch = f.tags && f.tags.some(t => t.toLowerCase().includes(queryLower));
-      
-      const intentMatch = (queryLower.includes('hợp đồng') && (f.docType === 'Hợp đồng cấp nước' || f.name.toLowerCase().includes('hợp đồng'))) ||
-                          (queryLower.includes('quy trình') && (f.docType === 'Quy trình CSKH' || f.name.toLowerCase().includes('quy trình'))) ||
-                          (queryLower.includes('sự cố') && (f.docType === 'Biên bản sự cố' || f.name.toLowerCase().includes('sự cố'))) ||
-                          (queryLower.includes('biểu giá') && (f.docType === 'Biểu giá dịch vụ' || f.name.toLowerCase().includes('giá')));
+    // 2. Friendly Interactive System Prompt
+    const systemPrompt = `Bạn là Trợ lý AI hỗ trợ anh/chị tra cứu thông tin các dữ liệu nội bộ của Công ty Cổ phần Cấp nước Thủ Đức (Thủ Đức Water).
+Nhiệm vụ của bạn là tương tác, hỏi đáp và giải đáp thắc mắc cho anh/chị một cách cực kỳ thân thiện, lịch sự, tự nhiên, ngắn gọn và tập trung đúng trọng tâm câu hỏi.
 
-      return nameMatch || docTypeMatch || statusMatch || tagMatch || intentMatch;
-    });
+QUY TẮC BẮT BUỘC:
+- Xưng "Em" và gọi người dùng là "Anh/Chị".
+- Tuyệt đối KHÔNG liệt kê danh sách tệp tin thô, KHÔNG xả danh mục file dư thừa.
+- Nếu dữ liệu không có thông tin chính xác về câu hỏi, hãy trả lời lịch sự và gợi ý anh/chị cung cấp thêm chi tiết hoặc liên hệ bộ phận liên quan.`;
 
-    // 2. Dispatch query to AI Gateway Module
-    let aiGatewayResponse = null;
-    const docContext = deptFiles.map(f => `- Tên tệp: "${f.name}" | Phân loại: "${f.docType || 'Văn bản KDDVKH'}" | Trạng thái: "${f.statusTag || '🟢 Đã ban hành'}" | Ngày ban hành: ${f.uploadDate}`).join('\n');
+    const userPrompt = `Danh mục văn bản tham khảo nội bộ:\n${docContext}\n\nCâu hỏi của anh/chị: "${q}"`;
 
-    const prompt = `Danh mục các tệp văn bản hiện có trong Kho Kinh doanh & Dịch vụ Khách hàng (Thủ Đức Water):\n${docContext}\n\nCâu hỏi tra cứu của cán bộ: "${q}"\nHãy trả lời bằng tiếng Việt cực kỳ chi tiết, chuyên nghiệp, chính xác và lịch sự. Hướng dẫn cán bộ bấm vào danh sách tệp trích dẫn bên dưới để xem trực tiếp văn bản gốc.`;
-
+    let aiResponse = null;
     if (window.aiAnalyzerModule) {
-      aiGatewayResponse = await window.aiAnalyzerModule.queryOpenAiGptGateway(prompt);
-      if (!aiGatewayResponse) {
-        aiGatewayResponse = await window.aiAnalyzerModule.queryGeminiAI(prompt);
+      aiResponse = await window.aiAnalyzerModule.queryOpenAiGptGateway(userPrompt);
+      if (!aiResponse) {
+        aiResponse = await window.aiAnalyzerModule.queryGeminiAI(userPrompt);
       }
     }
 
-    // 3. Format Response & Citation Files
+    // 3. Render Clean Conversational Response
     setTimeout(() => {
       let responseText = "";
-      let citationFiles = matchedFiles.length > 0 ? matchedFiles.slice(0, 3) : deptFiles.slice(0, 3);
 
-      if (aiGatewayResponse) {
-        responseText = aiGatewayResponse + "\n\n👉 Hãy bấm vào **Thẻ trích dẫn văn bản** bên dưới để mở xem trực tiếp toàn bộ tài liệu gốc!";
-      } else if (matchedFiles.length > 0) {
-        const topFile = matchedFiles[0];
-
-        responseText = `Dựa trên dữ liệu tra cứu từ **Kho Kinh doanh & Dịch vụ Khách hàng (Thủ Đức Water)**, Trợ lý AI đã trích xuất được **${matchedFiles.length} văn bản nghiệp vụ liên quan trực tiếp** đến yêu cầu của bạn:\n\n`;
-        
-        if (queryLower.includes('sự cố') || queryLower.includes('xử lý')) {
-          responseText += `📌 **Quy trình xử lý sự cố cấp nước & kỹ thuật:**\n`;
-          responseText += `1. **Tiếp nhận thông tin:** Ghi nhận thông tin sự cố/khiếu nại từ Tổng đài hoặc Kênh CSKH.\n`;
-          responseText += `2. **Xác minh & Kiểm tra:** Chuyển Đội Khảo sát địa bàn kiểm tra thực tế trong vòng 2 giờ.\n`;
-          responseText += `3. **Khắc phục & Xử lý:** Tiến hành sửa chữa, lập biên bản và cập nhật trạng thái lên hệ thống CSDL.\n\n`;
-        } else if (queryLower.includes('hợp đồng') || queryLower.includes('lắp đặt')) {
-          responseText += `📌 **Quy định Hợp đồng Cấp nước & Thủ tục khách hàng:**\n`;
-          responseText += `• **Hồ sơ cần có:** Đơn đề nghị cấp nước, Giấy chứng nhận quyền sử dụng đất / Hợp đồng thuê nhà hợp lệ, CCCD.\n`;
-          responseText += `• **Thời hạn xử lý:** Không quá 3-5 ngày làm việc kể từ khi tiếp nhận đủ hồ sơ.\n`;
-          responseText += `• **Trạng thái văn bản:** ${topFile.statusTag || '🟢 Đã ban hành'}.\n\n`;
-        } else {
-          responseText += `📌 **Thông tin chi tiết từ văn bản "${topFile.name}":**\n`;
-          responseText += `• **Phân loại nghiệp vụ:** ${topFile.docType || 'Văn bản KDDVKH'}.\n`;
-          responseText += `• **Dung lượng & Ngày đăng:** ${topFile.sizeFormatted} • Ban hành ngày ${topFile.uploadDate} bởi ${topFile.uploadedBy}.\n`;
-          responseText += `• **Trạng thái hiệu lực:** ${topFile.statusTag || '🟢 Đã ban hành'}.\n\n`;
-        }
-
-        responseText += `👉 Hãy bấm vào **Thẻ trích dẫn văn bản** bên dưới để mở xem trực tiếp toàn bộ tài liệu gốc!`;
+      if (aiResponse) {
+        // Strip any residual markdown file dumps if generated
+        responseText = aiResponse
+          .replace(/Danh sách các tệp[^:]*:/gi, '')
+          .replace(/Các tệp văn bản hiện có[^:]*:/gi, '');
       } else {
-        responseText = `Trợ lý AI đã quét toàn bộ CSDL Kho KDDVKH nhưng chưa tìm thấy tài liệu có từ khóa chính xác như "${q}".\n\nGợi ý: Bạn có thể nhập lại từ khóa thông dụng như **"Hợp đồng"**, **"Quy trình"**, **"Biểu giá"** hoặc bấm nút **"+ Thêm tài liệu phòng ban"** để tải văn bản mới lên hệ thống!`;
+        const queryLower = q.toLowerCase();
+        if (queryLower.includes('sự cố') || queryLower.includes('xử lý')) {
+          responseText = `Dạ kính chào anh/chị! Về quy trình xử lý sự cố cấp nước, em xin hỗ trợ anh/chị các bước chính như sau ạ:\n\n1. **Tiếp nhận thông tin:** Ghi nhận sự cố từ Tổng đài hoặc Kênh tiếp nhận CSKH.\n2. **Xác minh thực địa:** Chuyển Đội kiểm tra địa bàn khảo sát trực tiếp trong vòng 2 giờ.\n3. **Khắc phục sự cố:** Tiến hành sửa chữa, lập biên bản và cập nhật trạng thái lên hệ thống.`;
+        } else if (queryLower.includes('hợp đồng') || queryLower.includes('lắp đặt')) {
+          responseText = `Dạ kính chào anh/chị! Về thủ tục ký hợp đồng cấp nước mới, anh/chị cần chuẩn bị các giấy tờ bao gồm:\n\n• Đơn đề nghị cấp nước theo mẫu.\n• Giấy chứng nhận quyền sử dụng đất hoặc Hợp đồng thuê nhà hợp lệ.\n• Bản sao CCCD của chủ hộ.\n\nThời gian xử lý hồ sơ thông thường từ 3 đến 5 ngày làm việc ạ!`;
+        } else {
+          responseText = `Dạ em đã ghi nhận thông tin hỏi đáp của anh/chị về "${q}". Hiện tại trong CSDL nội bộ chưa có thông tin chi tiết về nội dung này. Anh/chị có thể cho em xin thêm từ khóa cụ thể hoặc liên hệ Ban Quản trị phòng KDDVKH để được hỗ trợ trực tiếp ạ!`;
+        }
       }
 
       const aiMsg = {
         id: 'msg_ai_' + Date.now(),
         role: 'ai',
         text: responseText,
-        citations: citationFiles,
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
       };
 
