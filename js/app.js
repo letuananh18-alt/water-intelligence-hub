@@ -711,6 +711,11 @@ class AppController {
         const targetFolderId = this.currentDeptFolderId || (deptFolders[0] ? deptFolders[0].id : null);
         const filesToUpload = [...this.pendingUploadFiles];
 
+        // Ensure currentDeptFolderId is set so table is ALWAYS displayed
+        if (!this.currentDeptFolderId && targetFolderId) {
+          this.currentDeptFolderId = targetFolderId;
+        }
+
         // Close modal immediately so UI is 100% responsive and never looks stuck
         this.closeModal('uploadMetaModal');
         this.pendingUploadFiles = null;
