@@ -719,16 +719,60 @@ class AppController {
   }
 
   bindTableActions() {
-    // 1. Nút AI Tóm Tắt 3 Giây trong Preview Modal (Đọc & Tóm tắt Nội dung Thực tế của Tệp)
-    document.getElementById('btnAiSummarizeDoc')?.addEventListener('click', () => {
+    // 1. Nút AI Tóm Tắt 3 Giây trong Preview Modal (Đọc & Tóm tắt Nội dung Thực tế bằng Google Gemini AI)
+    document.getElementById('btnAiSummarizeDoc')?.addEventListener('click', async () => {
       if (!this.currentPreviewFileId || !window.storageService || !window.aiAssistant) return;
       const file = window.storageService.files.find(f => f.id === this.currentPreviewFileId);
       const docViewer = document.getElementById('docViewerContainer');
+      const btn = document.getElementById('btnAiSummarizeDoc');
+      
       if (file && docViewer) {
-        // Extract real visible text from the document viewer
+        const originalBtnHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+          btn.disabled = true;
+          btn.innerHTML = `<span style="font-size: 12px; color: white;">⌛ Gemini AI đang đọc file...</span>`;
+        }
+
+        // 1. Obtain Base64 representation of the file for Gemini Multimodal AI
+        const rawFile = window.storageService.getRawFile(this.currentPreviewFileId);
+        let base64Data = file.dataUrl || null;
+        
+        if (!base64Data && rawFile) {
+          try {
+            base64Data = await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onload = (e) => resolve(e.target.result);
+              reader.onerror = () => resolve(null);
+              reader.readAsDataURL(rawFile);
+            });
+          } catch (e) {}
+        }
+
+        if (!base64Data && file.url && file.url.startsWith('http')) {
+          try {
+            const resp = await fetch(file.url);
+            const blob = await resp.blob();
+            base64Data = await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onload = (e) => resolve(e.target.result);
+              reader.onerror = () => resolve(null);
+              reader.readAsDataURL(blob);
+            });
+          } catch (e) {}
+        }
+
         const extractedText = docViewer.innerText || '';
-        const summary = window.aiAssistant.summarizeRealContent(file, extractedText);
+        const summary = await window.aiAssistant.summarizeRealContent(file, extractedText, base64Data);
+
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = originalBtnHtml;
+        }
+
         if (summary) {
+          const oldBox = docViewer.querySelector('.ai-summary-box');
+          if (oldBox) oldBox.remove();
+
           const summaryHtml = `
             <div class="ai-summary-box">
               <div class="ai-summary-header">

@@ -58,7 +58,7 @@ class AiAssistant {
   async callGeminiApi(promptText, base64Data = null, mimeType = null) {
     const key = this.getApiKey();
     if (!key) {
-      return null; // Fallback to local intelligent parser
+      return null;
     }
 
     try {
@@ -66,7 +66,6 @@ class AiAssistant {
       
       const parts = [{ text: promptText }];
       if (base64Data && mimeType) {
-        // Strip dataURL header if present
         const cleanBase64 = base64Data.includes('base64,') ? base64Data.split('base64,')[1] : base64Data;
         parts.push({
           inline_data: {
@@ -129,7 +128,6 @@ class AiAssistant {
       return nameMatch || docTypeMatch || statusMatch || tagMatch || intentMatch;
     });
 
-    // Attempt Gemini AI Generation if API key is set
     let geminiResponse = null;
     if (this.getApiKey()) {
       const docContext = deptFiles.map(f => `- ${f.name} (Loại: ${f.docType || 'Văn bản'}, Ngày: ${f.uploadDate}, Đăng bởi: ${f.uploadedBy})`).join('\n');
@@ -195,19 +193,20 @@ class AiAssistant {
     const key = this.getApiKey();
 
     // 1. If Gemini API Key is configured, use Google Gemini Multimodal inference!
-    if (key && (cleanText.length > 20 || base64File || file.dataUrl)) {
+    if (key) {
       const mime = file.mimeType || (file.type === 'PDF' ? 'application/pdf' : 'text/plain');
       const base64Data = base64File || file.dataUrl;
 
-      const prompt = `Bạn là chuyên gia phân tích văn bản của Công ty Cổ phần Cấp nước Thủ Đức. Hãy phân tích toàn bộ nội dung tài liệu "${name}" và trả về câu trả lời định dạng tiếng Việt rõ ràng với 3 phần:\n1. Mục đích & Thời gian/Địa điểm chính.\n2. Các nội dung & Điều khoản cốt lõi (liệt kê 3 bullet point).\n3. Hành động & Kết luận thực hiện (liệt kê 2 bullet point).`;
+      const prompt = `Bạn là chuyên gia phân tích văn bản của Công ty Cổ phần Cấp nước Thủ Đức. Hãy đọc và phân tích toàn bộ nội dung tài liệu "${name}" dưới đây và trả về bản tóm tắt tiếng Việt cực kỳ chi tiết bao gồm:\n- Mục đích chính của tài liệu (thời gian, địa điểm, các bên tham gia nếu có).\n- Các nội dung cốt lõi & quyết định chính (liệt kê 3-4 điểm chính).\n- Các hành động hoặc kết luận cần thực hiện.`;
 
       const geminiResult = await this.callGeminiApi(prompt, base64Data, mime);
       if (geminiResult) {
+        const formattedResult = geminiResult.replace(/\n/g, '<br>');
         return {
           title: `Báo cáo Tóm tắt Google Gemini AI (Chính xác 100%): ${name}`,
           purpose: `Dữ liệu phân tích trực tiếp từ **Google Gemini Multimodal AI Engine** cho tệp "${name}":`,
-          highlights: geminiResult.split('\n').filter(line => line.trim().length > 0),
-          actions: [`Đã hoàn thành đọc & bóc tách tri thức bằng Google Gemini AI.`]
+          highlights: [formattedResult],
+          actions: [`Đã giải mã và phân tích tri thức bằng Google Gemini AI Engine.`]
         };
       }
     }
@@ -231,7 +230,7 @@ class AiAssistant {
         }
       }
 
-      purposeText = `Tài liệu "${name}" quy định **Chương trình Sinh hoạt Chi bộ định kỳ tháng 6/2026**. Thới gian & Địa điểm: ${timeLoc}`;
+      purposeText = `Tài liệu "${name}" quy định **Chương trình Sinh hoạt Chi bộ định kỳ tháng 6/2026**. Thời gian & Địa điểm: ${timeLoc}`;
       highlights = [
         `Ổn định tổ chức, điểm danh đảng viên tham dự (20 đồng chí), thông qua chương trình làm việc.`,
         `Sinh hoạt đầu giờ: Trình chiếu video sinh hoạt mẫu, quán triệt các nội dung cốt lõi và bài học kinh nghiệm.`,
