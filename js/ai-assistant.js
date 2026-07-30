@@ -54,45 +54,49 @@ class AiAssistant {
     return this.messages;
   }
 
-  // CALL GOOGLE GEMINI REST API DIRECTLY FOR MULTIMODAL INFERENCE
+  // CALL GOOGLE GEMINI REST API WITH MULTI-MODEL FAILOVER (1.5-flash, 2.0-flash, 1.5-pro)
   async callGeminiApi(promptText, base64Data = null, mimeType = null) {
     const key = this.getApiKey();
     if (!key) {
       return null;
     }
 
-    try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
-      
-      const parts = [{ text: promptText }];
-      if (base64Data && mimeType) {
-        const cleanBase64 = base64Data.includes('base64,') ? base64Data.split('base64,')[1] : base64Data;
-        parts.push({
-          inline_data: {
-            mime_type: mimeType,
-            data: cleanBase64
-          }
+    const models = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-pro'];
+    
+    for (const model of models) {
+      try {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+        
+        const parts = [{ text: promptText }];
+        if (base64Data) {
+          const cleanBase64 = base64Data.includes('base64,') ? base64Data.split('base64,')[1] : base64Data;
+          const mime = mimeType || 'application/pdf';
+          parts.push({
+            inline_data: {
+              mime_type: mime,
+              data: cleanBase64
+            }
+          });
+        }
+
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts }] })
         });
-      }
 
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts }] })
-      });
-
-      if (!response.ok) {
-        console.warn("Gemini API HTTP Error:", response.status);
-        return null;
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
+            const text = data.candidates[0].content.parts.map(p => p.text).join('\n');
+            if (text && text.trim()) return text;
+          }
+        } else {
+          console.warn(`Gemini model ${model} HTTP Error:`, response.status);
+        }
+      } catch (e) {
+        console.warn(`Gemini model ${model} fetch notice:`, e);
       }
-
-      const data = await response.json();
-      if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
-        const text = data.candidates[0].content.parts.map(p => p.text).join('\n');
-        return text;
-      }
-    } catch (e) {
-      console.warn("Gemini API call notice:", e);
     }
     return null;
   }
@@ -203,95 +207,33 @@ class AiAssistant {
       if (geminiResult) {
         const formattedResult = geminiResult.replace(/\n/g, '<br>');
         return {
+          isGemini: true,
           title: `Báo cáo Tóm tắt Google Gemini AI (Chính xác 100%): ${name}`,
           purpose: `Dữ liệu phân tích trực tiếp từ **Google Gemini Multimodal AI Engine** cho tệp "${name}":`,
           highlights: [formattedResult],
           actions: [`Đã giải mã và phân tích tri thức bằng Google Gemini AI Engine.`]
         };
-      }
-    }
-
-    // 2. Intelligent local fallback parser for specific document types
-    const isSinhHoatChiBo = name.toLowerCase().includes('sinh hoạt chi bộ') || cleanText.toLowerCase().includes('sinh hoạt chi bộ');
-    const isHopDong = name.toLowerCase().includes('hợp đồng') || cleanText.toLowerCase().includes('hợp đồng');
-    const isQuyTrinh = name.toLowerCase().includes('quy trình') || cleanText.toLowerCase().includes('quy trình');
-
-    let purposeText = "";
-    let highlights = [];
-    let actions = [];
-
-    if (isSinhHoatChiBo) {
-      let timeLoc = "09h00 - 10h30 ngày 03/06/2026 tại Phòng Hợp A (Thành phần: 20 đồng chí Chi bộ).";
-      if (cleanText.includes('Thời gian:') || cleanText.includes('Địa điểm:')) {
-        const timeMatch = cleanText.match(/Thời gian:[^.]+/i);
-        const locMatch = cleanText.match(/Địa điểm:[^.]+/i);
-        if (timeMatch || locMatch) {
-          timeLoc = `${timeMatch ? timeMatch[0] : ''} ${locMatch ? locMatch[0] : ''}`;
-        }
-      }
-
-      purposeText = `Tài liệu "${name}" quy định **Chương trình Sinh hoạt Chi bộ định kỳ tháng 6/2026**. Thời gian & Địa điểm: ${timeLoc}`;
-      highlights = [
-        `Ổn định tổ chức, điểm danh đảng viên tham dự (20 đồng chí), thông qua chương trình làm việc.`,
-        `Sinh hoạt đầu giờ: Trình chiếu video sinh hoạt mẫu, quán triệt các nội dung cốt lõi và bài học kinh nghiệm.`,
-        `Thông qua Báo cáo kết quả thực hiện nhiệm vụ tháng 5/2026 và Báo cáo phương hướng nhiệm vụ tháng 6/2026.`
-      ];
-      actions = [
-        `Chi bộ thảo luận, đóng góp ý kiến trực tiếp vào dự thảo Báo cáo nhiệm vụ.`,
-        `Thư ký ghi nhận đầy đủ các ý kiến và hoàn thiện biên bản họp.`,
-        `Biểu quyết thông qua Nghị quyết Chi bộ tháng 6/2026 và phân công nhiệm vụ cụ thể cho từng đồng chí.`
-      ];
-    } else if (isHopDong) {
-      purposeText = `Tài liệu "${name}" quy định các điều khoản pháp lý và nghĩa vụ cấp nước dịch vụ giữa Công ty Cấp nước Thủ Đức và Khách hàng sử dụng nước.`;
-      highlights = [
-        `Quy định rõ chỉ số tiêu thụ, biểu giá nước sạch áp dụng và phương thức thanh toán hàng tháng.`,
-        `Quyền và trách nhiệm của Đơn vị Cấp nước: Bảo đảm chất lượng nước sạch và hỗ trợ kỹ thuật 24/7.`,
-        `Trách nhiệm của Khách hàng: Bảo vệ hệ thống thủy kế và thanh toán hóa đơn đúng hạn.`
-      ];
-      actions = [
-        `Khách hàng kiểm tra thông tin hợp đồng và ký xác nhận theo quy định.`,
-        `Bộ phận KDDVKH lưu trữ hợp đồng lên hệ thống CSDL mây Supabase.`
-      ];
-    } else if (isQuyTrinh) {
-      purposeText = `Tài liệu "${name}" ban hành quy trình chuẩn hóa các bước xử lý nghiệp vụ Kinh doanh & Dịch vụ Khách hàng.`;
-      highlights = [
-        `Bước 1: Tiếp nhận yêu cầu/hồ sơ của khách hàng và ghi nhận vào hệ thống CSDL.`,
-        `Bước 2: Phân công cán bộ khảo sát thực địa và kiểm tra điều kiện kỹ thuật trong 24h-48h.`,
-        `Bước 3: Nghiệm thu, bàn giao công trình và cập nhật hồ sơ lưu trữ.`
-      ];
-      actions = [
-        `Cán bộ thụ lý kiểm tra tính hợp lệ của hồ sơ trước khi chuyển giao các khâu tiếp theo.`,
-        `Theo dõi tiến độ xử lý và báo cáo định kỳ cho Lãnh đạo Phòng KDDVKH.`
-      ];
-    } else {
-      purposeText = `Tài liệu "${name}" chứa dữ liệu văn bản chính thức của Phòng Kinh doanh & Dịch vụ Khách hàng (Thủ Đức Water), dung lượng ${file.sizeFormatted}, cập nhật ngày ${file.uploadDate}.`;
-      
-      const sentences = cleanText.split(/[.!?\n]/).map(s => s.trim()).filter(s => s.length > 15);
-      if (sentences.length >= 3) {
-        highlights = [
-          sentences[0],
-          sentences[1],
-          sentences[2]
-        ];
       } else {
-        highlights = [
-          `Nội dung văn bản quy định các tiêu chuẩn, hướng dẫn nghiệp vụ và điều khoản dịch vụ khách hàng.`,
-          `Bảo đảm tính minh bạch, tuân thủ các quy định hiện hành của Công ty Cấp nước Thủ Đức.`,
-          `Trạng thái văn bản: ${file.statusTag || '🟢 Đã ban hành'} (Có hiệu lực trên toàn hệ thống).`
-        ];
+        return {
+          isError: true,
+          title: `⚠️ Lỗi kết nối Google Gemini API Key!`,
+          purpose: `Không thể gọi Google Gemini API với mã Key hiện tại. Mã Key có thể bị sai hoặc đã hết hạn ngạch.`,
+          highlights: [`Vui lòng truy cập mục "Cài đặt" ở menu bên trái và kiểm tra dán lại mã Google Gemini API Key chuẩn (bắt đầu bằng AIzaSy...).`],
+          actions: [`Truy cập https://aistudio.google.com/app/apikey để tạo Key mới.`]
+        };
       }
-
-      actions = [
-        `Các bộ phận liên quan căn cứ nội dung văn bản để triển khai công việc.`,
-        `Lưu trữ và tra cứu trực tiếp trên hệ thống Water Intelligence Hub.`
-      ];
     }
 
+    // 2. Warning if Gemini Key is missing
     return {
-      title: `Báo cáo Tóm tắt AI Thực tế: ${name}`,
-      purpose: purposeText,
-      highlights: highlights,
-      actions: actions
+      isWarning: true,
+      title: `⚠️ Chưa kích hoạt Google Gemini API Key!`,
+      purpose: `Trình duyệt bị rào cản iframe bảo mật nên không thể đọc chữ từ file PDF trực tiếp trên máy tính. Để Google Gemini AI đọc xuyên qua file PDF này, anh hãy dán mã API Key của anh vào mục Cài đặt.`,
+      highlights: [
+        `Bước 1: Lấy mã Key miễn phí tại https://aistudio.google.com/app/apikey`,
+        `Bước 2: Vào mục "Cài đặt" ở menu bên trái Web App ➔ Dán mã vào ô Google Gemini AI ➔ Bấm Lưu Key AI.`
+      ],
+      actions: [`Sau khi nạp Key, bấm lại nút "AI Tóm tắt 3 giây" để Gemini AI bóc tách file PDF chuẩn 100%!`]
     };
   }
 
