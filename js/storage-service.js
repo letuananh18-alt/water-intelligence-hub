@@ -1,5 +1,6 @@
 // ==========================================================================
-// FILE STORAGE & DUAL VAULT MANAGER SERVICE (SUPABASE POSTGRESQL + STORAGE)
+// FILE STORAGE & DUAL VAULT MANAGER SERVICE (ROCK-SOLID PERMANENT PERSISTENCE)
+// Compatible with both Local Storage Cache and Supabase PostgreSQL Cloud
 // ==========================================================================
 
 class StorageService {
@@ -8,31 +9,33 @@ class StorageService {
     this.folders = [];
     this.rawFileMap = new Map();
     this.listeners = [];
-    this.hasInitializedCloud = false;
     this.init();
   }
 
   async init() {
-    // 1. Load Local Cache first for instant render
+    // 1. Permanent Local Cache Restoration
     const savedFiles = localStorage.getItem('thuduc_water_files');
-    if (savedFiles !== null) {
+    if (savedFiles) {
       try {
-        this.files = JSON.parse(savedFiles);
-      } catch (e) {
-        this.files = [];
-      }
+        const parsed = JSON.parse(savedFiles);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this.files = parsed;
+        }
+      } catch (e) {}
     }
 
     const savedFolders = localStorage.getItem('thuduc_water_folders');
-    if (savedFolders !== null) {
+    if (savedFolders) {
       try {
-        this.folders = JSON.parse(savedFolders);
-      } catch (e) {
-        this.folders = [];
-      }
+        const parsed = JSON.parse(savedFolders);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this.folders = parsed;
+        }
+      } catch (e) {}
     }
 
-    if (this.folders.length === 0) {
+    // Default Seed Folders (ONLY initialized if no folders exist at all)
+    if (!this.folders || this.folders.length === 0) {
       this.folders = [
         { id: "fold_kddvkh_1", name: "Hợp đồng Dịch vụ Khách hàng 2026", category: "department", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", ownerUid: "admin_waterain8n", date: "30/07/2026", filesCount: 0 },
         { id: "fold_kddvkh_2", name: "Báo cáo Doanh thu & Cấp nước KDDVKH", category: "department", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", ownerUid: "admin_waterain8n", date: "30/07/2026", filesCount: 0 },
@@ -41,7 +44,7 @@ class StorageService {
       this.saveLocal();
     }
 
-    // 2. Real-time PostgreSQL Sync with Supabase Cloud
+    // 2. Real-time Supabase Cloud Database Sync
     if (window.supabaseClient) {
       try {
         await this.syncFoldersFromSupabase();
@@ -63,34 +66,112 @@ class StorageService {
     }
   }
 
+  normalizeFolderFromDb(f) {
+    return {
+      id: f.id,
+      name: f.name,
+      category: f.category || 'department',
+      department: f.department || 'dept_kddvkh',
+      createdBy: f.createdBy || f.created_by || 'Admin',
+      ownerUid: f.ownerUid || f.owner_uid || '',
+      date: f.date || new Date().toLocaleDateString('vi-VN'),
+      filesCount: typeof f.filesCount !== 'undefined' ? f.filesCount : (f.files_count || 0)
+    };
+  }
+
+  normalizeFolderToDb(f) {
+    return {
+      id: f.id,
+      name: f.name,
+      category: f.category || 'department',
+      department: f.department || 'dept_kddvkh',
+      created_by: f.createdBy || 'Admin',
+      owner_uid: f.ownerUid || '',
+      date: f.date,
+      files_count: f.filesCount || 0
+    };
+  }
+
+  normalizeFileFromDb(f) {
+    return {
+      id: f.id,
+      name: f.name,
+      type: f.type || 'FILE',
+      mimeType: f.mimeType || f.mime_type || '',
+      sizeBytes: f.sizeBytes || f.size_bytes || 0,
+      sizeFormatted: f.sizeFormatted || f.size_formatted || '0 KB',
+      uploadedBy: f.uploadedBy || f.uploaded_by || 'Khách hàng',
+      uploaderUid: f.uploaderUid || f.uploader_uid || '',
+      uploadDate: f.uploadDate || f.upload_date || new Date().toLocaleDateString('vi-VN'),
+      category: f.category || 'personal',
+      folderId: f.folderId || f.folder_id || null,
+      docType: f.docType || f.doc_type || 'Văn bản Nghiệp vụ',
+      statusTag: f.statusTag || f.status_tag || '🟢 Đã ban hành',
+      url: f.url || '#',
+      dataUrl: f.dataUrl || f.data_url || null,
+      tags: f.tags || ["Tệp thực tế"]
+    };
+  }
+
+  normalizeFileToDb(f) {
+    return {
+      id: f.id,
+      name: f.name,
+      type: f.type,
+      mime_type: f.mimeType,
+      size_bytes: f.sizeBytes,
+      size_formatted: f.sizeFormatted,
+      uploaded_by: f.uploadedBy,
+      uploader_uid: f.uploaderUid,
+      upload_date: f.uploadDate,
+      category: f.category,
+      folder_id: f.folderId,
+      doc_type: f.docType,
+      status_tag: f.statusTag,
+      url: f.url,
+      data_url: f.dataUrl,
+      tags: f.tags
+    };
+  }
+
   async syncFoldersFromSupabase() {
     if (!window.supabaseClient) return;
     try {
       const { data, error } = await window.supabaseClient.from('folders').select('*');
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
+        const dbFolders = data.map(f => this.normalizeFolderFromDb(f));
         const map = new Map();
+        // 1. Load local memory folders
         this.folders.forEach(f => map.set(f.id, f));
-        data.forEach(f => map.set(f.id, f));
+        // 2. Merge cloud folders
+        dbFolders.forEach(f => map.set(f.id, f));
         this.folders = Array.from(map.values());
         this.saveLocal();
         this.notify();
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn("Folder sync notice:", e);
+    }
   }
 
   async syncFilesFromSupabase() {
     if (!window.supabaseClient) return;
     try {
       const { data, error } = await window.supabaseClient.from('files').select('*');
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
+        const dbFiles = data.map(f => this.normalizeFileFromDb(f));
         const map = new Map();
+        // 1. Load local memory files
         this.files.forEach(f => map.set(f.id, f));
-        data.forEach(f => map.set(f.id, f));
+        // 2. Merge cloud files
+        dbFiles.forEach(f => map.set(f.id, f));
         this.files = Array.from(map.values());
         this.saveLocal();
         this.notify();
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn("Files sync notice:", e);
+    }
   }
 
   saveLocal() {
@@ -203,7 +284,7 @@ class StorageService {
         this.saveLocal();
         if (window.supabaseClient) {
           try {
-            await window.supabaseClient.from('files').upsert(newFile);
+            await window.supabaseClient.from('files').upsert(this.normalizeFileToDb(newFile));
           } catch (err) {}
         }
         this.notify();
@@ -218,7 +299,7 @@ class StorageService {
       if (fold) {
         fold.filesCount = (fold.filesCount || 0) + 1;
         if (window.supabaseClient) {
-          window.supabaseClient.from('folders').update({ filesCount: fold.filesCount }).eq('id', folderId).then(()=>{}).catch(()=>{});
+          window.supabaseClient.from('folders').update({ files_count: fold.filesCount }).eq('id', folderId).then(()=>{}).catch(()=>{});
         }
       }
     }
@@ -228,7 +309,7 @@ class StorageService {
 
     if (window.supabaseClient) {
       try {
-        await window.supabaseClient.from('files').upsert(newFile);
+        await window.supabaseClient.from('files').upsert(this.normalizeFileToDb(newFile));
       } catch (err) {
         console.warn("Supabase file upload notice:", err);
       }
@@ -255,7 +336,7 @@ class StorageService {
         if (fold && fold.filesCount > 0) {
           fold.filesCount -= 1;
           if (window.supabaseClient) {
-            window.supabaseClient.from('folders').update({ filesCount: fold.filesCount }).eq('id', file.folderId).then(()=>{}).catch(()=>{});
+            window.supabaseClient.from('folders').update({ files_count: fold.filesCount }).eq('id', file.folderId).then(()=>{}).catch(()=>{});
           }
         }
       }
@@ -279,7 +360,6 @@ class StorageService {
 
   getFolders(category = 'all') {
     const user = window.authManager ? window.authManager.getCurrentUser() : null;
-    const isAdmin = window.authManager && window.authManager.isAdmin();
 
     if (category === 'department') {
       return this.folders.filter(f => f.category === 'department' || f.department === 'dept_kddvkh');
@@ -310,7 +390,7 @@ class StorageService {
 
     if (window.supabaseClient) {
       try {
-        await window.supabaseClient.from('folders').upsert(newFolder);
+        await window.supabaseClient.from('folders').upsert(this.normalizeFolderToDb(newFolder));
       } catch (e) {
         console.warn("Supabase createFolder notice:", e);
       }
