@@ -8,6 +8,7 @@ class AiAssistant {
     this.messages = [];
     this.listeners = [];
     this.geminiApiKey = localStorage.getItem('gemini_api_key') || '';
+    this.lastGeminiError = '';
     this.init();
   }
 
@@ -54,15 +55,16 @@ class AiAssistant {
     return this.messages;
   }
 
-  // CALL GOOGLE GEMINI REST API WITH MULTI-MODEL FAILOVER (1.5-flash, 2.0-flash, 1.5-pro)
+  // CALL GOOGLE GEMINI REST API WITH MULTI-MODEL FAILOVER (gemini-2.5-flash FIRST)
   async callGeminiApi(promptText, base64Data = null, mimeType = null) {
     const key = this.getApiKey();
     if (!key) {
       return null;
     }
 
-    const models = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-pro'];
-    
+    const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-pro', 'gemini-1.5-pro'];
+    let lastErrorDetails = "";
+
     for (const model of models) {
       try {
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
@@ -92,12 +94,17 @@ class AiAssistant {
             if (text && text.trim()) return text;
           }
         } else {
-          console.warn(`Gemini model ${model} HTTP Error:`, response.status);
+          const errJson = await response.json().catch(() => ({}));
+          lastErrorDetails = errJson.error ? (errJson.error.message || `HTTP ${response.status}`) : `HTTP ${response.status}`;
+          console.warn(`Gemini model ${model} HTTP Error:`, response.status, lastErrorDetails);
         }
       } catch (e) {
+        lastErrorDetails = e.message;
         console.warn(`Gemini model ${model} fetch notice:`, e);
       }
     }
+
+    this.lastGeminiError = lastErrorDetails;
     return null;
   }
 
@@ -196,7 +203,6 @@ class AiAssistant {
     const cleanText = (extractedText || '').replace(/\s+/g, ' ').trim();
     const key = this.getApiKey();
 
-    // 1. If Gemini API Key is configured, execute Google Gemini Multimodal inference!
     if (key) {
       const mime = file.mimeType || (file.type === 'PDF' ? 'application/pdf' : 'text/plain');
       const base64Data = base64File || file.dataUrl;
@@ -214,17 +220,17 @@ class AiAssistant {
           actions: [`Đã giải mã và phân tích tri thức bằng Google Gemini AI Engine.`]
         };
       } else {
+        const errDetail = this.lastGeminiError || "Không thể gọi API";
         return {
           isError: true,
-          title: `⚠️ Lỗi kết nối Google Gemini API Key!`,
-          purpose: `Không thể gọi Google Gemini API với mã Key hiện tại. Mã Key có thể bị sai hoặc đã hết hạn ngạch.`,
-          highlights: [`Vui lòng truy cập mục "Cài đặt" ở menu bên trái và kiểm tra dán lại mã Google Gemini API Key chuẩn (bắt đầu bằng AIzaSy...).`],
-          actions: [`Truy cập https://aistudio.google.com/app/apikey để tạo Key mới.`]
+          title: `⚠️ Lỗi gọi Google Gemini API: ${errDetail}`,
+          purpose: `Google AI Studio phản hồi lỗi: "${errDetail}". Vui lòng kiểm tra lại cấu hình Key hoặc mô hình trong Google AI Studio.`,
+          highlights: [`Chi tiết lỗi: ${errDetail}. Nếu bị dính giới hạn Free Tier (Rate Limit), anh chỉ cần chờ vài phút rồi bấm lại nút tóm tắt.`],
+          actions: [`Hoặc kiểm tra hạn ngạch tại https://aistudio.google.com/app/apikey`]
         };
       }
     }
 
-    // 2. Warning if Gemini Key is missing
     return {
       isWarning: true,
       title: `⚠️ Chưa kích hoạt Google Gemini API Key!`,
