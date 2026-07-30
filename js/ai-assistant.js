@@ -62,26 +62,37 @@ class AiAssistant {
       return null;
     }
 
-    const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-pro', 'gemini-1.5-pro'];
-    let lastErrorDetails = "";
+    const endpoints = [
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+      'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent'
+    ];
 
-    for (const model of models) {
+    let firstErrorDetails = "";
+
+    // Clean base64 string if present
+    let cleanBase64 = null;
+    if (base64Data) {
+      cleanBase64 = base64Data.includes('base64,') ? base64Data.split('base64,')[1] : base64Data;
+      cleanBase64 = cleanBase64.replace(/\s+/g, '');
+    }
+
+    // 1. Try multimodal endpoints sequentially
+    for (const ep of endpoints) {
       try {
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
-        
+        const url = `${ep}?key=${key}`;
         const parts = [{ text: promptText }];
-        if (base64Data) {
-          const cleanBase64 = base64Data.includes('base64,') ? base64Data.split('base64,')[1] : base64Data;
-          const mime = mimeType || 'application/pdf';
+        if (cleanBase64 && cleanBase64.length > 50) {
           parts.push({
             inline_data: {
-              mime_type: mime,
+              mime_type: mimeType || 'application/pdf',
               data: cleanBase64
             }
           });
         }
 
-        const response = await fetch(endpoint, {
+        const response = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contents: [{ parts }] })
@@ -95,16 +106,38 @@ class AiAssistant {
           }
         } else {
           const errJson = await response.json().catch(() => ({}));
-          lastErrorDetails = errJson.error ? (errJson.error.message || `HTTP ${response.status}`) : `HTTP ${response.status}`;
-          console.warn(`Gemini model ${model} HTTP Error:`, response.status, lastErrorDetails);
+          const errMsg = errJson.error ? (errJson.error.message || `HTTP ${response.status}`) : `HTTP ${response.status}`;
+          if (!firstErrorDetails) firstErrorDetails = errMsg;
+          console.warn(`Gemini endpoint ${ep} HTTP Error:`, response.status, errMsg);
         }
       } catch (e) {
-        lastErrorDetails = e.message;
-        console.warn(`Gemini model ${model} fetch notice:`, e);
+        if (!firstErrorDetails) firstErrorDetails = e.message;
+        console.warn(`Gemini endpoint ${ep} fetch notice:`, e);
       }
     }
 
-    this.lastGeminiError = lastErrorDetails;
+    // 2. Secondary Failover: Text-only request if PDF binary format was rejected by API
+    if (cleanBase64) {
+      for (const ep of endpoints) {
+        try {
+          const url = `${ep}?key=${key}`;
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+          });
+          if (response.ok) {
+            const data = await response.json();
+            if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
+              const text = data.candidates[0].content.parts.map(p => p.text).join('\n');
+              if (text && text.trim()) return text;
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    this.lastGeminiError = firstErrorDetails;
     return null;
   }
 
