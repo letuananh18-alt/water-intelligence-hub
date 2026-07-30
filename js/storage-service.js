@@ -1,5 +1,5 @@
 // ==========================================================================
-// FILE STORAGE & DUAL VAULT MANAGER SERVICE (STABLE DEPARTMENT FOLDERS)
+// FILE STORAGE & DUAL VAULT MANAGER SERVICE (PERMANENT FIRESTORE PERSISTENCE)
 // ==========================================================================
 
 class StorageService {
@@ -8,20 +8,16 @@ class StorageService {
     this.folders = [];
     this.rawFileMap = new Map();
     this.listeners = [];
+    this.hasInitializedCloud = false;
     this.init();
   }
 
   init() {
-    const defaultFolders = [
-      { id: "fold_kddvkh_1", name: "Hợp đồng Dịch vụ Khách hàng 2026", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "30/07/2026", filesCount: 0 },
-      { id: "fold_kddvkh_2", name: "Báo cáo Doanh thu & Cấp nước KDDVKH", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "30/07/2026", filesCount: 0 },
-      { id: "fold_kddvkh_3", name: "Biểu giá & Quy trình Dịch vụ Khách hàng", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "30/07/2026", filesCount: 0 }
-    ];
-
+    // 1. Load from LocalStorage Cache first (Instant UI render)
     const savedFiles = localStorage.getItem('thuduc_water_files');
     if (savedFiles !== null) {
       try {
-        this.files = JSON.parse(savedFiles).filter(f => f.tags && f.tags.includes('Tệp thực tế'));
+        this.files = JSON.parse(savedFiles);
       } catch (e) {
         this.files = [];
       }
@@ -30,51 +26,66 @@ class StorageService {
     const savedFolders = localStorage.getItem('thuduc_water_folders');
     if (savedFolders !== null) {
       try {
-        const parsed = JSON.parse(savedFolders);
-        this.folders = parsed.length > 0 ? parsed : defaultFolders;
+        this.folders = JSON.parse(savedFolders);
       } catch (e) {
-        this.folders = defaultFolders;
+        this.folders = [];
       }
-    } else {
-      this.folders = defaultFolders;
+    }
+
+    // Default seed folders ONLY if localStorage AND Firestore have NEVER been used at all
+    if (this.folders.length === 0) {
+      this.folders = [
+        { id: "fold_kddvkh_1", name: "Hợp đồng Dịch vụ Khách hàng 2026", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "30/07/2026", filesCount: 0 },
+        { id: "fold_kddvkh_2", name: "Báo cáo Doanh thu & Cấp nước KDDVKH", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "30/07/2026", filesCount: 0 },
+        { id: "fold_kddvkh_3", name: "Biểu giá & Quy trình Dịch vụ Khách hàng", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "30/07/2026", filesCount: 0 }
+      ];
       this.saveLocal();
     }
 
-    // 100% Real-time Cloud Firestore Synchronization with Default Seeding
+    // 2. Real-time Synchronization with Cloud Firestore
     if (typeof firebase !== 'undefined' && firebase.firestore) {
       try {
-        // Files Listener
+        // Files Cloud Listener
         firebase.firestore().collection("files").onSnapshot(snapshot => {
           const cloudFiles = [];
           snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.tags && data.tags.includes('Tệp thực tế')) {
-              cloudFiles.push({ id: doc.id, ...data });
-            }
+            cloudFiles.push({ id: doc.id, ...doc.data() });
           });
-          this.files = cloudFiles;
-          this.saveLocal();
-          this.notify();
+          
+          if (cloudFiles.length > 0) {
+            // Merge cloud files with local files (prevent losing files uploaded before sync)
+            const map = new Map();
+            this.files.forEach(f => map.set(f.id, f));
+            cloudFiles.forEach(f => map.set(f.id, f));
+            this.files = Array.from(map.values());
+            this.saveLocal();
+            this.notify();
+          }
         }, err => console.warn("Firestore files notice:", err));
 
-        // Folders Listener
+        // Folders Cloud Listener
         firebase.firestore().collection("folders").onSnapshot(snapshot => {
           const cloudFolders = [];
           snapshot.forEach(doc => {
             cloudFolders.push({ id: doc.id, ...doc.data() });
           });
-          
-          if (cloudFolders.length === 0) {
-            defaultFolders.forEach(f => {
+
+          if (cloudFolders.length > 0) {
+            // If Cloud has folders, merge with local state
+            const map = new Map();
+            this.folders.forEach(f => map.set(f.id, f));
+            cloudFolders.forEach(f => map.set(f.id, f));
+            this.folders = Array.from(map.values());
+            this.saveLocal();
+            this.notify();
+          } else if (!this.hasInitializedCloud && this.folders.length > 0) {
+            // Seed local folders to Cloud Firestore if Cloud is completely empty for the first time
+            this.folders.forEach(f => {
               firebase.firestore().collection("folders").doc(f.id).set(f).catch(e => {});
             });
-            this.folders = defaultFolders;
-          } else {
-            this.folders = cloudFolders;
           }
 
-          this.saveLocal();
-          this.notify();
+          this.hasInitializedCloud = true;
         }, err => console.warn("Firestore folders notice:", err));
       } catch (e) {}
     }
@@ -119,7 +130,7 @@ class StorageService {
   }
 
   async addFile(fileObj, category = 'personal', folderId = null, docType = 'Hợp đồng cấp nước', statusTag = '🟢 Đã ban hành') {
-    const currentUser = (window.authManager && window.authManager.getCurrentUser()) || { name: "Client User", uid: "user_client" };
+    const currentUser = (window.authManager && window.authManager.getCurrentUser()) || { name: "Lê Tuấn Anh", uid: "admin_letuananh18" };
     const isAdmin = window.authManager && window.authManager.isAdmin();
 
     if (category === 'department' && !isAdmin) {
@@ -167,10 +178,7 @@ class StorageService {
         newFile.dataUrl = e.target.result;
         this.saveLocal();
         if (typeof firebase !== 'undefined' && firebase.firestore) {
-          firebase.firestore().collection("files").doc(newFile.id).set({
-            ...newFile,
-            url: "#"
-          }).catch(err=>{});
+          firebase.firestore().collection("files").doc(newFile.id).set(newFile).catch(err=>{});
         }
         this.notify();
       };
@@ -192,12 +200,10 @@ class StorageService {
     this.saveLocal();
     this.notify();
 
+    // Direct Firestore Save
     if (typeof firebase !== 'undefined' && firebase.firestore) {
       try {
-        await firebase.firestore().collection("files").doc(newFile.id).set({
-          ...newFile,
-          url: "#"
-        });
+        await firebase.firestore().collection("files").doc(newFile.id).set(newFile);
       } catch (err) {
         console.warn("Firestore upload notice:", err);
       }
