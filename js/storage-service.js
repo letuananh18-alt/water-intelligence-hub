@@ -222,18 +222,15 @@ class StorageService {
     localStorage.setItem('thuduc_water_folders', JSON.stringify(this.folders));
   }
 
-  // STRICT PRIVACY: Personal files are STRICTLY filtered by uploader UID/Name/Email only!
+  // STRICTEST PRIVACY: Personal files are visible ONLY if f.uploaderUid STRICTLY matches user.uid!
   getFiles(category = 'all', searchQuery = '', typeFilter = 'all', folderId = null, docTypeFilter = 'all') {
     let list = [...this.files];
     const user = window.authManager ? window.authManager.getCurrentUser() : null;
 
     if (category === 'personal') {
-      if (!user) return [];
-      // ABSOLUTE PRIVACY: Strictly ONLY the file owner can see their personal files!
-      list = list.filter(f => f.category === 'personal' && (
-        f.uploaderUid === user.uid ||
-        (f.uploadedBy && (f.uploadedBy === user.name || f.uploadedBy === user.email))
-      ));
+      if (!user || !user.uid) return [];
+      // STRICTEST UID ISOLATION: A personal file is visible ONLY if f.uploaderUid EXACTLY matches user.uid!
+      list = list.filter(f => f.category === 'personal' && f.uploaderUid && f.uploaderUid === user.uid);
       if (folderId) {
         list = list.filter(f => f.folderId === folderId);
       }
