@@ -360,9 +360,11 @@ class AppController {
       return;
     }
 
-    tbody.innerHTML = files.map(file => `
+    tbody.innerHTML = files.map(file => {
+      const isChecked = this.selectedFileIds && this.selectedFileIds.has(file.id) ? 'checked' : '';
+      return `
       <tr>
-        <td><input type="checkbox"></td>
+        <td style="text-align: center;"><input type="checkbox" class="file-select-cb personal-file-cb" data-id="${escapeHTML(file.id)}" ${isChecked}></td>
         <td>
           <div class="file-name-cell">
             <span class="file-type-icon type-${escapeHTML(file.type.toLowerCase())}">${escapeHTML(file.type)}</span>
@@ -379,7 +381,7 @@ class AppController {
           </div>
         </td>
       </tr>
-    `).join('');
+    `}).join('');
   }
 
   renderDeptTable() {
@@ -403,7 +405,7 @@ class AppController {
     if (files.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="7" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
+          <td colspan="8" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
             🏢 Thư mục này chưa có văn bản nào. ${isAdmin ? 'Bấm "+ Thêm tài liệu phòng ban" ở trên để đăng tệp vào thư mục này!' : 'Chỉ Admin được phép đăng văn bản cho phòng ban.'}
           </td>
         </tr>
@@ -411,8 +413,11 @@ class AppController {
       return;
     }
 
-    tbody.innerHTML = files.map(file => `
+    tbody.innerHTML = files.map(file => {
+      const isChecked = this.selectedFileIds && this.selectedFileIds.has(file.id) ? 'checked' : '';
+      return `
       <tr>
+        <td style="text-align: center;"><input type="checkbox" class="file-select-cb dept-file-cb" data-id="${escapeHTML(file.id)}" ${isChecked}></td>
         <td>
           <div class="file-name-cell">
             <span class="file-type-icon type-${escapeHTML(file.type.toLowerCase())}">${escapeHTML(file.type)}</span>
@@ -431,7 +436,8 @@ class AppController {
           </div>
         </td>
       </tr>
-    `).join('');
+    `}).join('');
+    this.updateBatchToolbar();
   }
 
   renderDeptFolders() {
@@ -610,11 +616,13 @@ class AppController {
         this.closeModal('folderActionModal');
         this.closeModal('filePreviewModal');
         this.closeModal('uploadMetaModal');
+        this.closeModal('batchEditModal');
       }
 
       if (e.target.id === 'folderActionModal') this.closeModal('folderActionModal');
       if (e.target.id === 'filePreviewModal') this.closeModal('filePreviewModal');
       if (e.target.id === 'uploadMetaModal') this.closeModal('uploadMetaModal');
+      if (e.target.id === 'batchEditModal') this.closeModal('batchEditModal');
     });
 
     document.addEventListener('keydown', (e) => {
@@ -622,6 +630,7 @@ class AppController {
         this.closeModal('folderActionModal');
         this.closeModal('filePreviewModal');
         this.closeModal('uploadMetaModal');
+        this.closeModal('batchEditModal');
       }
     });
   }
@@ -739,7 +748,119 @@ class AppController {
     });
   }
 
+  updateBatchToolbar() {
+    const toolbar = document.getElementById('deptBatchToolbar');
+    const badge = document.getElementById('selectedCountBadge');
+    const count = this.selectedFileIds ? this.selectedFileIds.size : 0;
+
+    if (toolbar) {
+      if (count > 0) {
+        toolbar.style.display = 'flex';
+        if (badge) badge.textContent = `${count} tệp đã chọn`;
+      } else {
+        toolbar.style.display = 'none';
+      }
+    }
+  }
+
   bindTableActions() {
+    // Checkbox multi-select listeners
+    document.addEventListener('change', (e) => {
+      if (!this.selectedFileIds) this.selectedFileIds = new Set();
+
+      if (e.target.classList.contains('file-select-cb')) {
+        const id = e.target.getAttribute('data-id');
+        if (e.target.checked) {
+          this.selectedFileIds.add(id);
+        } else {
+          this.selectedFileIds.delete(id);
+        }
+        this.updateBatchToolbar();
+      }
+
+      if (e.target.id === 'selectAllDeptCheckbox') {
+        const checkboxes = document.querySelectorAll('.dept-file-cb');
+        checkboxes.forEach(cb => {
+          cb.checked = e.target.checked;
+          const id = cb.getAttribute('data-id');
+          if (e.target.checked) {
+            this.selectedFileIds.add(id);
+          } else {
+            this.selectedFileIds.delete(id);
+          }
+        });
+        this.updateBatchToolbar();
+      }
+
+      if (e.target.id === 'selectAllPersonalCheckbox') {
+        const checkboxes = document.querySelectorAll('.personal-file-cb');
+        checkboxes.forEach(cb => {
+          cb.checked = e.target.checked;
+          const id = cb.getAttribute('data-id');
+          if (e.target.checked) {
+            this.selectedFileIds.add(id);
+          } else {
+            this.selectedFileIds.delete(id);
+          }
+        });
+        this.updateBatchToolbar();
+      }
+    });
+
+    document.getElementById('btnCancelBatchSelect')?.addEventListener('click', () => {
+      if (this.selectedFileIds) this.selectedFileIds.clear();
+      document.querySelectorAll('.file-select-cb, #selectAllDeptCheckbox, #selectAllPersonalCheckbox').forEach(cb => cb.checked = false);
+      this.updateBatchToolbar();
+    });
+
+    document.getElementById('btnBatchDelete')?.addEventListener('click', async () => {
+      const count = this.selectedFileIds ? this.selectedFileIds.size : 0;
+      if (count === 0) return;
+      if (confirm(`❓ Bạn có chắc chắn muốn XÓA HÀNG LOẠT ${count} tệp tin đã chọn khỏi CSDL Supabase không?`)) {
+        await window.storageService.deleteFilesBatch(Array.from(this.selectedFileIds));
+        this.selectedFileIds.clear();
+        this.updateBatchToolbar();
+        this.renderCurrentView();
+        alert(`✅ Đã xóa thành công ${count} tệp tin khỏi hệ thống!`);
+      }
+    });
+
+    document.getElementById('btnBatchEditMeta')?.addEventListener('click', () => {
+      const count = this.selectedFileIds ? this.selectedFileIds.size : 0;
+      if (count === 0) {
+        alert("⚠️ Vui lòng tick chọn ít nhất 1 tệp tin bằng ô checkbox để sửa hàng loạt!");
+        return;
+      }
+      const countTxt = document.getElementById('batchEditCountTxt');
+      if (countTxt) countTxt.textContent = `Đang chuẩn bị sửa Phân loại & Trạng thái cho ${count} tệp đã chọn:`;
+      const modal = document.getElementById('batchEditModal');
+      if (modal) modal.style.display = 'flex';
+    });
+
+    document.getElementById('closeBatchEditModalBtn')?.addEventListener('click', () => {
+      this.closeModal('batchEditModal');
+    });
+
+    document.getElementById('btnConfirmBatchEdit')?.addEventListener('click', async () => {
+      const count = this.selectedFileIds ? this.selectedFileIds.size : 0;
+      if (count === 0) return;
+
+      const docType = document.getElementById('batchDocTypeSelect')?.value || null;
+      const statusTag = document.getElementById('batchStatusTagSelect')?.value || null;
+
+      if (!docType && !statusTag) {
+        alert("⚠️ Vui lòng chọn Phân loại mới hoặc Trạng thái mới để cập nhật!");
+        return;
+      }
+
+      await window.storageService.updateFilesDocTypeBatch(Array.from(this.selectedFileIds), docType, statusTag);
+      this.closeModal('batchEditModal');
+      this.selectedFileIds.clear();
+      this.updateBatchToolbar();
+      this.renderCurrentView();
+      alert(`✅ Đã cập nhật Phân loại & Trạng thái thành công cho ${count} tệp đã chọn!`);
+    });
+
     // 1. Nút AI Tóm Tắt 3 Giây trong Preview Modal (Đọc & Tóm tắt Nội dung Thực tế bằng Google Gemini AI)
     document.getElementById('btnAiSummarizeDoc')?.addEventListener('click', async () => {
       if (!this.currentPreviewFileId || !window.storageService || !window.aiAssistant) return;

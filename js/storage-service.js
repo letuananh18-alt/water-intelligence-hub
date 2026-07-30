@@ -520,6 +520,44 @@ class StorageService {
     }
   }
 
+  async deleteFilesBatch(fileIds) {
+    if (!Array.isArray(fileIds) || fileIds.length === 0) return;
+    this.files = this.files.filter(f => !fileIds.includes(f.id));
+    this.saveLocal();
+    this.notify();
+
+    if (window.supabaseClient) {
+      try {
+        await window.supabaseClient.from('files').delete().in('id', fileIds);
+      } catch (e) {
+        console.warn("Batch delete notice:", e);
+      }
+    }
+  }
+
+  async updateFilesDocTypeBatch(fileIds, newDocType, newStatusTag) {
+    if (!Array.isArray(fileIds) || fileIds.length === 0) return;
+    this.files.forEach(f => {
+      if (fileIds.includes(f.id)) {
+        if (newDocType) f.docType = newDocType;
+        if (newStatusTag) f.statusTag = newStatusTag;
+      }
+    });
+    this.saveLocal();
+    this.notify();
+
+    if (window.supabaseClient) {
+      try {
+        const updateObj = {};
+        if (newDocType) updateObj.doc_type = newDocType;
+        if (newStatusTag) updateObj.status_tag = newStatusTag;
+        await window.supabaseClient.from('files').update(updateObj).in('id', fileIds);
+      } catch (e) {
+        console.warn("Batch update notice:", e);
+      }
+    }
+  }
+
   async purgeAllTrash() {
     this.files = this.files.filter(f => f.id.startsWith('f_seed_'));
     this.folders = this.folders.filter(f => f.id.startsWith('fold_kddvkh_'));

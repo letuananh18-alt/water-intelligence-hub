@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/styles.css?v=20260730_v49">
+  <link rel="stylesheet" href="css/styles.css?v=20260730_v51">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- Mammoth.js for Direct Client-side Word (.docx) Document Previewing -->
@@ -364,7 +364,7 @@
               <table class="data-table">
                 <thead>
                   <tr>
-                    <th><input type="checkbox"></th>
+                    <th style="width: 36px; text-align: center;"><input type="checkbox" id="selectAllPersonalCheckbox"></th>
                     <th>Tên</th>
                     <th>Loại</th>
                     <th>Kích thước</th>
@@ -416,6 +416,25 @@
             <div id="deptFoldersGrid" class="folder-grid-compact"></div>
           </div>
 
+          <!-- Floating Batch Operations Toolbar for Multi-select -->
+          <div id="deptBatchToolbar" style="display: none; align-items: center; justify-content: space-between; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 12px 20px; border-radius: 12px; margin-bottom: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+            <div style="font-weight: 600; font-size: 13.5px; display: flex; align-items: center; gap: 10px;">
+              <span id="selectedCountBadge" style="background: var(--accent-blue); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;">0 tệp đã chọn</span>
+              <span>Thao tác chọn nhiều tệp:</span>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <button id="btnBatchEditMeta" class="btn-primary" style="padding: 7px 16px; font-size: 12.5px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); width: auto;">
+                ✏️ Sửa Phân loại / Trạng thái
+              </button>
+              <button id="btnBatchDelete" class="table-btn table-btn-delete" style="padding: 7px 16px; font-size: 12.5px; width: auto; background: #ef4444; color: white;">
+                🗑️ Xóa tệp đã chọn
+              </button>
+              <button id="btnCancelBatchSelect" style="background: transparent; color: #94a3b8; border: none; font-size: 12.5px; cursor: pointer; padding: 4px 8px; font-weight: 600;">
+                ✖ Hủy chọn
+              </button>
+            </div>
+          </div>
+
           <div class="table-card" style="display: none;">
             <div class="table-header-bar" style="flex-wrap: wrap; gap: 12px;">
               <h3 class="card-title" id="deptTableTitle">Văn bản & Tài liệu Phòng Kinh doanh & DVKH</h3>
@@ -443,6 +462,7 @@
               <table class="data-table">
                 <thead>
                   <tr>
+                    <th style="width: 36px; text-align: center;"><input type="checkbox" id="selectAllDeptCheckbox"></th>
                     <th>Tên văn bản</th>
                     <th>Phân loại KDDVKH</th>
                     <th>Trạng thái & Độ khẩn</th>
@@ -454,7 +474,7 @@
                 </thead>
                 <tbody id="deptFilesTableBody">
                   <tr>
-                    <td colspan="7" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
+                    <td colspan="8" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
                       🏢 Thư mục này chưa có văn bản nào. Bấm "+ Thêm tài liệu phòng ban" ở trên để đăng tệp!
                     </td>
                   </tr>
@@ -559,7 +579,7 @@
                     <td>waterain8n@gmail.com</td>
                     <td>Ban Quản Trị - Phòng KDDVKH</td>
                     <td><span class="badge-tag type-pdf">ADMIN</span></td>
-                    <td>30/07/2026 22:26</td>
+                    <td>30/07/2026 22:31</td>
                   </tr>
                 </tbody>
               </table>
@@ -696,6 +716,46 @@
     </div>
   </div>
 
+  <!-- BATCH EDIT CLASSIFICATION MODAL -->
+  <div id="batchEditModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">✏️ Sửa Hàng Loạt Phân Loại & Trạng Thái</h3>
+        <i data-lucide="x" class="close-btn" id="closeBatchEditModalBtn"></i>
+      </div>
+      <div style="padding: 10px 0;">
+        <p style="font-size: 13px; color: var(--slate-600); margin-bottom: 14px;" id="batchEditCountTxt">Đang áp dụng thay đổi cho các tệp đã chọn...</p>
+
+        <div style="margin-bottom: 14px;">
+          <label class="form-label">Chọn Phân loại văn bản mới:</label>
+          <select id="batchDocTypeSelect" class="form-input" style="padding: 10px;">
+            <option value="">-- Giữ nguyên phân loại cũ --</option>
+            <option value="Hợp đồng cấp nước">📝 Hợp đồng cấp nước</option>
+            <option value="Biểu giá dịch vụ">💰 Biểu giá dịch vụ</option>
+            <option value="Quy trình CSKH">📋 Quy trình CSKH</option>
+            <option value="Văn bản chỉ đạo">🏛️ Văn bản chỉ đạo</option>
+            <option value="Biên bản sự cố">⚠️ Biên bản sự cố</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label class="form-label">Gắn nhãn độ khẩn & bảo mật mới:</label>
+          <select id="batchStatusTagSelect" class="form-input" style="padding: 10px;">
+            <option value="">-- Giữ nguyên nhãn cũ --</option>
+            <option value="🟢 Đã ban hành">🟢 Đã ban hành (Dùng chung)</option>
+            <option value="🔴 Khẩn">🔴 Khẩn (Cần xử lý ngay)</option>
+            <option value="🟡 Chờ duyệt">🟡 Chờ duyệt (Dự thảo)</option>
+            <option value="🔒 Mật">🔒 Mật (Nội bộ Admin)</option>
+          </select>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button id="btnConfirmBatchEdit" class="btn-primary" style="padding: 10px 20px; width: auto;">Lưu thay đổi hàng loạt</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- FOLDER ACTION MODAL -->
   <div id="folderActionModal" class="modal-backdrop" style="display: none;">
     <div class="modal-content">
@@ -719,12 +779,12 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Application Logic with Supabase Backend -->
-  <script src="js/supabase-config.js?v=20260730_v49"></script>
-  <script src="js/tech-bg.js?v=20260730_v49"></script>
-  <script src="js/auth.js?v=20260730_v49"></script>
-  <script src="js/storage-service.js?v=20260730_v49"></script>
-  <script src="js/chat-service.js?v=20260730_v49"></script>
-  <script src="js/ai-assistant.js?v=20260730_v49"></script>
-  <script src="js/app.js?v=20260730_v49"></script>
+  <script src="js/supabase-config.js?v=20260730_v51"></script>
+  <script src="js/tech-bg.js?v=20260730_v51"></script>
+  <script src="js/auth.js?v=20260730_v51"></script>
+  <script src="js/storage-service.js?v=20260730_v51"></script>
+  <script src="js/chat-service.js?v=20260730_v51"></script>
+  <script src="js/ai-assistant.js?v=20260730_v51"></script>
+  <script src="js/app.js?v=20260730_v51"></script>
 </body>
 </html>
