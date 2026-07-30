@@ -628,12 +628,14 @@ class AppController {
         this.closeModal('filePreviewModal');
         this.closeModal('uploadMetaModal');
         this.closeModal('batchEditModal');
+        this.closeModal('aiDocAnalyzerModal');
       }
 
       if (e.target.id === 'folderActionModal') this.closeModal('folderActionModal');
       if (e.target.id === 'filePreviewModal') this.closeModal('filePreviewModal');
       if (e.target.id === 'uploadMetaModal') this.closeModal('uploadMetaModal');
       if (e.target.id === 'batchEditModal') this.closeModal('batchEditModal');
+      if (e.target.id === 'aiDocAnalyzerModal') this.closeModal('aiDocAnalyzerModal');
     });
 
     document.addEventListener('keydown', (e) => {
@@ -642,6 +644,7 @@ class AppController {
         this.closeModal('filePreviewModal');
         this.closeModal('uploadMetaModal');
         this.closeModal('batchEditModal');
+        this.closeModal('aiDocAnalyzerModal');
       }
     });
   }
@@ -872,53 +875,40 @@ class AppController {
       alert(`✅ Đã cập nhật Phân loại & Trạng thái thành công cho ${count} tệp đã chọn!`);
     });
 
-    // 1. Nút AI Tóm Tắt 3 Giây trong Preview Modal (Đọc & Tóm tắt Nội dung Thực tế bằng Google Gemini AI)
+    // Nút AI Tóm Tắt 3 Giây - Kết nối Module AI Phân tích Độc lập (Không chạm đến Storage/DB)
     document.getElementById('btnAiSummarizeDoc')?.addEventListener('click', async () => {
-      if (!this.currentPreviewFileId || !window.storageService || !window.aiAssistant) return;
+      if (!this.currentPreviewFileId || !window.storageService || !window.aiAnalyzerModule) return;
       const file = window.storageService.files.find(f => f.id === this.currentPreviewFileId);
-      const docViewer = document.getElementById('docViewerContainer');
+      const rawFile = window.storageService.getRawFile(this.currentPreviewFileId);
       const btn = document.getElementById('btnAiSummarizeDoc');
-      
-      if (file && docViewer) {
+
+      const modal = document.getElementById('aiDocAnalyzerModal');
+      const titleEl = document.getElementById('aiAnalyzerModalTitle');
+      const modeEl = document.getElementById('aiAnalyzerStatusMode');
+      const bodyEl = document.getElementById('aiAnalyzerResultBody');
+
+      if (file && modal && bodyEl) {
         const originalBtnHtml = btn ? btn.innerHTML : '';
         if (btn) {
           btn.disabled = true;
-          btn.innerHTML = `<span style="font-size: 12px; color: white;">⌛ Gemini AI đang đọc file...</span>`;
+          btn.innerHTML = `<span style="font-size: 12px; color: white;">⌛ AI đang đọc file...</span>`;
         }
 
-        const extractedText = (docViewer.innerText || '').trim();
-        const summary = await window.aiAssistant.summarizeRealContent(file, extractedText, null);
+        if (titleEl) titleEl.textContent = `🤖 Phân tích AI Độc lập: ${file.name}`;
+        if (modeEl) modeEl.textContent = `⌛ PDF.js / Gemini Engine đang trích xuất chữ thực tế...`;
+        if (bodyEl) bodyEl.innerHTML = `<div style="text-align: center; padding: 30px; color: var(--slate-500);">⌛ Mắt thần AI đang giải mã từng trang tài liệu PDF / Word...</div>`;
+        modal.style.display = 'flex';
+
+        const result = await window.aiAnalyzerModule.analyzeDocument(file, rawFile);
 
         if (btn) {
           btn.disabled = false;
           btn.innerHTML = originalBtnHtml;
         }
 
-        if (summary) {
-          const oldBox = docViewer.querySelector('.ai-summary-box');
-          if (oldBox) oldBox.remove();
-
-          const summaryHtml = `
-            <div class="ai-summary-box">
-              <div class="ai-summary-header">
-                <i data-lucide="bot" style="width: 20px; height: 20px;"></i>
-                <span>🤖 ${escapeHTML(summary.title)}</span>
-              </div>
-              <div class="ai-summary-purpose">${summary.purpose}</div>
-              
-              <div class="ai-summary-section-title">📌 Các nội dung & Điều khoản cốt lõi:</div>
-              <ul class="ai-summary-list">
-                ${summary.highlights.map(h => `<li>${h}</li>`).join('')}
-              </ul>
-
-              <div class="ai-summary-section-title">⚡ Hành động & Kết luận thực hiện:</div>
-              <ul class="ai-summary-list">
-                ${summary.actions.map(a => `<li>${a}</li>`).join('')}
-              </ul>
-            </div>
-          `;
-          docViewer.innerHTML = summaryHtml + docViewer.innerHTML;
-          this.refreshLucideIcons();
+        if (result) {
+          if (modeEl) modeEl.textContent = result.modeText || `⚡ Trích xuất hoàn tất.`;
+          if (bodyEl) bodyEl.innerHTML = result.contentHtml;
         }
       }
     });

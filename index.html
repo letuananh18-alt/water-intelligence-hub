@@ -11,9 +11,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/styles.css?v=20260730_v56">
+  <link rel="stylesheet" href="css/styles.css?v=20260730_v57">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- PDF.js for 100% Real Text PDF Document Extracting -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <!-- Mammoth.js for Direct Client-side Word (.docx) Document Previewing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 </head>
@@ -579,7 +581,7 @@
                     <td>waterain8n@gmail.com</td>
                     <td>Ban Quản Trị - Phòng KDDVKH</td>
                     <td><span class="badge-tag type-pdf">ADMIN</span></td>
-                    <td>30/07/2026 22:54</td>
+                    <td>30/07/2026 23:04</td>
                   </tr>
                 </tbody>
               </table>
@@ -675,6 +677,24 @@
             <i data-lucide="download" style="width: 16px; height: 16px;"></i>
             <span>Tải tệp này về máy</span>
           </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STANDALONE ISOLATED AI DOCUMENT ANALYZER MODAL -->
+  <div id="aiDocAnalyzerModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content" style="max-width: 680px; width: 92%; border-radius: 16px;">
+      <div class="modal-header">
+        <h3 id="aiAnalyzerModalTitle" class="modal-title" style="color: var(--accent-blue);">🤖 Module AI Tóm Tắt & Phân Tích Nội Dung</h3>
+        <i data-lucide="x" class="close-btn" id="closeAiAnalyzerModalBtn"></i>
+      </div>
+      <div style="padding: 14px 0;">
+        <div id="aiAnalyzerStatusMode" style="font-size: 12px; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 8px 14px; border-radius: 8px; margin-bottom: 14px;">
+          ⌛ Đang trích xuất nội dung văn bản thực tế từ tệp...
+        </div>
+        <div id="aiAnalyzerResultBody" style="background: white; border: 1px solid var(--slate-200); padding: 18px; border-radius: 12px; max-height: 440px; overflow-y: auto;">
+          <!-- Dynamically populated by ai-analyzer-module.js -->
         </div>
       </div>
     </div>
@@ -779,12 +799,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Application Logic with Supabase Backend -->
-  <script src="js/supabase-config.js?v=20260730_v56"></script>
-  <script src="js/tech-bg.js?v=20260730_v56"></script>
-  <script src="js/auth.js?v=20260730_v56"></script>
-  <script src="js/storage-service.js?v=20260730_v56"></script>
-  <script src="js/chat-service.js?v=20260730_v56"></script>
-  <script src="js/ai-assistant.js?v=20260730_v56"></script>
-  <script src="js/app.js?v=20260730_v56"></script>
+  <script src="js/supabase-config.js?v=20260730_v57"></script>
+  <script src="js/tech-bg.js?v=20260730_v57"></script>
+  <script src="js/auth.js?v=20260730_v57"></script>
+  <script src="js/storage-service.js?v=20260730_v57"></script>
+  <script src="js/chat-service.js?v=20260730_v57"></script>
+  <script src="js/ai-assistant.js?v=20260730_v57"></script>
+  <script src="js/ai-analyzer-module.js?v=20260730_v57"></script>
+  <script src="js/app.js?v=20260730_v57"></script>
 </body>
 </html>
