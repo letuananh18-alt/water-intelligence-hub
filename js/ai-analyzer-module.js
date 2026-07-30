@@ -1,12 +1,13 @@
 // ==========================================================================
-// STANDALONE AI DOCUMENT ANALYZER & REAL TEXT OCR/PDF.JS READER MODULE
+// CHATGPT & GEMINI DUAL AI GATEWAY MODULE (OPENAI REST API & GEMINI VISION)
+// Acts as a direct Web App Gateway - Dispatches uploaded file payload to OpenAI ChatGPT/Gemini
 // 100% Isolated Module - Zero impact on Uploads, Storage, or Database Logic
-// Handles Vector Text PDFs, Scanned Image PDFs, and DOCX Files Flawlessly
 // ==========================================================================
 
 class AiAnalyzerModule {
   constructor() {
     this.geminiApiKey = localStorage.getItem('gemini_api_key') || '';
+    this.openaiApiKey = localStorage.getItem('openai_api_key') || '';
     this.pdfjsLoaded = false;
     this.initPdfJs();
   }
@@ -18,61 +19,73 @@ class AiAnalyzerModule {
     }
   }
 
-  // 1. EXTRACT REAL VECTOR TEXT FROM PDF FILE BLOB USING PDF.JS
-  async extractTextFromPdfBlob(blobOrUrl) {
+  setOpenAiKey(key) {
+    this.openaiApiKey = (key || '').trim();
+    if (this.openaiApiKey) {
+      localStorage.setItem('openai_api_key', this.openaiApiKey);
+    } else {
+      localStorage.removeItem('openai_api_key');
+    }
+  }
+
+  getOpenAiKey() {
+    return this.openaiApiKey || localStorage.getItem('openai_api_key') || '';
+  }
+
+  // 1. DIRECT CHATGPT OPENAI API GATEWAY DISPATCHER (https://api.openai.com/v1/chat/completions)
+  async queryOpenAiGptGateway(promptText, base64Image = null) {
+    const key = this.getOpenAiKey();
+    if (!key) return null;
+
     try {
-      if (!window.pdfjsLib) return "";
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-      let arrayBuffer;
-      if (typeof blobOrUrl === 'string' && blobOrUrl.startsWith('http')) {
-        const resp = await fetch(blobOrUrl);
-        arrayBuffer = await resp.arrayBuffer();
-      } else if (blobOrUrl instanceof Blob) {
-        arrayBuffer = await blobOrUrl.arrayBuffer();
-      } else {
-        return "";
-      }
-
-      const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      let fullText = "";
-      let pageCount = pdf.numPages || 1;
-
-      for (let i = 1; i <= Math.min(pageCount, 15); i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items.map(item => item.str).join(' ').trim();
-        if (pageText) {
-          fullText += pageText + " ";
+      const messages = [
+        {
+          role: "system",
+          content: "Bạn là Trợ lý AI ChatGPT Engine tích hợp trên Cổng Web App Thư viện Điện tử - Công ty Cổ phần Cấp nước Thủ Đức (Thủ Đức Water). Hãy phân tích dữ liệu tệp được gửi đến và trả về bản tóm tắt tiếng Việt cực kỳ chi tiết, chuyên nghiệp, chính xác theo cấu trúc HTML định dạng đẹp mắt."
         }
-      }
+      ];
 
-      return { text: fullText.trim(), numPages: pageCount };
-    } catch (e) {
-      console.warn("PDF.js text extraction notice:", e);
-      return { text: "", numPages: 1 };
-    }
-  }
-
-  // 2. EXTRACT REAL TEXT FROM WORD (.DOCX) USING MAMMOTH.JS
-  async extractTextFromDocxBlob(blobOrArrayBuffer) {
-    try {
-      if (!window.mammoth) return "";
-      let arrayBuffer;
-      if (blobOrArrayBuffer instanceof Blob) {
-        arrayBuffer = await blobOrArrayBuffer.arrayBuffer();
+      if (base64Image && base64Image.length > 100) {
+        messages.push({
+          role: "user",
+          content: [
+            { type: "text", text: promptText },
+            { type: "image_url", image_url: { url: base64Image.startsWith('data:') ? base64Image : `data:image/jpeg;base64,${base64Image}` } }
+          ]
+        });
       } else {
-        arrayBuffer = blobOrArrayBuffer;
+        messages.push({ role: "user", content: promptText });
       }
-      const result = await window.mammoth.extractRawText({ arrayBuffer: arrayBuffer });
-      return result ? result.value : "";
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${key}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: messages,
+          max_tokens: 1500
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data?.choices?.[0]?.message?.content) {
+          return data.choices[0].message.content;
+        }
+      } else {
+        const errJson = await response.json().catch(() => ({}));
+        console.warn("OpenAI ChatGPT Gateway notice:", errJson);
+      }
     } catch (e) {
-      console.warn("Mammoth DOCX text extraction notice:", e);
-      return "";
+      console.warn("OpenAI ChatGPT Gateway error:", e);
     }
+    return null;
   }
 
-  // 3. CALL GOOGLE GEMINI API FOR ADVANCED MULTIMODAL INFERENCE (WITH OCR VISION SUPPORT)
+  // 2. GOOGLE GEMINI API GATEWAY DISPATCHER
   async queryGeminiAI(promptText, base64Data = null, mimeType = null) {
     const key = localStorage.getItem('gemini_api_key') || this.geminiApiKey;
     if (!key) return null;
@@ -113,7 +126,61 @@ class AiAnalyzerModule {
     return null;
   }
 
-  // 4. MAIN STANDALONE ANALYZER METHOD - INTELLIGENTLY HANDLES VECTOR PDF, SCANNED PDF, AND WORD DOCS
+  // 3. EXTRACT VECTOR TEXT FROM PDF BLOB USING PDF.JS
+  async extractTextFromPdfBlob(blobOrUrl) {
+    try {
+      if (!window.pdfjsLib) return { text: "", numPages: 1 };
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+      let arrayBuffer;
+      if (typeof blobOrUrl === 'string' && blobOrUrl.startsWith('http')) {
+        const resp = await fetch(blobOrUrl);
+        arrayBuffer = await resp.arrayBuffer();
+      } else if (blobOrUrl instanceof Blob) {
+        arrayBuffer = await blobOrUrl.arrayBuffer();
+      } else {
+        return { text: "", numPages: 1 };
+      }
+
+      const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = "";
+      let pageCount = pdf.numPages || 1;
+
+      for (let i = 1; i <= Math.min(pageCount, 15); i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map(item => item.str).join(' ').trim();
+        if (pageText) {
+          fullText += pageText + " ";
+        }
+      }
+
+      return { text: fullText.trim(), numPages: pageCount };
+    } catch (e) {
+      console.warn("PDF.js text extraction notice:", e);
+      return { text: "", numPages: 1 };
+    }
+  }
+
+  // 4. EXTRACT TEXT FROM WORD (.DOCX) USING MAMMOTH.JS
+  async extractTextFromDocxBlob(blobOrArrayBuffer) {
+    try {
+      if (!window.mammoth) return "";
+      let arrayBuffer;
+      if (blobOrArrayBuffer instanceof Blob) {
+        arrayBuffer = await blobOrArrayBuffer.arrayBuffer();
+      } else {
+        arrayBuffer = blobOrArrayBuffer;
+      }
+      const result = await window.mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+      return result ? result.value : "";
+    } catch (e) {
+      console.warn("Mammoth DOCX text extraction notice:", e);
+      return "";
+    }
+  }
+
+  // 5. MAIN GATEWAY ANALYZER - DIRECT DUAL DISPATCH TO CHATGPT OR GEMINI API
   async analyzeDocument(fileObj, rawBlob = null) {
     if (!fileObj) return null;
 
@@ -132,84 +199,76 @@ class AiAnalyzerModule {
     }
 
     const cleanText = (extractedText || "").replace(/\s+/g, ' ').trim();
-    // Pure text length (excluding page markup tags)
     const pureTextLength = cleanText.length;
     const isScannedPdf = (ext === 'pdf' && pureTextLength < 30);
 
-    // B. Attempt Google Gemini Multimodal AI OCR Vision if Key exists
-    const key = localStorage.getItem('gemini_api_key') || this.geminiApiKey;
-    if (key) {
-      let prompt = "";
-      if (isScannedPdf) {
-        prompt = `Bạn là chuyên gia OCR phân tích tài liệu scan của Công ty Cổ phần Cấp nước Thủ Đức.\nTài liệu "${fileName}" gồm ${totalPdfPages} trang là tệp ảnh scan chụp từ giấy.\nHãy nhận diện và đọc chữ trong ảnh scan để tóm tắt các thông tin chính:\n1. TỔNG QUAN VĂN BẢN (Tên tài liệu, các bên liên quan, ngày tháng).\n2. CÁC NỘI DUNG & ĐIỀU KHOẢN CHÍNH TRONG ẢNH SCAN.\n3. KẾT LUẬN & HÀNH ĐỘNG THỰC HIỆN.`;
-      } else {
-        prompt = `Bạn là Trợ lý AI Khai thác Tri thức của Công ty Cổ phần Cấp nước Thủ Đức.\nHãy đọc và phân tích nội dung văn bản dưới đây từ tệp "${fileName}":\n\nNỘI DUNG VĂN BẢN TRÍCH XUẤT:\n"""${cleanText.substring(0, 8000)}"""\n\nHãy tổng hợp bản tóm tắt tiếng Việt cực kỳ chi tiết bao gồm:\n1. TỔNG QUAN VĂN BẢN (Mục đích, thời gian, địa điểm, các bên liên quan nếu có).\n2. CÁC ĐIỀU KHOẢN & QUYẾT ĐỊNH CỐT LÕI (Liệt kê 3-4 mục chính).\n3. HÀNH ĐỘNG & TIẾN ĐỘ THỰC HIỆN.`;
-      }
+    const openAiKey = this.getOpenAiKey();
+    const geminiKey = localStorage.getItem('gemini_api_key') || this.geminiApiKey;
 
-      const aiResponse = await this.queryGeminiAI(prompt, fileObj.dataUrl, ext === 'pdf' ? 'application/pdf' : 'text/plain');
-      if (aiResponse) {
+    const prompt = `Đây là dữ liệu văn bản từ tệp "${fileName}" (Thuộc Cổng Web App Thư viện Điện tử KDDVKH):\n\nNỘI DUNG VĂN BẢN TRÍCH XUẤT:\n"""${cleanText.substring(0, 8000) || `Tệp scan PDF gồm ${totalPdfPages} trang ảnh chụp.`}"""\n\nHãy tổng hợp bản tóm tắt tiếng Việt cực kỳ chi tiết bao gồm:\n1. TỔNG QUAN VĂN BẢN (Mục đích, thời gian, địa điểm, các bên liên quan nếu có).\n2. CÁC ĐIỀU KHOẢN & QUYẾT ĐỊNH CỐT LÕI (Liệt kê 3-4 mục chính).\n3. HÀNH ĐỘNG & TIẾN ĐỘ THỰC HIỆN.`;
+
+    // B1. DISPATCH TO OPENAI CHATGPT API GATEWAY IF OPENAI KEY IS SET
+    if (openAiKey) {
+      const gptResponse = await this.queryOpenAiGptGateway(prompt, fileObj.dataUrl);
+      if (gptResponse) {
         return {
-          title: `🤖 Báo cáo Tóm tắt Google Gemini AI: ${fileName}`,
+          title: `🤖 Báo cáo Tóm tắt OpenAI ChatGPT Gateway: ${fileName}`,
           isRealOcr: true,
-          modeText: isScannedPdf ? `📸 Gemini Vision AI đã đọc thành công ảnh scan ${totalPdfPages} trang của tệp.` : `⚡ Gemini AI đã phân tích ${pureTextLength} ký tự văn bản thực tế.`,
-          contentHtml: aiResponse.replace(/\n/g, '<br>')
+          modeText: `⚡ Đã chuyển trực tiếp qua Cổng Gateway OpenAI ChatGPT (GPT-4o Engine) xử lý.`,
+          contentHtml: gptResponse.replace(/\n/g, '<br>')
         };
       }
     }
 
-    // C. Offline Intelligent Analytics Engine (Clean & Highly Professional Formatting)
-    let summaryTitle = `📋 Báo cáo Phân tích Tri thức Tài liệu: ${fileName}`;
-    let overviewText = "";
-    let highlights = [];
-    let actions = [];
-
-    if (!isScannedPdf && pureTextLength > 30) {
-      // Vector PDF or Word Document with readable text
-      const sentences = cleanText.split(/[.!?\n]/).map(s => s.trim()).filter(s => s.length > 15);
-
-      overviewText = `Văn bản **"${fileName}"** dạng tệp kỹ thuật số (đã bóc tách thành công **${pureTextLength} ký tự chữ thực tế**):`;
-      
-      highlights = sentences.slice(0, 4).map((s, idx) => `Nội dung ${idx + 1}: ${s}`);
-      actions = [
-        `Trích xuất thành công văn bản gõ máy vector từ tệp gốc.`,
-        `Cán bộ chuyên trách xem xét thông tin chi tiết và lưu trữ theo quy trình CSKH.`
-      ];
-    } else {
-      // Scanned Image PDF (Tệp scan chụp từ giấy)
-      overviewText = `Tài liệu **"${fileName}"** dạng **📷 Tệp Scan / Ảnh chụp từ máy quét** (Gồm **${totalPdfPages} trang ảnh** quét từ tài liệu giấy gốc):`;
-      
-      highlights = [
-        `Định dạng tệp: PDF Scan (Chứa hình ảnh quét nguyên bản từ văn bản giấy).`,
-        `Phân loại nghiệp vụ: ${fileObj.docType || 'Hợp đồng & Văn bản CSKH'}.`,
-        `Trạng thái lưu trữ: ${fileObj.statusTag || '🟢 Đã ban hành'} (Được phân loại và quản lý an toàn trên Supabase Cloud).`,
-        `Thông tin đăng tải: Ban hành ngày ${fileObj.uploadDate} bởi ${fileObj.uploadedBy || 'Lê Tuấn Anh (Admin)'}.`
-      ];
-
-      actions = [
-        `Người dùng có thể bấm nút "Tải tệp này về máy" hoặc xem trực tiếp hình ảnh scan trên cửa sổ xem thử.`,
-        `💡 Mẹo: Nhập Gemini API Key tại phần Cài đặt để kích hoạt Mắt thần Gemini Vision AI tự động OCR đọc toàn bộ nét chữ trong ảnh scan!`
-      ];
+    // B2. DISPATCH TO GOOGLE GEMINI API GATEWAY IF GEMINI KEY IS SET
+    if (geminiKey) {
+      const geminiResponse = await this.queryGeminiAI(prompt, fileObj.dataUrl, ext === 'pdf' ? 'application/pdf' : 'text/plain');
+      if (geminiResponse) {
+        return {
+          title: `🤖 Báo cáo Tóm tắt Google Gemini AI Gateway: ${fileName}`,
+          isRealOcr: true,
+          modeText: `⚡ Đã chuyển trực tiếp qua Cổng Gateway Google Gemini AI xử lý.`,
+          contentHtml: geminiResponse.replace(/\n/g, '<br>')
+        };
+      }
     }
 
+    // B3. IF NO API KEY IS SET - PROVIDE INTERACTIVE KEY SETTING GATEWAY BOX IN MODAL
+    let summaryTitle = `🌐 Cổng Kết Nối AI Gateway: ${fileName}`;
+    let overviewText = `Tệp **"${fileName}"** (${isScannedPdf ? `${totalPdfPages} trang ảnh scan` : `${pureTextLength} ký tự văn bản`}) đã sẵn sàng để gửi trực tiếp cho Bot AI xử lý.`;
+    
     const formattedHtml = `
-      <div style="font-weight: 700; color: #0284c7; margin-bottom: 10px; font-size: 14px;">📌 Tổng quan tài liệu:</div>
+      <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 18px; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <div style="font-weight: 800; font-size: 15px; color: #38bdf8; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+          <span>🔑 CỔNG KẾT NỐI CHATGPT & GEMINI AI GATEWAY</span>
+        </div>
+        <p style="font-size: 12.5px; color: #94a3b8; margin-bottom: 12px; line-height: 1.5;">
+          Web App của anh hoạt động như 1 Cổng dữ liệu trung gian (Gateway). Hãy dán mã **OpenAI ChatGPT API Key (sk-...)** hoặc **Google Gemini API Key (AIzaSy...)** bên dưới để gửi dữ liệu trực tiếp cho ChatGPT xử lý và trả kết quả về giao diện Web App:
+        </p>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <input type="password" id="modalGptKeyInput" placeholder="Nhập OpenAI Key (sk-...) hoặc Gemini Key..." class="form-input" style="flex: 1; min-width: 260px; padding: 9px 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; font-size: 13px;">
+          <button id="btnSaveModalGptKey" class="btn-primary" style="padding: 9px 18px; font-size: 13px; width: auto; background: #0284c7;">
+            ⚡ Lưu Key & Gửi ChatGPT
+          </button>
+        </div>
+        <div id="modalGptKeyStatus" style="font-size: 12px; margin-top: 8px; font-weight: 600; color: #4ade80;"></div>
+      </div>
+
+      <div style="font-weight: 700; color: #0284c7; margin-bottom: 10px; font-size: 14px;">📌 Tổng quan tài liệu nhận diện từ Cổng Gateway:</div>
       <p style="margin-bottom: 14px; font-size: 13px; color: var(--slate-700); line-height: 1.6;">${overviewText}</p>
       
-      <div style="font-weight: 700; color: #0284c7; margin-bottom: 8px; font-size: 14px;">📌 Thông tin & Nội dung nhận diện:</div>
+      <div style="font-weight: 700; color: #0284c7; margin-bottom: 8px; font-size: 14px;">📌 Thông tin chỉ mục nghiệp vụ:</div>
       <ul style="margin-bottom: 16px; padding-left: 20px; font-size: 13px; color: var(--slate-700); line-height: 1.6;">
-        ${highlights.map(h => `<li style="margin-bottom: 6px;">${h}</li>`).join('')}
-      </ul>
-
-      <div style="font-weight: 700; color: #0284c7; margin-bottom: 8px; font-size: 14px;">⚡ Khuyến nghị & Thao tác tiếp theo:</div>
-      <ul style="padding-left: 20px; font-size: 13px; color: var(--slate-700); line-height: 1.6;">
-        ${actions.map(a => `<li style="margin-bottom: 6px;">${a}</li>`).join('')}
+        <li style="margin-bottom: 6px;">Phân loại: ${fileObj.docType || 'Hợp đồng & Quy trình CSKH'}.</li>
+        <li style="margin-bottom: 6px;">Định dạng: ${ext.toUpperCase()} • Dung lượng ${fileObj.sizeFormatted}.</li>
+        <li style="margin-bottom: 6px;">Ban hành: Ngày ${fileObj.uploadDate} bởi ${fileObj.uploadedBy || 'Lê Tuấn Anh (Admin)'}.</li>
       </ul>
     `;
 
     return {
       title: summaryTitle,
-      isRealOcr: !isScannedPdf,
-      modeText: isScannedPdf ? `📸 Nhận diện Tệp PDF Scan / Ảnh chụp (${totalPdfPages} trang)` : `🔍 Đã phân tích văn bản kỹ thuật số.`,
+      isRealOcr: false,
+      modeText: `🌐 Cổng Gateway Web App: Sẵn sàng gửi dữ liệu tệp cho ChatGPT / Gemini AI.`,
       contentHtml: formattedHtml
     };
   }

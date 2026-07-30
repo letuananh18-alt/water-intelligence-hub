@@ -913,6 +913,28 @@ class AppController {
       }
     });
 
+    // Event listener cho nút Lưu Key ChatGPT ngay bên trong Modal Gateway
+    document.addEventListener('click', async (e) => {
+      if (e.target.closest('#btnSaveModalGptKey')) {
+        const input = document.getElementById('modalGptKeyInput');
+        const status = document.getElementById('modalGptKeyStatus');
+        if (input && input.value.trim()) {
+          const val = input.value.trim();
+          if (val.startsWith('sk-')) {
+            window.aiAnalyzerModule.setOpenAiKey(val);
+            if (status) status.textContent = '✅ Đã lưu OpenAI ChatGPT Key (sk-...)! Đang gửi tệp cho ChatGPT...';
+          } else {
+            localStorage.setItem('gemini_api_key', val);
+            if (status) status.textContent = '✅ Đã lưu Google Gemini Key! Đang gửi tệp xử lý...';
+          }
+          setTimeout(() => {
+            const btn = document.getElementById('btnAiSummarizeDoc');
+            if (btn) btn.click();
+          }, 600);
+        }
+      }
+    });
+
     document.addEventListener('click', async (e) => {
       const btn = e.target.closest('.preview-btn') || e.target;
       if (btn.classList.contains('delete-btn')) {
