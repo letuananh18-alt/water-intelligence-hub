@@ -1,6 +1,6 @@
 // ==========================================================================
-// CHATGPT & GEMINI DUAL AI GATEWAY MODULE (PURE FLEXIBLE PIPE - ZERO HARDCODED CARDS)
-// Sends Document File / Image Payload directly to ChatGPT & Renders Raw AI Response 100% Dynamic
+// CHATGPT & GEMINI DUAL AI GATEWAY MODULE (LONG & DEEP EXECUTIVE REPORT ENGINE)
+// Sends Document File / Image Payload directly to ChatGPT & Renders Deep Detailed Summaries
 // 100% Isolated Module - Zero impact on Uploads, Storage, or Database Logic
 // ==========================================================================
 
@@ -65,7 +65,7 @@ class AiAnalyzerModule {
     }
   }
 
-  // 2. RENDER RAW CHATGPT RESPONSE DYNAMICALLY (ZERO HARDCODED CARDS - 100% NATURAL MARKDOWN FORMATTING)
+  // 2. RENDER RAW CHATGPT RESPONSE DYNAMICALLY (NATURAL MARKDOWN FORMATTING)
   renderRawGptResponse(markdownText) {
     if (!markdownText) return '';
 
@@ -82,15 +82,21 @@ class AiAnalyzerModule {
       .replace(/\n\n/g, '<br><br>')
       .replace(/\n/g, '<br>');
 
-    return `<div style="font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; font-size: 13.5px; color: #1e293b; line-height: 1.7; background: #ffffff; padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">${formatted}</div>`;
+    return `<div style="font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; font-size: 13.5px; color: #1e293b; line-height: 1.7; background: #ffffff; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">${formatted}</div>`;
   }
 
-  // 3. DIRECT CHATGPT OPENAI VISION API GATEWAY DISPATCHER
+  // 3. DIRECT CHATGPT OPENAI VISION API GATEWAY DISPATCHER (ENFORCES DEEP & LONG SUMMARY)
   async queryOpenAiGptGateway(promptText, base64JpegImage = null) {
     const key = this.getOpenAiKey();
     if (!key) return null;
 
-    const systemPrompt = `Bạn là Trợ lý AI ChatGPT Engine tích hợp trên Cổng Web App Thư viện Điện tử - Công ty Cổ phần Cấp nước Thủ Đức (Thủ Đức Water). Nhiệm vụ duy nhất của bạn là đọc toàn bộ nội dung của file đính kèm (ảnh scan hoặc văn bản) và trả về bản tóm tắt tiếng Việt cực kỳ chi tiết, chuyên nghiệp, chính xác và đầy đủ nhất cho người dùng.`;
+    const systemPrompt = `Bạn là Trợ lý AI Chuyên gia Phân tích Văn bản Nghiệp vụ cao cấp của Công ty Cổ phần Cấp nước Thủ Đức (Thủ Đức Water).
+Nhiệm vụ của bạn là đọc kỹ toàn bộ tệp đính kèm và lập một BẢN BÁO CÁO PHÂN TÍCH TÓM TẮT CỰC KỲ DÀI, CHI TIẾT, TOÀN DIỆN VÀ ĐẦY ĐỦ NHẤT.
+
+YÊU CẦU BẮT BUỘC VỀ NỘI DUNG VÀ ĐỘ DÀI:
+1. Tuyệt đối KHÔNG ĐƯỢC tóm tắt sơ sài, ngắn gọn hay khái quát chung chung.
+2. Hãy bóc tách và trích xuất chi tiết từng tiêu đề, số hiệu văn bản, cơ quan ban hành, địa điểm, ngày tháng năm, tên các bên tham gia, số tiền/biểu giá, chỉ số kỹ thuật và từng điều khoản/nội dung cụ thể có trong tài liệu.
+3. Liệt kê đầy đủ tất cả các ý chính, ý phụ, bối cảnh thực hiện và các bước chỉ đạo triển khai tiếp theo một cách chi tiết nhất.`;
 
     try {
       const messages = [
@@ -119,7 +125,7 @@ class AiAnalyzerModule {
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: messages,
-          max_tokens: 2000
+          max_tokens: 3000
         })
       });
 
@@ -230,7 +236,7 @@ class AiAnalyzerModule {
     }
   }
 
-  // 7. MAIN GATEWAY PIPE - SENDS FILE PAYLOAD TO CHATGPT & RENDERS RAW AI RESPONSE DYNAMICALLY
+  // 7. MAIN GATEWAY PIPE - SENDS FILE PAYLOAD TO CHATGPT & RENDERS FULL DETAILED RESPONSE DYNAMICALLY
   async analyzeDocument(fileObj, rawBlob = null) {
     if (!fileObj) return null;
 
@@ -258,8 +264,8 @@ class AiAnalyzerModule {
     const openAiKey = this.getOpenAiKey();
     const geminiKey = localStorage.getItem('gemini_api_key') || this.geminiApiKey;
 
-    const userPrompt = `Hãy đọc, phân tích và tóm tắt toàn bộ nội dung của tệp đính kèm "${fileName}":\n` +
-      (cleanText ? `Nội dung chữ bóc tách: "${cleanText.substring(0, 8000)}"` : `Đính kèm ảnh chụp sắc nét trang tài liệu scan.`);
+    const userPrompt = `Hãy phân tích và lập một BẢN BÁO CÁO PHÂN TÍCH TÓM TẮT CỰC KỲ DÀI, CHI TIẾT VÀ ĐẦY ĐỦ NHẤT cho tệp "${fileName}":\n` +
+      (cleanText ? `Nội dung chữ bóc tách: "${cleanText.substring(0, 12000)}"` : `Đính kèm ảnh chụp sắc nét trang tài liệu scan.`);
 
     // B1. DISPATCH TO OPENAI CHATGPT VISION API GATEWAY IF OPENAI KEY IS SET
     if (openAiKey) {
@@ -267,7 +273,7 @@ class AiAnalyzerModule {
       if (gptResponse) {
         return {
           title: `🤖 ChatGPT Vision Response: ${fileName}`,
-          modeText: `⚡ Đã nhận phản hồi trực tiếp từ OpenAI ChatGPT (GPT-4o Engine).`,
+          modeText: `⚡ Bản phân tích tóm tắt chuyên sâu từ OpenAI ChatGPT (GPT-4o Engine).`,
           contentHtml: this.renderRawGptResponse(gptResponse)
         };
       }
@@ -279,7 +285,7 @@ class AiAnalyzerModule {
       if (geminiResponse) {
         return {
           title: `🤖 Gemini Vision Response: ${fileName}`,
-          modeText: `⚡ Đã nhận phản hồi trực tiếp từ Google Gemini AI Engine.`,
+          modeText: `⚡ Bản phân tích tóm tắt chuyên sâu từ Google Gemini AI Engine.`,
           contentHtml: this.renderRawGptResponse(geminiResponse)
         };
       }
@@ -294,7 +300,7 @@ class AiAnalyzerModule {
           <span>🔑 CỔNG KẾT NỐI CHATGPT & GEMINI AI GATEWAY</span>
         </div>
         <p style="font-size: 12.5px; color: #94a3b8; margin-bottom: 12px; line-height: 1.5;">
-          Web App đã sẵn sàng truyền file **"${fileName}"** cho ChatGPT. Hãy dán mã **OpenAI ChatGPT API Key (sk-...)** hoặc **Google Gemini API Key (AIzaSy...)** bên dưới để nhận phản hồi tóm tắt từ ChatGPT:
+          Web App đã sẵn sàng truyền file **"${fileName}"** cho ChatGPT. Hãy dán mã **OpenAI ChatGPT API Key (sk-...)** hoặc **Google Gemini API Key (AIzaSy...)** bên dưới để nhận bản tóm tắt chi tiết nhất từ ChatGPT:
         </p>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
           <input type="password" id="modalGptKeyInput" placeholder="Nhập OpenAI Key (sk-...) hoặc Gemini Key..." class="form-input" style="flex: 1; min-width: 260px; padding: 9px 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; font-size: 13px;">
