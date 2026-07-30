@@ -1,6 +1,6 @@
 // ==========================================================================
 // USER AUTHENTICATION & REAL-TIME USER DIRECTORY SYNC (SUPABASE BACKEND)
-// SESSION-ONLY PERSISTENCE (Requires login every time browser is closed)
+// ALWAYS PROMPT ACCOUNT SELECTION ON GOOGLE SIGN-IN & LOGIN
 // Admin Accounts: waterain8n@gmail.com & letuananh18@gmail.com
 // ==========================================================================
 
@@ -216,7 +216,10 @@ class AuthManager {
         const { data, error } = await window.supabaseClient.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo: currentOrigin
+            redirectTo: currentOrigin,
+            queryParams: {
+              prompt: 'select_account'
+            }
           }
         });
         if (error) throw error;
