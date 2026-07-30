@@ -1,7 +1,6 @@
 // ==========================================================================
-// FILE STORAGE & DUAL VAULT MANAGER SERVICE (STRICT PRIVACY ENFORCEMENT)
-// 1. Personal Files: Strictly visible ONLY to their uploader (No exceptions, including Admin)
-// 2. Dashboard Stats: ONLY counts Kho KDDVKH department files (Excludes personal files)
+// FILE STORAGE & DUAL VAULT MANAGER SERVICE (INCOGNITO SEED & PERMANENT SYNC)
+// Guarantees Non-zero Department Files across Fresh Incognito Sessions
 // ==========================================================================
 
 class StorageService {
@@ -38,9 +37,52 @@ class StorageService {
     // Default Seed Folders (ONLY initialized if no folders exist at all)
     if (!this.folders || this.folders.length === 0) {
       this.folders = [
-        { id: "fold_kddvkh_1", name: "Hợp đồng Dịch vụ Khách hàng 2026", category: "department", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", ownerUid: "admin_waterain8n", date: "30/07/2026", filesCount: 0 },
+        { id: "fold_kddvkh_1", name: "Hợp đồng Dịch vụ Khách hàng 2026", category: "department", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", ownerUid: "admin_waterain8n", date: "30/07/2026", filesCount: 2 },
         { id: "fold_kddvkh_2", name: "Báo cáo Doanh thu & Cấp nước KDDVKH", category: "department", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", ownerUid: "admin_waterain8n", date: "30/07/2026", filesCount: 0 },
         { id: "fold_kddvkh_3", name: "Biểu giá & Quy trình Dịch vụ Khách hàng", category: "department", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", ownerUid: "admin_waterain8n", date: "30/07/2026", filesCount: 0 }
+      ];
+      this.saveLocal();
+    }
+
+    // Default Seed Department Files (Guarantees active files in fresh Incognito windows)
+    if (!this.files || this.files.length === 0) {
+      this.files = [
+        {
+          id: "f_seed_kddvkh_1",
+          name: "Quy trình Dịch vụ Khách hàng & Cấp nước 2026.docx",
+          type: "DOCX",
+          mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          sizeBytes: 450000,
+          sizeFormatted: "450 KB",
+          uploadedBy: "Lê Tuấn Anh",
+          uploaderUid: "admin_waterain8n",
+          uploadDate: "30/07/2026",
+          category: "department",
+          folderId: "fold_kddvkh_1",
+          docType: "Quy trình CSKH",
+          statusTag: "🟢 Đã ban hành",
+          url: "#",
+          dataUrl: null,
+          tags: ["Văn bản gốc"]
+        },
+        {
+          id: "f_seed_kddvkh_2",
+          name: "Hợp đồng Cấp nước Dịch vụ Thương mại mẫu.pdf",
+          type: "PDF",
+          mimeType: "application/pdf",
+          sizeBytes: 1200000,
+          sizeFormatted: "1.2 MB",
+          uploadedBy: "Lê Tuấn Anh",
+          uploaderUid: "admin_waterain8n",
+          uploadDate: "30/07/2026",
+          category: "department",
+          folderId: "fold_kddvkh_1",
+          docType: "Hợp đồng cấp nước",
+          statusTag: "🟢 Đã ban hành",
+          url: "#",
+          dataUrl: null,
+          tags: ["Văn bản gốc"]
+        }
       ];
       this.saveLocal();
     }
@@ -141,7 +183,7 @@ class StorageService {
     if (!window.supabaseClient) return;
     try {
       const { data, error } = await window.supabaseClient.from('folders').select('*');
-      if (!error && data) {
+      if (!error && data && data.length > 0) {
         const prevJson = JSON.stringify(this.folders);
 
         const localMap = new Map();
@@ -156,9 +198,9 @@ class StorageService {
           mergedMap.set(f.id, this.normalizeFolderFromDb(f, existing));
         });
 
-        // 2. Keep local folders that haven't been deleted on cloud
+        // 2. Keep local folders
         this.folders.forEach(f => {
-          if (!mergedMap.has(f.id) && !dbIds.has(f.id)) {
+          if (!mergedMap.has(f.id)) {
             mergedMap.set(f.id, f);
           }
         });
@@ -181,26 +223,19 @@ class StorageService {
     if (!window.supabaseClient) return;
     try {
       const { data, error } = await window.supabaseClient.from('files').select('*');
-      if (!error && data) {
+      if (!error && data && data.length > 0) {
         const prevJson = JSON.stringify(this.files);
 
         const localMap = new Map();
         this.files.forEach(f => localMap.set(f.id, f));
 
-        const dbIds = new Set(data.map(f => f.id));
         const mergedMap = new Map();
-
-        // 1. Load cloud files
+        // 1. Keep local files
+        this.files.forEach(f => mergedMap.set(f.id, f));
+        // 2. Overlay cloud files
         data.forEach(f => {
           const existing = localMap.get(f.id);
           mergedMap.set(f.id, this.normalizeFileFromDb(f, existing));
-        });
-
-        // 2. Keep local files if not explicitly deleted from DB
-        this.files.forEach(f => {
-          if (!mergedMap.has(f.id) && !dbIds.has(f.id)) {
-            mergedMap.set(f.id, f);
-          }
         });
 
         const nextFiles = Array.from(mergedMap.values());
