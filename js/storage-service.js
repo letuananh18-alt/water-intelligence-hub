@@ -1,6 +1,7 @@
 // ==========================================================================
-// FILE STORAGE & DUAL VAULT MANAGER SERVICE (ROCK-SOLID PERMANENT PERSISTENCE)
-// Complete Dynamic Prefix-based Storage & DB Deletion
+// FILE STORAGE & DUAL VAULT MANAGER SERVICE (STRICT PRIVACY ENFORCEMENT)
+// 1. Personal Files: Strictly visible ONLY to their uploader (No exceptions, including Admin)
+// 2. Dashboard Stats: ONLY counts Kho KDDVKH department files (Excludes personal files)
 // ==========================================================================
 
 class StorageService {
@@ -221,12 +222,18 @@ class StorageService {
     localStorage.setItem('thuduc_water_folders', JSON.stringify(this.folders));
   }
 
+  // STRICT PRIVACY: Personal files are STRICTLY filtered by uploader UID/Name/Email only!
   getFiles(category = 'all', searchQuery = '', typeFilter = 'all', folderId = null, docTypeFilter = 'all') {
     let list = [...this.files];
+    const user = window.authManager ? window.authManager.getCurrentUser() : null;
 
     if (category === 'personal') {
-      const user = window.authManager ? window.authManager.getCurrentUser() : null;
-      list = list.filter(f => f.category === 'personal' && (user ? (f.uploaderUid === user.uid || f.uploadedBy === user.name || f.uploadedBy === user.email) : true));
+      if (!user) return [];
+      // ABSOLUTE PRIVACY: Strictly ONLY the file owner can see their personal files!
+      list = list.filter(f => f.category === 'personal' && (
+        f.uploaderUid === user.uid ||
+        (f.uploadedBy && (f.uploadedBy === user.name || f.uploadedBy === user.email))
+      ));
       if (folderId) {
         list = list.filter(f => f.folderId === folderId);
       }
@@ -247,7 +254,7 @@ class StorageService {
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      list = list.filter(f => f.name.toLowerCase().includes(q) || f.uploadedBy.toLowerCase().includes(q));
+      list = list.filter(f => f.name.toLowerCase().includes(q) || (f.uploadedBy && f.uploadedBy.toLowerCase().includes(q)));
     }
 
     return list;
@@ -534,22 +541,22 @@ class StorageService {
     }
   }
 
+  // DASHBOARD STATS ONLY COUNT KHO KDDVKH (DEPARTMENT) FILES! EXCLUDES PERSONAL FILES!
   getStorageStats() {
-    const user = window.authManager ? window.authManager.getCurrentUser() : null;
-    const userFiles = this.files.filter(f => f.uploaderUid === (user ? user.uid : '') || f.category === 'department');
+    const deptFiles = this.files.filter(f => f.category === 'department');
     
-    const totalBytes = userFiles.reduce((acc, curr) => acc + (curr.sizeBytes || 0), 0);
+    const totalBytes = deptFiles.reduce((acc, curr) => acc + (curr.sizeBytes || 0), 0);
     const totalMB = (totalBytes / (1024 * 1024)).toFixed(1);
     const totalGB = (totalBytes / (1024 * 1024 * 1024)).toFixed(2);
     const maxGB = 500;
     const percentage = Math.min(100, Math.round((totalGB / maxGB) * 100));
 
     return {
-      totalFiles: userFiles.length,
+      totalFiles: deptFiles.length,
       usedFormatted: totalBytes >= 1024 * 1024 * 1024 ? `${totalGB} GB` : `${totalMB} MB`,
       maxGB: maxGB,
       percentage: percentage,
-      sharedFiles: this.files.filter(f => f.category === 'department').length
+      sharedFiles: deptFiles.length
     };
   }
 

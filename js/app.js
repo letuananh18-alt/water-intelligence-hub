@@ -245,14 +245,15 @@ class AppController {
     const tbody = document.getElementById('dashFilesTableBody');
     if (!tbody || !window.storageService) return;
 
-    const files = window.storageService.getFiles('all').slice(0, 5);
+    // DASHBOARD TABLE EXCLUSIVELY DISPLAYS KHO KDDVKH DEPARTMENT DOCUMENTS! EXCLUDES PERSONAL FILES!
+    const files = window.storageService.getFiles('department').slice(0, 5);
     const isAdmin = window.authManager && window.authManager.isAdmin();
 
     if (files.length === 0) {
       tbody.innerHTML = `
         <tr>
           <td colspan="5" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
-            📂 Chưa có tài liệu nào. Kéo & thả tệp vào ô trên để bắt đầu tải lên!
+            📂 Kho Kinh doanh & DVKH chưa có văn bản nào. Bấm "Kho Kinh doanh & DVKH" ở menu trái để bắt đầu đăng tệp!
           </td>
         </tr>
       `;
@@ -284,9 +285,10 @@ class AppController {
     const listEl = document.getElementById('recentActivityList');
     if (!listEl || !window.storageService) return;
 
-    const files = window.storageService.getFiles('all').slice(0, 4);
+    // RECENT ACTIVITY EXCLUSIVELY DISPLAYS KHO KDDVKH DEPARTMENT DOCUMENTS! EXCLUDES PERSONAL FILES!
+    const files = window.storageService.getFiles('department').slice(0, 4);
     if (files.length === 0) {
-      listEl.innerHTML = `<div style="font-size: 13px; color: var(--slate-400); text-align: center; padding: 25px;">Chưa có hoạt động mới nào.</div>`;
+      listEl.innerHTML = `<div style="font-size: 13px; color: var(--slate-400); text-align: center; padding: 25px;">Chưa có hoạt động mới nào trong Kho KDDVKH.</div>`;
       return;
     }
 
@@ -301,6 +303,7 @@ class AppController {
     `).join('');
   }
 
+  // STRICT PRIVACY: PERSONAL FILES SHOWN STRICTLY ONLY TO THEIR UPLOADER OWNER!
   renderPersonalTable() {
     const tbody = document.getElementById('personalFilesTableBody');
     if (!tbody || !window.storageService) return;
@@ -310,7 +313,7 @@ class AppController {
       tbody.innerHTML = `
         <tr>
           <td colspan="6" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
-            📄 Chưa có tài liệu cá nhân nào. Bấm "Tải lên" để chọn file từ máy tính của bạn!
+            🔒 Chưa có tài liệu cá nhân nào. Bấm "Tải lên" để lưu tệp riêng của bạn (Chỉ duy nhất bạn mới nhìn thấy tệp này)!
           </td>
         </tr>
       `;
@@ -477,6 +480,7 @@ class AppController {
     }
 
     if (auditTbody && window.storageService) {
+      // Audit log ONLY displays client upload activity meta without exposing file contents
       const allFiles = window.storageService.files;
       const clientUploads = allFiles.filter(f => f.category === 'personal');
 
