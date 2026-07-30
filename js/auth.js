@@ -1,14 +1,14 @@
 // ==========================================================================
 // USER AUTHENTICATION & REAL-TIME USER DIRECTORY SYNC (SUPABASE BACKEND)
 // SESSION-ONLY PERSISTENCE (Requires login every time browser is closed)
-// Real Admin: letuananh18@gmail.com
+// Admin Accounts: waterain8n@gmail.com & letuananh18@gmail.com
 // ==========================================================================
 
 const DEMO_USERS = {
   ADMIN: {
-    uid: "admin_letuananh18",
+    uid: "admin_waterain8n",
     name: "Lê Tuấn Anh",
-    email: "letuananh18@gmail.com",
+    email: "waterain8n@gmail.com",
     role: "Admin / Quản trị hệ thống",
     avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
     department: "Phòng Kinh doanh & Dịch vụ Khách hàng"
@@ -115,7 +115,11 @@ class AuthManager {
   }
 
   isAdmin() {
-    return this.currentUser && (this.currentUser.email === 'letuananh18@gmail.com' || (this.currentUser.role && this.currentUser.role.includes("Admin")));
+    return this.currentUser && (
+      this.currentUser.email === 'waterain8n@gmail.com' ||
+      this.currentUser.email === 'letuananh18@gmail.com' ||
+      (this.currentUser.role && this.currentUser.role.includes("Admin"))
+    );
   }
 
   async login(email, password) {
@@ -127,6 +131,8 @@ class AuthManager {
       alert("⚠️ Mật khẩu phải có ít nhất 6 ký tự!");
       return null;
     }
+
+    const isAdminEmail = email === 'waterain8n@gmail.com' || email === 'letuananh18@gmail.com';
 
     if (window.supabaseClient) {
       try {
@@ -140,7 +146,7 @@ class AuthManager {
             uid: authData.user.id,
             name: authData.user.user_metadata?.name || email.split('@')[0],
             email: authData.user.email,
-            role: email === 'letuananh18@gmail.com' ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
+            role: isAdminEmail ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
             avatar: DEMO_USERS.ADMIN.avatar,
             department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
             lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -164,7 +170,7 @@ class AuthManager {
       uid: "user_" + Date.now(),
       name: email.split('@')[0],
       email: email,
-      role: email === 'letuananh18@gmail.com' ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
+      role: isAdminEmail ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
       avatar: DEMO_USERS.ADMIN.avatar,
       department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
       lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })

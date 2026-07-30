@@ -1,11 +1,10 @@
 // ==========================================================================
 // SUPABASE REALTIME & POSTGRESQL CLOUD CONFIGURATION
-// Account: letuananh18@gmail.com
+// Active Account: waterain8n@gmail.com / letuananh18@gmail.com
 // ==========================================================================
 
-// Paste your Supabase Project URL and Public Anon Key below
 const SUPABASE_URL = window.SUPABASE_PROJECT_URL || "https://your-supabase-project.supabase.co";
-const SUPABASE_ANON_KEY = window.SUPABASE_PUBLIC_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRodWR1Yy13YXRlciIsInJvbGUiOiJhbW9uIiwiaWF0IjoxNzM1NjYwODAwLCJleHAiOjIwNTExOTY4MDB9.sample";
+const SUPABASE_ANON_KEY = window.SUPABASE_PUBLIC_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.sample";
 
 let supabaseClient = null;
 let isSupabaseLive = false;
