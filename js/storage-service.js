@@ -27,9 +27,6 @@ class StorageService {
       }
     }
 
-    this.ensureDefaultFolders();
-    this.ensureDefaultFiles();
-
     // 2. Real-time Supabase Cloud Database Sync
     if (window.supabaseClient) {
       try {
@@ -63,7 +60,7 @@ class StorageService {
           createdBy: "Lê Tuấn Anh (Admin)",
           ownerUid: "admin_waterain8n",
           date: "30/07/2026",
-          filesCount: 2
+          filesCount: 0
         },
         {
           id: "fold_kddvkh_2",
@@ -73,53 +70,9 @@ class StorageService {
           createdBy: "Lê Tuấn Anh (Admin)",
           ownerUid: "admin_waterain8n",
           date: "30/07/2026",
-          filesCount: 1
+          filesCount: 0
         }
       ];
-    }
-  }
-
-  ensureDefaultFiles() {
-    if (!this.files || this.files.length === 0) {
-      this.files = [
-        {
-          id: "f_seed_kddvkh_1",
-          name: "Quy trình Dịch vụ Khách hàng & Cấp nước 2026.docx",
-          type: "DOCX",
-          mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-          sizeBytes: 450000,
-          sizeFormatted: "450 KB",
-          uploadedBy: "Lê Tuấn Anh",
-          uploaderUid: "admin_waterain8n",
-          uploadDate: "30/07/2026",
-          category: "department",
-          folderId: "fold_kddvkh_1",
-          docType: "Quy trình CSKH",
-          statusTag: "🟢 Đã ban hành",
-          url: "#",
-          dataUrl: null,
-          tags: ["Văn bản gốc"]
-        },
-        {
-          id: "f_seed_kddvkh_2",
-          name: "Hợp đồng Cấp nước Dịch vụ Thương mại mẫu.pdf",
-          type: "PDF",
-          mimeType: "application/pdf",
-          sizeBytes: 1200000,
-          sizeFormatted: "1.2 MB",
-          uploadedBy: "Lê Tuấn Anh",
-          uploaderUid: "admin_waterain8n",
-          uploadDate: "30/07/2026",
-          category: "department",
-          folderId: "fold_kddvkh_1",
-          docType: "Hợp đồng cấp nước",
-          statusTag: "🟢 Đã ban hành",
-          url: "#",
-          dataUrl: null,
-          tags: ["Văn bản gốc"]
-        }
-      ];
-      this.saveLocal();
     }
   }
 
@@ -177,7 +130,7 @@ class StorageService {
   }
 
   normalizeFileFromDb(f) {
-    const targetFolderId = f.folderId || f.folder_id || "fold_kddvkh_1";
+    const targetFolderId = f.folderId || f.folder_id || null;
     const category = f.category || 'department';
 
     return {
@@ -221,18 +174,25 @@ class StorageService {
     };
   }
 
+  // PURE SYNC FROM SUPABASE POSTGRES DB 'folders' TABLE (NO RE-CREATING DELETED FOLDERS)
   async syncFoldersFromSupabase() {
     if (!window.supabaseClient) return;
     try {
       const { data, error } = await window.supabaseClient.from('folders').select('*');
       if (!error && data) {
         const prevJson = JSON.stringify(this.folders);
+        const cloudFolders = data.map(f => this.normalizeFolderFromDb(f));
 
-        const dbFolders = data.map(f => this.normalizeFolderFromDb(f));
-        const seedFolders = this.folders.filter(f => f.id.startsWith('fold_kddvkh_') && !data.some(d => d.id === f.id));
-
-        this.folders = [...seedFolders, ...dbFolders];
-        this.ensureDefaultFolders();
+        const initialized = localStorage.getItem('thuduc_water_folders_initialized');
+        if (!initialized && cloudFolders.length === 0) {
+          this.ensureDefaultFolders();
+          localStorage.setItem('thuduc_water_folders_initialized', 'true');
+          for (const fold of this.folders) {
+            await window.supabaseClient.from('folders').upsert(this.normalizeFolderToDb(fold));
+          }
+        } else {
+          this.folders = cloudFolders;
+        }
 
         const nextJson = JSON.stringify(this.folders);
         if (prevJson !== nextJson) {
@@ -245,25 +205,18 @@ class StorageService {
     }
   }
 
-  // 100% PURE ACCURATE SYNC FROM SUPABASE POSTGRES DB 'files' TABLE
+  // PURE SYNC FROM SUPABASE POSTGRES DB 'files' TABLE
   async syncFilesFromSupabase() {
     if (!window.supabaseClient) return;
     try {
       const { data, error } = await window.supabaseClient.from('files').select('*');
       if (!error && data) {
         const prevJson = JSON.stringify(this.files);
-
-        // Normalize DB rows
         const cloudFiles = data.map(f => this.normalizeFileFromDb(f));
 
-        // Preserve seed files if DB does not have them yet
-        const seedFiles = this.files.filter(f => f.id.startsWith('f_seed_') && !data.some(d => d.id === f.id));
-
-        const nextFiles = [...seedFiles, ...cloudFiles];
-        const nextJson = JSON.stringify(nextFiles);
-
+        const nextJson = JSON.stringify(cloudFiles);
         if (prevJson !== nextJson) {
-          this.files = nextFiles;
+          this.files = cloudFiles;
           this.saveLocal();
           this.notify();
         }
@@ -291,7 +244,7 @@ class StorageService {
     } else if (category === 'department') {
       list = list.filter(f => f.category === 'department' || !f.category);
       if (folderId) {
-        list = list.filter(f => f.folderId === folderId || (folderId === 'fold_kddvkh_1' && !f.folderId));
+        list = list.filter(f => f.folderId === folderId);
       }
     }
 
@@ -325,10 +278,6 @@ class StorageService {
     }
 
     let targetFolderId = folderId;
-    if (category === 'department' && !targetFolderId) {
-      const deptFolds = this.getFolders('department');
-      targetFolderId = deptFolds.length > 0 ? deptFolds[0].id : "fold_kddvkh_1";
-    }
 
     let formattedSize = (fileObj.size / (1024 * 1024)).toFixed(1) + " MB";
     if (fileObj.size < 1024 * 1024) {
@@ -413,7 +362,6 @@ class StorageService {
     return newFile;
   }
 
-  // DELETE SINGLE FILE FROM SUPABASE DB & STORAGE BUCKET
   async deleteFile(fileId) {
     const file = this.files.find(f => f.id === fileId);
     this.files = this.files.filter(f => f.id !== fileId);
@@ -449,7 +397,6 @@ class StorageService {
     }
   }
 
-  // DELETE BATCH FILES FROM SUPABASE DB & STORAGE BUCKET
   async deleteFilesBatch(fileIds) {
     if (!Array.isArray(fileIds) || fileIds.length === 0) return;
     const targetFiles = this.files.filter(f => fileIds.includes(f.id));
@@ -511,13 +458,15 @@ class StorageService {
   }
 
   async purgeAllTrash() {
-    this.files = this.files.filter(f => f.id.startsWith('f_seed_'));
-    this.folders = this.folders.filter(f => f.id.startsWith('fold_kddvkh_'));
+    this.files = [];
+    this.folders = [];
+    localStorage.setItem('thuduc_water_folders_initialized', 'true');
     this.saveLocal();
     this.notify();
 
     if (window.supabaseClient) {
       try {
+        await window.supabaseClient.from('folders').delete().neq('id', 'keep_all');
         await window.supabaseClient.from('files').delete().neq('id', 'keep_all');
 
         if (window.supabaseClient.storage) {
@@ -549,6 +498,7 @@ class StorageService {
     };
 
     this.folders.push(newFolder);
+    localStorage.setItem('thuduc_water_folders_initialized', 'true');
     this.saveLocal();
     this.notify();
 
@@ -571,28 +521,30 @@ class StorageService {
 
       if (window.supabaseClient) {
         try {
-          await window.supabaseClient.from('files').update({ name: newName }).eq('id', folderId);
+          await window.supabaseClient.from('folders').update({ name: newName }).eq('id', folderId);
         } catch (e) {}
       }
     }
   }
 
+  // DELETE FOLDER PERMANENTLY FROM LOCAL STORAGE & SUPABASE DB
   async deleteFolder(folderId) {
     this.folders = this.folders.filter(f => f.id !== folderId);
-    this.files = this.files.filter(f => f.folderId !== folderId);
+    localStorage.setItem('thuduc_water_folders_initialized', 'true');
     this.saveLocal();
     this.notify();
 
     if (window.supabaseClient) {
       try {
         await window.supabaseClient.from('folders').delete().eq('id', folderId);
-        await window.supabaseClient.from('files').delete().eq('folder_id', folderId);
-      } catch (e) {}
+        await window.supabaseClient.from('files').update({ folder_id: null }).eq('folder_id', folderId);
+      } catch (e) {
+        console.warn("Delete folder notice:", e);
+      }
     }
   }
 
   getFolders(category = 'department') {
-    this.ensureDefaultFolders();
     return this.folders.filter(f => f.category === category);
   }
 

@@ -472,7 +472,7 @@ class AppController {
         deptTitle.textContent = `Thư mục: ${activeFold.name}`;
       }
     } else {
-      if (foldersSection) foldersSection.style.display = 'block';
+      if (foldersSection) foldersSection.style.display = folders.length > 0 ? 'block' : 'none';
       if (btnBackToRootFolder) btnBackToRootFolder.style.display = 'none';
       if (breadcrumbFolderPart) breadcrumbFolderPart.innerHTML = '';
       if (deptTitle) deptTitle.textContent = 'Kho nội bộ Phòng Kinh doanh & Dịch vụ Khách hàng';
