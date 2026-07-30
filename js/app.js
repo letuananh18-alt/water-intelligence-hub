@@ -1188,6 +1188,8 @@ class AppController {
   bindAiEvents() {
     const btnSend = document.getElementById('btnSendAiChat');
     const aiInput = document.getElementById('aiChatInput');
+    const btnNewChat = document.getElementById('btnNewAiChat');
+    const btnClearHistory = document.getElementById('btnClearAiHistory');
 
     const handleSend = () => {
       if (aiInput && aiInput.value.trim()) {
@@ -1201,11 +1203,32 @@ class AppController {
       if (e.key === 'Enter') handleSend();
     });
 
+    btnNewChat?.addEventListener('click', () => {
+      if (window.aiAssistant) window.aiAssistant.clearHistory();
+    });
+
+    btnClearHistory?.addEventListener('click', () => {
+      if (window.aiAssistant) window.aiAssistant.clearHistory();
+    });
+
     document.addEventListener('click', (e) => {
       if (e.target.classList.contains('suggested-prompt-pill')) {
-        const text = e.target.textContent.replace(/^🔍|^📊|^📋/, '').trim();
+        const text = e.target.textContent.replace(/^🔍|^📊|^📋|^📂/, '').trim();
         window.aiAssistant.askQuestion(text);
       }
+    });
+
+    // Thread item click listeners
+    const threadItems = document.querySelectorAll('#aiThreadList .thread-item');
+    threadItems.forEach(item => {
+      item.addEventListener('click', () => {
+        threadItems.forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        const text = item.textContent.trim();
+        if (window.aiAssistant) {
+          window.aiAssistant.askQuestion(`Tra cứu thông tin về: ${text}`);
+        }
+      });
     });
   }
 
