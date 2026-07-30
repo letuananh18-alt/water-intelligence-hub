@@ -1,5 +1,6 @@
 // ==========================================================================
 // HIGH-TECH FUTURISTIC DIGITAL WATER ANIMATION CANVAS (DIGITAL TRANSFORMATION)
+// Performance Optimized: Automatically pauses when Auth Screen is hidden
 // ==========================================================================
 
 class TechBackground {
@@ -10,6 +11,7 @@ class TechBackground {
     this.particles = [];
     this.nodes = [];
     this.waveOffset = 0;
+    this.isAnimating = false;
     this.init();
   }
 
@@ -17,21 +19,33 @@ class TechBackground {
     this.resize();
     window.addEventListener('resize', () => this.resize());
     this.createNodes();
-    this.animate();
+    this.start();
+  }
+
+  start() {
+    if (!this.isAnimating) {
+      this.isAnimating = true;
+      this.animate();
+    }
+  }
+
+  stop() {
+    this.isAnimating = false;
   }
 
   resize() {
+    if (!this.canvas) return;
     this.canvas.width = window.innerWidth;
     this.canvas.height = window.innerHeight;
   }
 
   createNodes() {
-    const count = Math.floor((window.innerWidth * window.innerHeight) / 18000);
+    const count = Math.floor((window.innerWidth * window.innerHeight) / 22000);
     this.nodes = [];
     for (let i = 0; i < count; i++) {
       this.nodes.push({
-        x: Math.random() * this.canvas.width,
-        y: Math.random() * this.canvas.height,
+        x: Math.random() * (this.canvas.width || window.innerWidth),
+        y: Math.random() * (this.canvas.height || window.innerHeight),
         vx: (Math.random() - 0.5) * 0.8,
         vy: (Math.random() - 0.5) * 0.8,
         radius: Math.random() * 2 + 1.5,
@@ -41,6 +55,14 @@ class TechBackground {
   }
 
   animate() {
+    const authContainer = document.getElementById('authContainer');
+    if (authContainer && authContainer.style.display === 'none') {
+      this.isAnimating = false;
+      return;
+    }
+
+    if (!this.canvas || !this.ctx) return;
+
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
     // Deep digital transformation gradient background
@@ -77,7 +99,7 @@ class TechBackground {
       const amplitude = 30 + w * 15;
       const frequency = 0.005 - w * 0.001;
 
-      for (let x = 0; x < this.canvas.width; x += 5) {
+      for (let x = 0; x < this.canvas.width; x += 8) {
         const y = this.canvas.height * (0.65 + w * 0.1) + Math.sin(x * frequency + this.waveOffset + w) * amplitude;
         if (x === 0) this.ctx.moveTo(x, y);
         else this.ctx.lineTo(x, y);
@@ -102,8 +124,8 @@ class TechBackground {
         const dy = nodeA.y - nodeB.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist < 130) {
-          const alpha = (1 - dist / 130) * 0.25;
+        if (dist < 120) {
+          const alpha = (1 - dist / 120) * 0.2;
           this.ctx.strokeStyle = `rgba(0, 180, 255, ${alpha})`;
           this.ctx.lineWidth = 1;
           this.ctx.beginPath();
@@ -116,18 +138,17 @@ class TechBackground {
       // Draw Glowing Water Node Dot
       const glowingRadius = nodeA.radius + Math.sin(nodeA.pulse) * 0.8;
       this.ctx.fillStyle = '#00E5FF';
-      this.ctx.shadowColor = '#00A2FF';
-      this.ctx.shadowBlur = 8;
       this.ctx.beginPath();
       this.ctx.arc(nodeA.x, nodeA.y, Math.max(1, glowingRadius), 0, Math.PI * 2);
       this.ctx.fill();
-      this.ctx.shadowBlur = 0;
     }
 
-    requestAnimationFrame(() => this.animate());
+    if (this.isAnimating) {
+      requestAnimationFrame(() => this.animate());
+    }
   }
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  new TechBackground();
+  window.techBgInstance = new TechBackground();
 });

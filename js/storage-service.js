@@ -140,16 +140,21 @@ class StorageService {
       const { data, error } = await window.supabaseClient.from('folders').select('*');
       if (!error && data && data.length > 0) {
         const dbFolders = data.map(f => this.normalizeFolderFromDb(f));
+        const prevJson = JSON.stringify(this.folders);
+
         const map = new Map();
         // 1. Keep existing local memory folders first
         this.folders.forEach(f => map.set(f.id, f));
         // 2. Merge cloud folders from Supabase
         dbFolders.forEach(f => map.set(f.id, f));
-        this.folders = Array.from(map.values());
-        this.saveLocal();
-        this.notify();
-      } else if (error) {
-        console.warn("Folder sync error from Supabase:", error.message);
+        const nextFolders = Array.from(map.values());
+        const nextJson = JSON.stringify(nextFolders);
+
+        if (prevJson !== nextJson) {
+          this.folders = nextFolders;
+          this.saveLocal();
+          this.notify();
+        }
       }
     } catch (e) {
       console.warn("Folder sync notice:", e);
@@ -162,16 +167,21 @@ class StorageService {
       const { data, error } = await window.supabaseClient.from('files').select('*');
       if (!error && data && data.length > 0) {
         const dbFiles = data.map(f => this.normalizeFileFromDb(f));
+        const prevJson = JSON.stringify(this.files);
+
         const map = new Map();
         // 1. Keep existing local memory files first
         this.files.forEach(f => map.set(f.id, f));
         // 2. Merge cloud files from Supabase
         dbFiles.forEach(f => map.set(f.id, f));
-        this.files = Array.from(map.values());
-        this.saveLocal();
-        this.notify();
-      } else if (error) {
-        console.warn("Files sync error from Supabase:", error.message);
+        const nextFiles = Array.from(map.values());
+        const nextJson = JSON.stringify(nextFiles);
+
+        if (prevJson !== nextJson) {
+          this.files = nextFiles;
+          this.saveLocal();
+          this.notify();
+        }
       }
     } catch (e) {
       console.warn("Files sync notice:", e);
@@ -278,8 +288,6 @@ class StorageService {
           if (publicUrlData && publicUrlData.publicUrl) {
             newFile.url = publicUrlData.publicUrl;
           }
-        } else if (uploadErr) {
-          console.warn("Supabase Storage upload policy notice:", uploadErr.message);
         }
       } catch (stErr) {
         console.warn("Supabase Storage bucket notice:", stErr);
@@ -317,13 +325,8 @@ class StorageService {
     if (window.supabaseClient) {
       try {
         const dbPayload = this.normalizeFileToDb(newFile);
-        const { error: dbErr } = await window.supabaseClient.from('files').upsert(dbPayload);
-        if (dbErr) {
-          console.warn("Supabase DB files upsert notice:", dbErr.message);
-        }
-      } catch (err) {
-        console.warn("Supabase file upload notice:", err);
-      }
+        await window.supabaseClient.from('files').upsert(dbPayload);
+      } catch (err) {}
     }
 
     return newFile;
@@ -404,13 +407,8 @@ class StorageService {
     if (window.supabaseClient) {
       try {
         const payload = this.normalizeFolderToDb(newFolder);
-        const { error } = await window.supabaseClient.from('folders').upsert(payload);
-        if (error) {
-          console.warn("Supabase createFolder error:", error.message);
-        }
-      } catch (e) {
-        console.warn("Supabase createFolder notice:", e);
-      }
+        await window.supabaseClient.from('folders').upsert(payload);
+      } catch (e) {}
     }
     return newFolder;
   }
@@ -439,9 +437,7 @@ class StorageService {
     if (window.supabaseClient) {
       try {
         await window.supabaseClient.from('folders').delete().eq('id', folderId);
-      } catch (e) {
-        console.warn("Supabase deleteFolder notice:", e);
-      }
+      } catch (e) {}
     }
     return true;
   }
