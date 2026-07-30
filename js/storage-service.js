@@ -258,38 +258,40 @@ class StorageService {
       tags: ["Tệp thực tế"]
     };
 
-    // Upload raw file to Supabase Storage Bucket if bucket "documents" exists
+    // 1. Upload raw file binary directly to Supabase Storage Bucket 'documents'
     if (window.supabaseClient && window.supabaseClient.storage) {
       try {
-        const filePath = `${category}/${fileId}_${fileObj.name}`;
+        const sanitizeName = fileObj.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const filePath = `${category}/${fileId}_${sanitizeName}`;
+        
         const { data: uploadData, error: uploadErr } = await window.supabaseClient.storage.from('documents').upload(filePath, fileObj, {
           cacheControl: '3600',
           upsert: true
         });
+
         if (!uploadErr && uploadData) {
           const { data: publicUrlData } = window.supabaseClient.storage.from('documents').getPublicUrl(filePath);
           if (publicUrlData && publicUrlData.publicUrl) {
             newFile.url = publicUrlData.publicUrl;
           }
+        } else if (uploadErr) {
+          console.warn("Supabase Storage upload policy error notice:", uploadErr.message);
         }
       } catch (stErr) {
         console.warn("Supabase Storage bucket notice:", stErr);
       }
     }
 
+    // 2. Base64 DataURL for offline persistent live previewer
     if (fileObj.size < 8 * 1024 * 1024) {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        newFile.dataUrl = e.target.result;
-        this.saveLocal();
-        if (window.supabaseClient) {
-          try {
-            await window.supabaseClient.from('files').upsert(this.normalizeFileToDb(newFile));
-          } catch (err) {}
-        }
-        this.notify();
-      };
-      reader.readAsDataURL(fileObj);
+      try {
+        newFile.dataUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(fileObj);
+        });
+      } catch (rErr) {}
     }
 
     this.files.unshift(newFile);
@@ -307,9 +309,14 @@ class StorageService {
     this.saveLocal();
     this.notify();
 
+    // 3. Upsert record to Supabase PostgreSQL 'files' Table
     if (window.supabaseClient) {
       try {
-        await window.supabaseClient.from('files').upsert(this.normalizeFileToDb(newFile));
+        const dbPayload = this.normalizeFileToDb(newFile);
+        const { error: dbErr } = await window.supabaseClient.from('files').upsert(dbPayload);
+        if (dbErr) {
+          console.warn("Supabase DB files upsert notice:", dbErr.message);
+        }
       } catch (err) {
         console.warn("Supabase file upload notice:", err);
       }
