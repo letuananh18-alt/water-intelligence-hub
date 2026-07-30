@@ -1,5 +1,5 @@
 // ==========================================================================
-// MAIN APPLICATION CONTROLLER (BUSINESS & CUSTOMER SERVICE DEPT + FOLDER MANAGEMENT)
+// MAIN APPLICATION CONTROLLER (BULLETPROOF MODAL CLOSING & FOLDER FIX)
 // ==========================================================================
 
 function escapeHTML(str) {
@@ -27,6 +27,7 @@ class AppController {
       this.bindFileUploadEvents();
       this.bindTableActions();
       this.bindFolderEvents();
+      this.bindGlobalModalEvents();
       this.bindChatEvents();
       this.bindAiEvents();
 
@@ -407,14 +408,10 @@ class AppController {
       }
     });
 
-    document.getElementById('closeFolderModalBtn')?.addEventListener('click', () => {
-      if (folderModal) folderModal.style.display = 'none';
-    });
-
     document.getElementById('btnSaveFolderModal')?.addEventListener('click', async () => {
       if (this.selectedFolderId && folderInput && folderInput.value.trim()) {
         await window.storageService.renameFolder(this.selectedFolderId, folderInput.value);
-        if (folderModal) folderModal.style.display = 'none';
+        this.closeModal('folderActionModal');
         alert("✅ Đã cập nhật tên thư mục!");
       }
     });
@@ -422,10 +419,44 @@ class AppController {
     document.getElementById('btnDeleteFolderModal')?.addEventListener('click', async () => {
       if (this.selectedFolderId && confirm("Bạn có chắc chắn muốn xóa thư mục này không?")) {
         await window.storageService.deleteFolder(this.selectedFolderId);
-        if (folderModal) folderModal.style.display = 'none';
+        this.closeModal('folderActionModal');
         alert("🗑️ Đã xóa thư mục!");
       }
     });
+  }
+
+  bindGlobalModalEvents() {
+    // Bulletproof event delegation for closing all modals
+    document.addEventListener('click', (e) => {
+      // Close button X icon click
+      if (e.target.closest('#closeFolderModalBtn') || e.target.closest('.close-btn')) {
+        this.closeModal('folderActionModal');
+        this.closeModal('filePreviewModal');
+      }
+
+      // Backdrop click outside content card
+      if (e.target.id === 'folderActionModal') {
+        this.closeModal('folderActionModal');
+      }
+      if (e.target.id === 'filePreviewModal') {
+        this.closeModal('filePreviewModal');
+      }
+    });
+
+    // Keyboard ESC key listener
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        this.closeModal('folderActionModal');
+        this.closeModal('filePreviewModal');
+      }
+    });
+  }
+
+  closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+      modal.style.display = 'none';
+    }
   }
 
   bindFileUploadEvents() {
@@ -523,11 +554,6 @@ class AppController {
           this.refreshLucideIcons();
         }
       }
-    });
-
-    document.getElementById('closePreviewModalBtn')?.addEventListener('click', () => {
-      const modal = document.getElementById('filePreviewModal');
-      if (modal) modal.style.display = 'none';
     });
   }
 
