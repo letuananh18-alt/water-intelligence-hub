@@ -748,17 +748,21 @@ class AppController {
           } catch (e) {}
         }
 
-        if (!base64Data && file.url && file.url.startsWith('http')) {
+        if (!base64Data && file.url) {
           try {
             const resp = await fetch(file.url);
-            const blob = await resp.blob();
-            base64Data = await new Promise((resolve) => {
-              const reader = new FileReader();
-              reader.onload = (e) => resolve(e.target.result);
-              reader.onerror = () => resolve(null);
-              reader.readAsDataURL(blob);
-            });
-          } catch (e) {}
+            if (resp.ok) {
+              const blob = await resp.blob();
+              base64Data = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = () => resolve(null);
+                reader.readAsDataURL(blob);
+              });
+            }
+          } catch (e) {
+            console.warn("Could not fetch file URL into Base64:", e);
+          }
         }
 
         const extractedText = docViewer.innerText || '';

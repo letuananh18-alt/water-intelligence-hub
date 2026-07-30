@@ -196,12 +196,12 @@ class AiAssistant {
     const cleanText = (extractedText || '').replace(/\s+/g, ' ').trim();
     const key = this.getApiKey();
 
-    // 1. If Gemini API Key is configured, use Google Gemini Multimodal inference!
+    // 1. If Gemini API Key is configured, execute Google Gemini Multimodal inference!
     if (key) {
       const mime = file.mimeType || (file.type === 'PDF' ? 'application/pdf' : 'text/plain');
       const base64Data = base64File || file.dataUrl;
 
-      const prompt = `Bạn là chuyên gia phân tích văn bản của Công ty Cổ phần Cấp nước Thủ Đức. Hãy đọc và phân tích toàn bộ nội dung tài liệu "${name}" dưới đây và trả về bản tóm tắt tiếng Việt cực kỳ chi tiết bao gồm:\n- Mục đích chính của tài liệu (thời gian, địa điểm, các bên tham gia nếu có).\n- Các nội dung cốt lõi & quyết định chính (liệt kê 3-4 điểm chính).\n- Các hành động hoặc kết luận cần thực hiện.`;
+      const prompt = `Bạn là chuyên gia phân tích văn bản của Công ty Cổ phần Cấp nước Thủ Đức.\nHãy đọc và phân tích toàn bộ nội dung tài liệu "${name}" dưới đây (được đính kèm file nhị phân hoặc bóc tách chữ).\nNội dung chữ thu thập được: "${cleanText}"\n\nHãy trả về bản tóm tắt tiếng Việt cực kỳ chi tiết bao gồm:\n- Mục đích chính của tài liệu (thời gian, địa điểm, các bên tham gia nếu có).\n- Các nội dung cốt lõi & quyết định chính (liệt kê 3-4 điểm chính).\n- Các hành động hoặc kết luận cần thực hiện.`;
 
       const geminiResult = await this.callGeminiApi(prompt, base64Data, mime);
       if (geminiResult) {
