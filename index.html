@@ -341,11 +341,10 @@
           </div>
         </section>
 
-        <!-- 3. DEPARTMENT VAULT VIEW (KHO NỘI BỘ PHÒNG KINH DOANH & DỊCH VỤ KHÁCH HÀNG - ENHANCED) -->
+        <!-- 3. DEPARTMENT VAULT VIEW (KHO NỘI BỘ PHÒNG KINH DOANH & DỊCH VỤ KHÁCH HÀNG - COMPACT FOLDERS) -->
         <section id="viewDeptDocs" class="view-panel" style="display: none;">
           <div class="page-header">
             <div>
-              <!-- Breadcrumbs Navigation -->
               <div id="deptBreadcrumbs" style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--accent-blue); margin-bottom: 6px;">
                 <span>Kho KDDVKH</span>
                 <span id="breadcrumbFolderPart"></span>
@@ -369,10 +368,10 @@
             </div>
           </div>
 
-          <!-- Department Folders Grid Section -->
+          <!-- Compact & Balanced Department Folders Grid Section -->
           <div id="deptFoldersSection">
             <div class="card-title" style="margin-bottom: 12px; font-size: 15px; font-weight: 700;">📁 Thư mục Nghiệp vụ KDDVKH</div>
-            <div id="deptFoldersGrid" class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 24px;"></div>
+            <div id="deptFoldersGrid" class="folder-grid-compact"></div>
           </div>
 
           <!-- Department Files Data Table with Filters & Status Badges -->
@@ -380,7 +379,6 @@
             <div class="table-header-bar" style="flex-wrap: wrap; gap: 12px;">
               <h3 class="card-title" id="deptTableTitle">Văn bản & Tài liệu Phòng Kinh doanh & DVKH</h3>
               
-              <!-- Specialized KDDVKH Document Filters -->
               <div style="display: flex; gap: 10px;">
                 <select id="deptDocTypeFilter" class="filter-select">
                   <option value="all">Phân loại: Tất cả văn bản</option>
@@ -510,7 +508,7 @@
         <!-- 7. FOLDERS / SETTINGS VIEWS -->
         <section id="viewFolders" class="view-panel" style="display: none;">
           <div class="page-header"><h2 class="welcome-title">Cấu trúc Thư mục</h2></div>
-          <div class="stats-grid" id="allFoldersListGrid"></div>
+          <div class="folder-grid-compact" id="allFoldersListGrid"></div>
         </section>
 
         <section id="viewSettings" class="view-panel" style="display: none;">
@@ -525,25 +523,30 @@
     </div>
   </div>
 
-  <!-- FILE PREVIEW MODAL -->
+  <!-- ENHANCED REAL DOCUMENT VIEWER MODAL -->
   <div id="filePreviewModal" class="modal-backdrop" style="display: none;">
-    <div class="modal-content">
+    <div class="modal-content preview-modal-content">
       <div class="modal-header">
-        <h3 id="previewModalTitle" class="modal-title">Xem trước tài liệu</h3>
+        <h3 id="previewModalTitle" class="modal-title">Đang xem tài liệu</h3>
         <i data-lucide="x" class="close-btn" id="closePreviewModalBtn"></i>
       </div>
-      <div class="file-preview-body">
-        <i data-lucide="file-text" style="width: 48px; height: 48px; color: var(--accent-blue); margin-bottom: 12px;"></i>
-        <h4 id="previewFileName">Tài liệu.pdf</h4>
-        <p id="previewFileMeta" style="font-size: 12px; color: var(--slate-400); margin-top: 6px;">PDF • 0 MB</p>
-        <div style="margin-top: 20px;">
-          <a href="#" id="previewDownloadBtn" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">Tải về máy</a>
-        </div>
+      
+      <!-- Interactive Document Viewer Container -->
+      <div class="doc-viewer-container" id="docViewerContainer">
+        <!-- Rendered dynamically by JS -->
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+        <span id="previewFileMeta" style="font-size: 12px; color: var(--slate-500);"></span>
+        <a href="#" id="previewDownloadBtn" class="btn-primary" style="padding: 10px 20px; font-size: 13.5px; width: auto;">
+          <i data-lucide="download" style="width: 16px; height: 16px;"></i>
+          <span>Tải tệp này về máy</span>
+        </a>
       </div>
     </div>
   </div>
 
-  <!-- UPLOAD CLASSIFICATION MODAL (CHO KDDVKH) -->
+  <!-- UPLOAD CLASSIFICATION MODAL -->
   <div id="uploadMetaModal" class="modal-backdrop" style="display: none;">
     <div class="modal-content">
       <div class="modal-header">

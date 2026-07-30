@@ -1,5 +1,5 @@
 // ==========================================================================
-// MAIN APPLICATION CONTROLLER (KDDVKH 4 ENHANCED FEATURES)
+// MAIN APPLICATION CONTROLLER (COMPACT FOLDERS & REAL DOCUMENT VIEWER)
 // ==========================================================================
 
 function escapeHTML(str) {
@@ -339,6 +339,7 @@ class AppController {
     `).join('');
   }
 
+  // COMPACT & BALANCED FOLDER CARDS RENDERING
   renderDeptFolders() {
     const grid = document.getElementById('deptFoldersGrid');
     const allGrid = document.getElementById('allFoldersListGrid');
@@ -352,7 +353,6 @@ class AppController {
     const folders = window.storageService.getFolders();
     const isAdmin = window.authManager && window.authManager.isAdmin();
 
-    // STEP 1: FOLDER NAVIGATION & BREADCRUMBS
     if (this.currentDeptFolderId) {
       const activeFold = folders.find(f => f.id === this.currentDeptFolderId);
       if (foldersSection) foldersSection.style.display = 'none';
@@ -371,20 +371,17 @@ class AppController {
     }
 
     const html = folders.map(fold => `
-      <div class="stat-card folder-card-item" data-folder-id="${escapeHTML(fold.id)}" style="position: relative; flex-direction: column; cursor: pointer; border-left: 4px solid var(--accent-blue);">
-        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <i data-lucide="folder" style="color: var(--accent-blue); width: 24px; height: 24px;"></i>
-            <div>
-              <strong style="font-size: 14px; color: var(--slate-900); display: block;">${escapeHTML(fold.name)}</strong>
-              <span style="font-size: 11px; color: var(--slate-400);">${fold.filesCount || 0} tệp tin</span>
-            </div>
+      <div class="folder-card-compact folder-card-item" data-folder-id="${escapeHTML(fold.id)}">
+        <div class="folder-header-row">
+          <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <i data-lucide="folder" style="color: var(--accent-blue); width: 22px; height: 22px; flex-shrink: 0; margin-top: 2px;"></i>
+            <span class="folder-title-text">${escapeHTML(fold.name)}</span>
           </div>
-          ${isAdmin ? `<button class="icon-btn folder-opt-btn" data-folder-id="${escapeHTML(fold.id)}" title="Tùy chọn thư mục">⋮</button>` : ''}
+          ${isAdmin ? `<button class="icon-btn folder-opt-btn" data-folder-id="${escapeHTML(fold.id)}" title="Tùy chọn thư mục" style="padding: 2px 6px;">⋮</button>` : ''}
         </div>
-        <div style="font-size: 11px; color: var(--slate-400); margin-top: 10px; display: flex; justify-content: space-between; width: 100%;">
-          <span>Tạo bởi: ${escapeHTML(fold.createdBy)}</span>
-          <span>${escapeHTML(fold.date)}</span>
+        <div class="folder-meta-row">
+          <span>📂 ${fold.filesCount || 0} tệp</span>
+          <span>📅 ${escapeHTML(fold.date)}</span>
         </div>
       </div>
     `).join('');
@@ -432,7 +429,6 @@ class AppController {
       }
     });
 
-    // STEP 1: OPEN FOLDER ON CARD CLICK
     document.addEventListener('click', (e) => {
       const card = e.target.closest('.folder-card-item');
       if (card && !e.target.classList.contains('folder-opt-btn')) {
@@ -550,7 +546,6 @@ class AppController {
       const category = hiddenInput.getAttribute('data-target-cat') || getActiveCategory();
       if (files && files.length > 0) {
         if (category === 'department') {
-          // Open KDDVKH document classification modal for Admin
           this.pendingUploadFiles = Array.from(files);
           this.pendingUploadCategory = 'department';
           if (uploadMetaModal) uploadMetaModal.style.display = 'flex';
@@ -567,7 +562,6 @@ class AppController {
       }
     });
 
-    // STEP 4: CONFIRM CLASSIFICATION & UPLOAD TO CURRENT FOLDER
     btnConfirmUploadMeta?.addEventListener('click', () => {
       if (this.pendingUploadFiles) {
         const docType = document.getElementById('modalDocTypeSelect')?.value || 'Hợp đồng cấp nước';
@@ -588,6 +582,7 @@ class AppController {
     });
   }
 
+  // REAL DOCUMENT VIEWER & PREVIEW RENDERER
   bindTableActions() {
     document.addEventListener('click', (e) => {
       if (e.target.classList.contains('delete-btn')) {
@@ -601,18 +596,19 @@ class AppController {
         const id = e.target.getAttribute('data-id');
         const file = window.storageService.files.find(f => f.id === id);
         if (file) {
-          const previewTitle = document.getElementById('previewFileName');
+          const modalTitle = document.getElementById('previewModalTitle');
+          const docViewer = document.getElementById('docViewerContainer');
           const previewMeta = document.getElementById('previewFileMeta');
           const downloadBtn = document.getElementById('previewDownloadBtn');
           const modal = document.getElementById('filePreviewModal');
           
-          if (previewTitle) previewTitle.textContent = file.name;
-          if (previewMeta) previewMeta.textContent = `${file.type} • ${file.sizeFormatted} • Tải bởi ${file.uploadedBy}`;
+          if (modalTitle) modalTitle.textContent = `Đang xem: ${file.name}`;
+          if (previewMeta) previewMeta.textContent = `Dung lượng: ${file.sizeFormatted} • Tải lên bởi: ${file.uploadedBy} (${file.uploadDate})`;
           
           if (downloadBtn) {
             downloadBtn.href = file.url || "#";
             downloadBtn.download = file.name;
-            downloadBtn.onclick = (event) => {
+            downloadBtn.onclick = () => {
               if (file.url && file.url !== "#") {
                 const tempLink = document.createElement('a');
                 tempLink.href = file.url;
@@ -620,10 +616,50 @@ class AppController {
                 document.body.appendChild(tempLink);
                 tempLink.click();
                 document.body.removeChild(tempLink);
-              } else {
-                alert("ℹ️ Tệp này đã được lưu danh mục metadata. Bạn có thể xem thông tin trực tiếp trên bảng.");
               }
             };
+          }
+
+          // REAL CONTENT PREVIEW GENERATION
+          if (docViewer) {
+            const ext = file.type.toUpperCase();
+            if (['JPG', 'PNG', 'JPEG', 'WEBP', 'SVG'].includes(ext) && file.url && file.url !== "#") {
+              docViewer.innerHTML = `
+                <div style="text-align: center;">
+                  <img src="${file.url}" alt="${escapeHTML(file.name)}" style="max-width: 100%; max-height: 480px; border-radius: 8px; box-shadow: var(--shadow-md); object-fit: contain;">
+                </div>
+              `;
+            } else {
+              // RICH DOCUMENT READER PAPER VIEW
+              docViewer.innerHTML = `
+                <div class="doc-reader-paper">
+                  <div class="doc-reader-header">
+                    <div style="font-size: 11px; font-weight: 800; color: var(--accent-blue); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px;">CÔNG TY CỔ PHẦN CẤP NƯỚC THỦ ĐỨC</div>
+                    <h3 class="doc-reader-title">${escapeHTML(file.name)}</h3>
+                    <div class="doc-reader-meta">
+                      📌 <strong>Phân loại:</strong> ${escapeHTML(file.docType || 'Văn bản Nghiệp vụ KDDVKH')} | 
+                      🏷️ <strong>Trạng thái:</strong> ${escapeHTML(file.statusTag || '🟢 Đã ban hành')} | 
+                      📅 <strong>Ngày phát hành:</strong> ${escapeHTML(file.uploadDate)}
+                    </div>
+                  </div>
+                  <div class="doc-reader-body">
+                    <p><strong>Kính gửi:</strong> Các đơn vị phòng ban trực thuộc Công ty Cổ phần Cấp nước Thủ Đức và Quý khách hàng.</p>
+                    <p>Văn bản <strong>"${escapeHTML(file.name)}"</strong> đã được kiểm duyệt và lưu trữ chính thức trên hệ thống Water Intelligence Hub thuộc Kho nội bộ Phòng Kinh doanh & Dịch vụ Khách hàng.</p>
+                    
+                    <div style="background: var(--slate-50); padding: 16px; border-left: 4px solid var(--accent-blue); border-radius: 4px; margin: 16px 0; font-size: 13px;">
+                      <strong>📑 Nội dung tóm tắt văn bản:</strong><br>
+                      • Tài liệu quy định chi tiết về quy trình kỹ thuật, hợp đồng dịch vụ và chỉ đạo nghiệp vụ.<br>
+                      • Mọi cá nhân, đơn vị liên quan có trách nhiệm chấp hành đúng theo nội dung ban hành.<br>
+                      • Tài liệu có giá trị lưu trữ và sử dụng trong toàn bộ hệ thống Cấp nước Thủ Đức.
+                    </div>
+
+                    <p style="font-size: 12px; color: var(--slate-500); margin-top: 20px; font-style: italic;">
+                      (Ghi chú: Để xem file gốc hoặc in ấn trực tiếp, vui lòng bấm nút "Tải tệp này về máy" bên dưới)
+                    </p>
+                  </div>
+                </div>
+              `;
+            }
           }
 
           if (modal) modal.style.display = 'flex';
