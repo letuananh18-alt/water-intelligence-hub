@@ -138,16 +138,18 @@ class StorageService {
     if (!window.supabaseClient) return;
     try {
       const { data, error } = await window.supabaseClient.from('folders').select('*');
-      if (!error && data) {
+      if (!error && data && data.length > 0) {
         const dbFolders = data.map(f => this.normalizeFolderFromDb(f));
         const map = new Map();
-        // 1. Load local memory folders
+        // 1. Keep existing local memory folders first
         this.folders.forEach(f => map.set(f.id, f));
-        // 2. Merge cloud folders
+        // 2. Merge cloud folders from Supabase
         dbFolders.forEach(f => map.set(f.id, f));
         this.folders = Array.from(map.values());
         this.saveLocal();
         this.notify();
+      } else if (error) {
+        console.warn("Folder sync error from Supabase:", error.message);
       }
     } catch (e) {
       console.warn("Folder sync notice:", e);
@@ -158,16 +160,18 @@ class StorageService {
     if (!window.supabaseClient) return;
     try {
       const { data, error } = await window.supabaseClient.from('files').select('*');
-      if (!error && data) {
+      if (!error && data && data.length > 0) {
         const dbFiles = data.map(f => this.normalizeFileFromDb(f));
         const map = new Map();
-        // 1. Load local memory files
+        // 1. Keep existing local memory files first
         this.files.forEach(f => map.set(f.id, f));
-        // 2. Merge cloud files
+        // 2. Merge cloud files from Supabase
         dbFiles.forEach(f => map.set(f.id, f));
         this.files = Array.from(map.values());
         this.saveLocal();
         this.notify();
+      } else if (error) {
+        console.warn("Files sync error from Supabase:", error.message);
       }
     } catch (e) {
       console.warn("Files sync notice:", e);
@@ -275,7 +279,7 @@ class StorageService {
             newFile.url = publicUrlData.publicUrl;
           }
         } else if (uploadErr) {
-          console.warn("Supabase Storage upload policy error notice:", uploadErr.message);
+          console.warn("Supabase Storage upload policy notice:", uploadErr.message);
         }
       } catch (stErr) {
         console.warn("Supabase Storage bucket notice:", stErr);
@@ -391,13 +395,19 @@ class StorageService {
       filesCount: 0
     };
 
+    // Save to local memory first
     this.folders.unshift(newFolder);
     this.saveLocal();
     this.notify();
 
+    // Upsert directly to Supabase Postgres Cloud
     if (window.supabaseClient) {
       try {
-        await window.supabaseClient.from('folders').upsert(this.normalizeFolderToDb(newFolder));
+        const payload = this.normalizeFolderToDb(newFolder);
+        const { error } = await window.supabaseClient.from('folders').upsert(payload);
+        if (error) {
+          console.warn("Supabase createFolder error:", error.message);
+        }
       } catch (e) {
         console.warn("Supabase createFolder notice:", e);
       }
