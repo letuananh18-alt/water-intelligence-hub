@@ -55,18 +55,20 @@ class AiAssistant {
     return this.messages;
   }
 
-  // CALL GOOGLE GEMINI REST API WITH MULTI-MODEL FAILOVER (gemini-2.5-flash FIRST)
+  // CALL GOOGLE GEMINI REST API WITH OFFICIAL ACTIVE PRODUCTION MODELS
   async callGeminiApi(promptText, base64Data = null, mimeType = null) {
     const key = this.getApiKey();
     if (!key) {
       return null;
     }
 
-    const endpoints = [
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
-      'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent'
+    // Active production models supported by Google AI Studio for API keys
+    const models = [
+      'gemini-1.5-flash-latest',
+      'gemini-2.0-flash',
+      'gemini-2.0-flash-exp',
+      'gemini-1.5-flash',
+      'gemini-1.5-pro-latest'
     ];
 
     let firstErrorDetails = "";
@@ -78,10 +80,10 @@ class AiAssistant {
       cleanBase64 = cleanBase64.replace(/\s+/g, '');
     }
 
-    // 1. Try multimodal endpoints sequentially
-    for (const ep of endpoints) {
+    // 1. Try active multimodal endpoints sequentially
+    for (const model of models) {
       try {
-        const url = `${ep}?key=${key}`;
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
         const parts = [{ text: promptText }];
         if (cleanBase64 && cleanBase64.length > 50) {
           parts.push({
@@ -92,7 +94,7 @@ class AiAssistant {
           });
         }
 
-        const response = await fetch(url, {
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contents: [{ parts }] })
@@ -108,20 +110,20 @@ class AiAssistant {
           const errJson = await response.json().catch(() => ({}));
           const errMsg = errJson.error ? (errJson.error.message || `HTTP ${response.status}`) : `HTTP ${response.status}`;
           if (!firstErrorDetails) firstErrorDetails = errMsg;
-          console.warn(`Gemini endpoint ${ep} HTTP Error:`, response.status, errMsg);
+          console.warn(`Gemini model ${model} HTTP Error:`, response.status, errMsg);
         }
       } catch (e) {
         if (!firstErrorDetails) firstErrorDetails = e.message;
-        console.warn(`Gemini endpoint ${ep} fetch notice:`, e);
+        console.warn(`Gemini model ${model} fetch notice:`, e);
       }
     }
 
-    // 2. Secondary Failover: Text-only request if PDF binary format was rejected by API
+    // 2. Secondary Failover: Text-only request if PDF binary format was rejected
     if (cleanBase64) {
-      for (const ep of endpoints) {
+      for (const model of models) {
         try {
-          const url = `${ep}?key=${key}`;
-          const response = await fetch(url, {
+          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+          const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
