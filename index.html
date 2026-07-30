@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/styles.css?v=20260731_v74">
+  <link rel="stylesheet" href="css/styles.css?v=20260731_v75">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- PDF.js for 100% Real Text PDF Document Extracting & Canvas Page Rendering -->
@@ -227,11 +227,11 @@
                 <span>Xin chào, <span id="dashGreetingName">Tuấn Anh</span>!</span>
                 <span>👋</span>
               </h2>
-              <p class="welcome-sub">Chào mừng bạn quay trở lại với Water Intelligence Hub (Powered by Supabase Cloud & AI Engine)</p>
+              <p class="welcome-sub">Chào mừng bạn quay trở lại với Water Intelligence Hub (Thủ Đức Water Cloud Engine)</p>
             </div>
           </div>
 
-          <!-- Stat Cards -->
+          <!-- Stat Cards Grid -->
           <div class="stats-grid">
             <div class="stat-card">
               <div class="stat-info">
@@ -247,8 +247,8 @@
             <div class="stat-card">
               <div class="stat-info" style="flex: 1;">
                 <span class="stat-label">Dung lượng đã dùng</span>
-                <span class="stat-value">0 MB <span style="font-size: 14px; font-weight: 500; color: var(--slate-400);">/ 500 GB</span></span>
-                <div class="progress-bar-bg">
+                <span class="stat-value">0 MB <span style="font-size: 13px; font-weight: 500; color: var(--slate-400);">/ 500 GB</span></span>
+                <div class="progress-bar-bg" style="margin-top: 6px;">
                   <div class="progress-bar-fill" style="width: 0%;"></div>
                 </div>
                 <span class="stat-subtext" style="color: var(--slate-500); margin-top: 6px;">0% đã sử dụng</span>
@@ -261,7 +261,7 @@
             <div class="stat-card">
               <div class="stat-info">
                 <span class="stat-label">Kho KDDVKH</span>
-                <span class="stat-value">0</span>
+                <span class="stat-value" id="dashDeptDocCount">0</span>
                 <span class="stat-subtext">Tài liệu phòng ban</span>
               </div>
               <div class="stat-icon-wrapper stat-icon-purple">
@@ -271,9 +271,9 @@
 
             <div class="stat-card">
               <div class="stat-info">
-                <span class="stat-label">Bảo mật PostgreSQL</span>
+                <span class="stat-label">Bảo mật CSDL</span>
                 <span class="stat-value" style="color: #059669; font-size: 20px;">An toàn</span>
-                <span class="stat-subtext" style="color: var(--slate-500);">Supabase Realtime Engine</span>
+                <span class="stat-subtext" style="color: var(--slate-500);">PostgreSQL Encrypted</span>
               </div>
               <div class="stat-icon-wrapper stat-icon-green">
                 <i data-lucide="shield-check"></i>
@@ -281,20 +281,44 @@
             </div>
           </div>
 
-          <!-- Middle Row: Upload Dropzone + Recent Activity -->
-          <div class="dashboard-middle-row">
-            <div id="dashboardDropzone" class="upload-widget-card">
-              <div class="upload-icon-circle">
-                <i data-lucide="cloud-upload" style="width: 28px; height: 28px;"></i>
+          <!-- Middle Row: Pro 3D Interactive Analytics Showcase + Recent Activity -->
+          <div class="dashboard-middle-row" style="display: flex; gap: 20px; align-items: stretch; margin-bottom: 24px;">
+            
+            <!-- Pro Interactive Analytics Showcase (Replaces old Dropzone) -->
+            <div class="activity-card" style="padding: 22px; flex: 1.4; display: flex; flex-direction: column; justify-content: space-between;">
+              <div>
+                <div class="card-header-flex" style="margin-bottom: 16px; align-items: center;">
+                  <div>
+                    <h3 class="card-title" style="font-size: 15px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                      <span>📊</span> <span>Thống kê Phân loại & Tiến độ Dữ liệu Kho KDDVKH</span>
+                    </h3>
+                    <div style="font-size: 12px; color: var(--slate-500); margin-top: 2px;">Cập nhật thời gian thực từ CSDL Supabase PostgreSQL</div>
+                  </div>
+                  <span class="badge-tag" style="background: #e0f2fe; color: #0284c7; font-weight: 700; font-size: 11px;">⚡ Realtime Engine</span>
+                </div>
+
+                <!-- Dynamic Progress Bars for 5 Categories -->
+                <div id="dashCategoriesProgressList" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px;">
+                  <!-- Rendered dynamically by JS -->
+                </div>
               </div>
-              <div class="upload-title">Kéo & thả tệp vào đây để tải lên</div>
-              <div class="upload-subtitle">hoặc chọn từ máy tính của bạn</div>
-              <button class="btn-upload-action" id="dropzoneSelectBtn">Chọn tệp để tải lên</button>
-              <input type="file" id="hiddenFileInput" style="display: none;" multiple>
-              <div class="upload-formats-hint">Hỗ trợ: PDF, DOCX, XLSX, PPTX, PNG, JPG (tối đa 100MB)</div>
+
+              <!-- Quick Action Pills Footer -->
+              <div style="display: flex; gap: 10px; padding-top: 14px; border-top: 1px solid var(--slate-100); flex-wrap: wrap;">
+                <button class="table-btn preview-btn" id="btnDashGotoDept" style="padding: 6px 14px; font-size: 12px; font-weight: 700; background: #f8fafc; border: 1px solid var(--slate-200); color: var(--accent-blue);">
+                  📁 Kho KDDVKH
+                </button>
+                <button class="table-btn preview-btn" id="btnDashGotoReports" style="padding: 6px 14px; font-size: 12px; font-weight: 700; background: #f8fafc; border: 1px solid var(--slate-200); color: #0284c7;">
+                  📊 Xem Báo cáo
+                </button>
+                <button class="table-btn preview-btn" id="btnDashGotoAi" style="padding: 6px 14px; font-size: 12px; font-weight: 700; background: #f8fafc; border: 1px solid var(--slate-200); color: #7c3aed;">
+                  🤖 Trợ lý AI 24/7
+                </button>
+              </div>
             </div>
 
-            <div class="activity-card">
+            <!-- Recent Activity Card -->
+            <div class="activity-card" style="flex: 1;">
               <div class="card-header-flex">
                 <h3 class="card-title">Hoạt động gần đây</h3>
                 <a href="#" class="link-action" id="viewAllActivityLink">Xem tất cả</a>
@@ -303,6 +327,7 @@
                 <div style="font-size: 13px; color: var(--slate-400); text-align: center; padding: 25px;">Chưa có hoạt động nào.</div>
               </div>
             </div>
+
           </div>
 
           <!-- Recent Files Data Table -->
@@ -314,7 +339,6 @@
                 <option value="pdf">PDF</option>
                 <option value="docx">DOCX</option>
                 <option value="xlsx">XLSX</option>
-                <option value="ai">AI</option>
                 <option value="jpg">JPG</option>
               </select>
             </div>
@@ -332,7 +356,7 @@
                 <tbody id="dashFilesTableBody">
                   <tr>
                     <td colspan="5" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
-                      📂 Chưa có tài liệu nào. Kéo & thả tệp vào ô trên để bắt đầu tải lên!
+                      📂 Chưa có tài liệu nào trong CSDL.
                     </td>
                   </tr>
                 </tbody>
@@ -744,7 +768,7 @@
                     <td>waterain8n@gmail.com</td>
                     <td>Ban Quản Trị - Phòng KDDVKH</td>
                     <td><span class="badge-tag type-pdf">ADMIN</span></td>
-                    <td>31/07/2026 02:10</td>
+                    <td>31/07/2026 02:17</td>
                   </tr>
                 </tbody>
               </table>
@@ -995,13 +1019,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Application Logic with Supabase Backend -->
-  <script src="js/supabase-config.js?v=20260731_v74"></script>
-  <script src="js/tech-bg.js?v=20260731_v74"></script>
-  <script src="js/auth.js?v=20260731_v74"></script>
-  <script src="js/storage-service.js?v=20260731_v74"></script>
-  <script src="js/chat-service.js?v=20260731_v74"></script>
-  <script src="js/ai-assistant.js?v=20260731_v74"></script>
-  <script src="js/ai-analyzer-module.js?v=20260731_v74"></script>
-  <script src="js/app.js?v=20260731_v74"></script>
+  <script src="js/supabase-config.js?v=20260731_v76"></script>
+  <script src="js/tech-bg.js?v=20260731_v76"></script>
+  <script src="js/auth.js?v=20260731_v76"></script>
+  <script src="js/storage-service.js?v=20260731_v76"></script>
+  <script src="js/chat-service.js?v=20260731_v76"></script>
+  <script src="js/ai-assistant.js?v=20260731_v76"></script>
+  <script src="js/ai-analyzer-module.js?v=20260731_v76"></script>
+  <script src="js/app.js?v=20260731_v76"></script>
 </body>
 </html>

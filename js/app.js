@@ -261,13 +261,17 @@ class AppController {
   renderDashboardStats() {
     if (!window.storageService) return;
     const stats = window.storageService.getStorageStats();
+    const deptFiles = window.storageService.getFiles('department');
     
     const elTotal = document.getElementById('statTotalFiles');
     if (elTotal) elTotal.textContent = stats.totalFiles.toLocaleString();
 
+    const elDeptCount = document.getElementById('dashDeptDocCount');
+    if (elDeptCount) elDeptCount.textContent = deptFiles.length.toString();
+
     const elUsed = document.querySelector('.stat-card:nth-child(2) .stat-value');
     if (elUsed) {
-      elUsed.innerHTML = `${escapeHTML(stats.usedFormatted)} <span style="font-size: 14px; font-weight: 500; color: var(--slate-400);">/ 500 GB</span>`;
+      elUsed.innerHTML = `${escapeHTML(stats.usedFormatted)} <span style="font-size: 13px; font-weight: 500; color: var(--slate-400);">/ 500 GB</span>`;
     }
 
     const elProgress = document.querySelector('.progress-bar-fill');
@@ -282,8 +286,36 @@ class AppController {
 
     const elShared = document.querySelector('.stat-card:nth-child(3) .stat-value');
     if (elShared) {
-      elShared.textContent = stats.sharedFiles.toString();
+      elShared.textContent = deptFiles.length.toString();
     }
+
+    // Populate Dashboard Pro Analytics Card Progress Bars
+    const categories = ['Hợp đồng cấp nước', 'Biểu giá dịch vụ', 'Quy trình CSKH', 'Văn bản chỉ đạo', 'Biên bản sự cố'];
+    const totalDeptCount = deptFiles.length;
+    const catListEl = document.getElementById('dashCategoriesProgressList');
+
+    if (catListEl) {
+      catListEl.innerHTML = categories.map(cat => {
+        const count = deptFiles.filter(f => (f.docType || 'Hợp đồng cấp nước') === cat).length;
+        const pct = totalDeptCount > 0 ? Math.round((count / totalDeptCount) * 100) : 0;
+        return `
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 4px;">
+              <span>${cat}</span>
+              <span style="color: #0284c7;"><strong>${count} tệp</strong> (${pct}%)</span>
+            </div>
+            <div style="background: #f1f5f9; border-radius: 6px; height: 7px; overflow: hidden;">
+              <div style="background: linear-gradient(90deg, #0284c7 0%, #38bdf8 100%); width: ${pct}%; height: 100%; border-radius: 6px; transition: width 0.4s ease;"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Quick Action Pill Buttons
+    document.getElementById('btnDashGotoDept')?.addEventListener('click', () => this.switchView('dept-docs'));
+    document.getElementById('btnDashGotoReports')?.addEventListener('click', () => this.switchView('reports'));
+    document.getElementById('btnDashGotoAi')?.addEventListener('click', () => this.switchView('ai-assistant'));
   }
 
   renderDashboardTable() {
