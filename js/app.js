@@ -696,30 +696,32 @@ class AppController {
   }
 
   bindTableActions() {
-    // 1. Nút AI Tóm Tắt 3 Giây trong Preview Modal
+    // 1. Nút AI Tóm Tắt 3 Giây trong Preview Modal (Đọc & Tóm tắt Nội dung Thực tế của Tệp)
     document.getElementById('btnAiSummarizeDoc')?.addEventListener('click', () => {
       if (!this.currentPreviewFileId || !window.storageService || !window.aiAssistant) return;
       const file = window.storageService.files.find(f => f.id === this.currentPreviewFileId);
-      if (file) {
-        const summary = window.aiAssistant.summarizeDocument(file);
-        const docViewer = document.getElementById('docViewerContainer');
-        if (docViewer && summary) {
+      const docViewer = document.getElementById('docViewerContainer');
+      if (file && docViewer) {
+        // Extract real visible text from the document viewer
+        const extractedText = docViewer.innerText || '';
+        const summary = window.aiAssistant.summarizeRealContent(file, extractedText);
+        if (summary) {
           const summaryHtml = `
             <div class="ai-summary-box">
               <div class="ai-summary-header">
                 <i data-lucide="bot" style="width: 20px; height: 20px;"></i>
                 <span>🤖 ${escapeHTML(summary.title)}</span>
               </div>
-              <div class="ai-summary-purpose">${escapeHTML(summary.purpose)}</div>
+              <div class="ai-summary-purpose">${summary.purpose}</div>
               
-              <div class="ai-summary-section-title">📌 Các điều khoản & Quy trình cốt lõi:</div>
+              <div class="ai-summary-section-title">📌 Các nội dung & Điều khoản cốt lõi:</div>
               <ul class="ai-summary-list">
-                ${summary.highlights.map(h => `<li>${escapeHTML(h)}</li>`).join('')}
+                ${summary.highlights.map(h => `<li>${h}</li>`).join('')}
               </ul>
 
-              <div class="ai-summary-section-title">⚡ Hành động & Thời hạn thực hiện:</div>
+              <div class="ai-summary-section-title">⚡ Hành động & Kết luận thực hiện:</div>
               <ul class="ai-summary-list">
-                ${summary.actions.map(a => `<li>${escapeHTML(a)}</li>`).join('')}
+                ${summary.actions.map(a => `<li>${a}</li>`).join('')}
               </ul>
             </div>
           `;
