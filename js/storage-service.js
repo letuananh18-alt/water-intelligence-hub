@@ -501,19 +501,36 @@ class StorageService {
     return newFile;
   }
 
+  // DOUBLE-DELETE: DELETES BOTH POSTGRES DB RECORD AND SUPABASE STORAGE BUCKET BINARY FILE SIMULTANEOUSLY!
   async deleteFile(fileId) {
     const file = this.files.find(f => f.id === fileId);
     this.files = this.files.filter(f => f.id !== fileId);
     this.saveLocal();
     this.notify();
 
-    if (window.supabaseClient && file) {
+    if (window.supabaseClient) {
       try {
+        // 1. Delete record from Supabase Postgres Table
         await window.supabaseClient.from('files').delete().eq('id', fileId);
-        
-        const sanitizeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const filePath = `${file.category}/${fileId}_${sanitizeName}`;
-        await window.supabaseClient.storage.from('documents').remove([filePath]);
+
+        // 2. Delete raw binary file from Supabase Storage Bucket 'documents'
+        if (window.supabaseClient.storage) {
+          const categories = ['department', 'personal'];
+          for (const cat of categories) {
+            const { data: bucketFiles } = await window.supabaseClient.storage.from('documents').list(cat);
+            if (bucketFiles && bucketFiles.length > 0) {
+              const pathsToRemove = [];
+              bucketFiles.forEach(item => {
+                if (item.name && (item.name.includes(fileId) || (file && item.name.includes(file.name)))) {
+                  pathsToRemove.push(`${cat}/${item.name}`);
+                }
+              });
+              if (pathsToRemove.length > 0) {
+                await window.supabaseClient.storage.from('documents').remove(pathsToRemove);
+              }
+            }
+          }
+        }
       } catch (e) {
         console.warn("Supabase delete notice:", e);
       }
@@ -522,13 +539,35 @@ class StorageService {
 
   async deleteFilesBatch(fileIds) {
     if (!Array.isArray(fileIds) || fileIds.length === 0) return;
+    const targetFiles = this.files.filter(f => fileIds.includes(f.id));
     this.files = this.files.filter(f => !fileIds.includes(f.id));
     this.saveLocal();
     this.notify();
 
     if (window.supabaseClient) {
       try {
+        // 1. Delete records from Supabase Postgres Table
         await window.supabaseClient.from('files').delete().in('id', fileIds);
+
+        // 2. Delete raw binary files from Supabase Storage Bucket 'documents'
+        if (window.supabaseClient.storage) {
+          const categories = ['department', 'personal'];
+          for (const cat of categories) {
+            const { data: bucketFiles } = await window.supabaseClient.storage.from('documents').list(cat);
+            if (bucketFiles && bucketFiles.length > 0) {
+              const pathsToRemove = [];
+              bucketFiles.forEach(item => {
+                const match = fileIds.some(id => item.name.includes(id)) || targetFiles.some(tf => item.name.includes(tf.name));
+                if (item.name && match) {
+                  pathsToRemove.push(`${cat}/${item.name}`);
+                }
+              });
+              if (pathsToRemove.length > 0) {
+                await window.supabaseClient.storage.from('documents').remove(pathsToRemove);
+              }
+            }
+          }
+        }
       } catch (e) {
         console.warn("Batch delete notice:", e);
       }
@@ -567,6 +606,17 @@ class StorageService {
     if (window.supabaseClient) {
       try {
         await window.supabaseClient.from('files').delete().neq('id', 'keep_all');
+
+        if (window.supabaseClient.storage) {
+          const categories = ['department', 'personal'];
+          for (const cat of categories) {
+            const { data: bucketFiles } = await window.supabaseClient.storage.from('documents').list(cat);
+            if (bucketFiles && bucketFiles.length > 0) {
+              const pathsToRemove = bucketFiles.map(b => `${cat}/${b.name}`);
+              await window.supabaseClient.storage.from('documents').remove(pathsToRemove);
+            }
+          }
+        }
       } catch (e) {}
     }
   }
