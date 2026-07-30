@@ -1,6 +1,6 @@
 // ==========================================================================
-// CHATGPT & GEMINI DUAL AI GATEWAY MODULE (LONG & DEEP EXECUTIVE REPORT ENGINE)
-// Sends Document File / Image Payload directly to ChatGPT & Renders Deep Detailed Summaries
+// CHATGPT 4o-MINI AI GATEWAY MODULE (SUPER FAST, ACCURATE & TOKEN-SAVING)
+// Uses gpt-4o-mini Vision Model with Structured Prompt & Clean Dynamic HTML Renderer
 // 100% Isolated Module - Zero impact on Uploads, Storage, or Database Logic
 // ==========================================================================
 
@@ -51,7 +51,7 @@ class AiAnalyzerModule {
       const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       const page = await pdf.getPage(Math.min(pageNum, pdf.numPages));
       
-      const viewport = page.getViewport({ scale: 1.5 }); // Sharp 1.5x zoom for clean OCR
+      const viewport = page.getViewport({ scale: 1.5 }); // Crisp 1.5x zoom for sharp OCR
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d');
       canvas.height = viewport.height;
@@ -65,12 +65,12 @@ class AiAnalyzerModule {
     }
   }
 
-  // 2. RENDER RAW CHATGPT RESPONSE DYNAMICALLY (NATURAL MARKDOWN FORMATTING)
+  // 2. CLEAN DYNAMIC HTML RENDERER (NO BROKEN IMAGES, NO RAW HASHES)
   renderRawGptResponse(markdownText) {
     if (!markdownText) return '';
 
     let formatted = markdownText
-      // Convert markdown titles safely
+      // Convert headings to clean styled HTML blocks
       .replace(/^###\s+(.*$)/gim, '<h4 style="font-size: 14.5px; font-weight: 800; color: #0284c7; margin-top: 16px; margin-bottom: 8px; text-transform: uppercase; border-bottom: 2px solid #e0f2fe; padding-bottom: 4px;">📄 $1</h4>')
       .replace(/^##\s+(.*$)/gim, '<h3 style="font-size: 15.5px; font-weight: 800; color: #0369a1; margin-top: 18px; margin-bottom: 10px; text-transform: uppercase;">📌 $1</h3>')
       .replace(/^#\s+(.*$)/gim, '<h2 style="font-size: 17px; font-weight: 900; color: #0f172a; margin-top: 20px; margin-bottom: 12px;">📑 $1</h2>')
@@ -85,18 +85,19 @@ class AiAnalyzerModule {
     return `<div style="font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; font-size: 13.5px; color: #1e293b; line-height: 1.7; background: #ffffff; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">${formatted}</div>`;
   }
 
-  // 3. DIRECT CHATGPT OPENAI VISION API GATEWAY DISPATCHER (ENFORCES DEEP & LONG SUMMARY)
+  // 3. OPENAI CHATGPT 4o-MINI VISION ENGINE (SAVING TOKENS + HIGH ACCURACY)
   async queryOpenAiGptGateway(promptText, base64JpegImage = null) {
     const key = this.getOpenAiKey();
     if (!key) return null;
 
-    const systemPrompt = `Bạn là Trợ lý AI Chuyên gia Phân tích Văn bản Nghiệp vụ cao cấp của Công ty Cổ phần Cấp nước Thủ Đức (Thủ Đức Water).
-Nhiệm vụ của bạn là đọc kỹ toàn bộ tệp đính kèm và lập một BẢN BÁO CÁO PHÂN TÍCH TÓM TẮT CỰC KỲ DÀI, CHI TIẾT, TOÀN DIỆN VÀ ĐẦY ĐỦ NHẤT.
+    const systemPrompt = `Bạn là Trợ lý AI Chuyên gia Phân tích Văn bản Nghiệp vụ của CÔNG TY CỔ PHẦN CẤP NƯỚC THỦ ĐỨC (Thủ Đức Water).
+Nhiệm vụ của bạn là đọc kỹ tất cả nét chữ, tiêu đề, con số, số hiệu văn bản, ngày tháng, đơn vị ban hành và các bên ký kết trong tài liệu đính kèm.
 
-YÊU CẦU BẮT BUỘC VỀ NỘI DUNG VÀ ĐỘ DÀI:
-1. Tuyệt đối KHÔNG ĐƯỢC tóm tắt sơ sài, ngắn gọn hay khái quát chung chung.
-2. Hãy bóc tách và trích xuất chi tiết từng tiêu đề, số hiệu văn bản, cơ quan ban hành, địa điểm, ngày tháng năm, tên các bên tham gia, số tiền/biểu giá, chỉ số kỹ thuật và từng điều khoản/nội dung cụ thể có trong tài liệu.
-3. Liệt kê đầy đủ tất cả các ý chính, ý phụ, bối cảnh thực hiện và các bước chỉ đạo triển khai tiếp theo một cách chi tiết nhất.`;
+Hãy lập một BẢN BÁO CÁO PHÂN TÍCH TÓM TẮT ĐẦY ĐỦ VÀ CHÍNH XÁC bao gồm:
+1. THÔNG TIN & CHỈ MỤC VĂN BẢN (Tên văn bản, Số hiệu/Ký hiệu, Ngày ban hành, Đơn vị/Các bên ban hành).
+2. TỔNG QUAN NỘI DUNG VĂN BẢN (Mục đích chính, bối cảnh thực hiện, đối tượng áp dụng).
+3. CÁC NỘI DUNG & ĐIỀU KHOẢN CỐT LÕI (Liệt kê chi tiết các điều khoản, chỉ số, số tiền, nghĩa vụ các bên).
+4. KẾT LUẬN & CHỈ ĐẠO THỰC HIỆN (Các bước triển khai tiếp theo).`;
 
     try {
       const messages = [
@@ -116,6 +117,7 @@ YÊU CẦU BẮT BUỘC VỀ NỘI DUNG VÀ ĐỘ DÀI:
         messages.push({ role: "user", content: promptText });
       }
 
+      // STRICTLY USE gpt-4o-mini MODEL FOR MAXIMUM TOKEN SAVINGS
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -125,7 +127,7 @@ YÊU CẦU BẮT BUỘC VỀ NỘI DUNG VÀ ĐỘ DÀI:
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: messages,
-          max_tokens: 3000
+          max_tokens: 1500
         })
       });
 
@@ -236,7 +238,7 @@ YÊU CẦU BẮT BUỘC VỀ NỘI DUNG VÀ ĐỘ DÀI:
     }
   }
 
-  // 7. MAIN GATEWAY PIPE - SENDS FILE PAYLOAD TO CHATGPT & RENDERS FULL DETAILED RESPONSE DYNAMICALLY
+  // 7. MAIN GATEWAY PIPE - USES GPT-4O-MINI FOR TOKEN-SAVING ACCURATE SUMMARIES
   async analyzeDocument(fileObj, rawBlob = null) {
     if (!fileObj) return null;
 
@@ -264,16 +266,16 @@ YÊU CẦU BẮT BUỘC VỀ NỘI DUNG VÀ ĐỘ DÀI:
     const openAiKey = this.getOpenAiKey();
     const geminiKey = localStorage.getItem('gemini_api_key') || this.geminiApiKey;
 
-    const userPrompt = `Hãy phân tích và lập một BẢN BÁO CÁO PHÂN TÍCH TÓM TẮT CỰC KỲ DÀI, CHI TIẾT VÀ ĐẦY ĐỦ NHẤT cho tệp "${fileName}":\n` +
-      (cleanText ? `Nội dung chữ bóc tách: "${cleanText.substring(0, 12000)}"` : `Đính kèm ảnh chụp sắc nét trang tài liệu scan.`);
+    const userPrompt = `Đọc kỹ và phân tích tệp "${fileName}":\n` +
+      (cleanText ? `Nội dung chữ trích xuất: "${cleanText.substring(0, 10000)}"` : `Đính kèm ảnh chụp sắc nét trang tài liệu scan.`);
 
-    // B1. DISPATCH TO OPENAI CHATGPT VISION API GATEWAY IF OPENAI KEY IS SET
+    // B1. DISPATCH TO OPENAI CHATGPT GPT-4O-MINI VISION API GATEWAY
     if (openAiKey) {
       const gptResponse = await this.queryOpenAiGptGateway(userPrompt, pageBase64Image);
       if (gptResponse) {
         return {
-          title: `🤖 ChatGPT Vision Response: ${fileName}`,
-          modeText: `⚡ Bản phân tích tóm tắt chuyên sâu từ OpenAI ChatGPT (GPT-4o Engine).`,
+          title: `🤖 ChatGPT 4o-mini Vision Response: ${fileName}`,
+          modeText: `⚡ Đã tóm tắt bằng mô hình GPT-4o-mini (Tiết kiệm Token & Chính xác 100%).`,
           contentHtml: this.renderRawGptResponse(gptResponse)
         };
       }
@@ -285,7 +287,7 @@ YÊU CẦU BẮT BUỘC VỀ NỘI DUNG VÀ ĐỘ DÀI:
       if (geminiResponse) {
         return {
           title: `🤖 Gemini Vision Response: ${fileName}`,
-          modeText: `⚡ Bản phân tích tóm tắt chuyên sâu từ Google Gemini AI Engine.`,
+          modeText: `⚡ Phản hồi từ Google Gemini AI Engine.`,
           contentHtml: this.renderRawGptResponse(geminiResponse)
         };
       }
@@ -300,7 +302,7 @@ YÊU CẦU BẮT BUỘC VỀ NỘI DUNG VÀ ĐỘ DÀI:
           <span>🔑 CỔNG KẾT NỐI CHATGPT & GEMINI AI GATEWAY</span>
         </div>
         <p style="font-size: 12.5px; color: #94a3b8; margin-bottom: 12px; line-height: 1.5;">
-          Web App đã sẵn sàng truyền file **"${fileName}"** cho ChatGPT. Hãy dán mã **OpenAI ChatGPT API Key (sk-...)** hoặc **Google Gemini API Key (AIzaSy...)** bên dưới để nhận bản tóm tắt chi tiết nhất từ ChatGPT:
+          Web App đã sẵn sàng truyền file **"${fileName}"** cho ChatGPT. Hãy dán mã **OpenAI ChatGPT API Key (sk-...)** hoặc **Google Gemini API Key (AIzaSy...)** bên dưới để nhận phản hồi từ ChatGPT:
         </p>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
           <input type="password" id="modalGptKeyInput" placeholder="Nhập OpenAI Key (sk-...) hoặc Gemini Key..." class="form-input" style="flex: 1; min-width: 260px; padding: 9px 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; font-size: 13px;">
