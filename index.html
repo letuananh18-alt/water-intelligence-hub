@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Water Intelligence Hub - Thủ Đức Water Portal</title>
   <meta name="description" content="Nền tảng lưu trữ và quản lý dữ liệu thông minh - Thủ Đức Water">
-  <link rel="stylesheet" href="css/styles.css?v=20260730_v5">
+  <link rel="stylesheet" href="css/styles.css?v=20260730_v6">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -374,8 +374,8 @@
             <div id="deptFoldersGrid" class="folder-grid-compact"></div>
           </div>
 
-          <!-- Department Files Data Table with Filters & Status Badges -->
-          <div class="table-card">
+          <!-- Department Files Data Table with Filters & Status Badges (Hidden when outside folders) -->
+          <div class="table-card" style="display: none;">
             <div class="table-header-bar" style="flex-wrap: wrap; gap: 12px;">
               <h3 class="card-title" id="deptTableTitle">Văn bản & Tài liệu Phòng Kinh doanh & DVKH</h3>
               
@@ -414,7 +414,7 @@
                 <tbody id="deptFilesTableBody">
                   <tr>
                     <td colspan="7" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
-                      🏢 Kho nội bộ chưa có văn bản nào. Admin có quyền tải thêm tài liệu chung cho phòng ban!
+                      🏢 Thư mục này chưa có văn bản nào. Bấm "+ Thêm tài liệu phòng ban" ở trên để đăng tệp!
                     </td>
                   </tr>
                 </tbody>
@@ -607,13 +607,13 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 
-  <!-- Application Logic with Cache Bashing Version Tag v20260730_v5 -->
-  <script src="js/firebase-config.js?v=20260730_v5"></script>
-  <script src="js/tech-bg.js?v=20260730_v5"></script>
-  <script src="js/auth.js?v=20260730_v5"></script>
-  <script src="js/storage-service.js?v=20260730_v5"></script>
-  <script src="js/chat-service.js?v=20260730_v5"></script>
-  <script src="js/ai-assistant.js?v=20260730_v5"></script>
-  <script src="js/app.js?v=20260730_v5"></script>
+  <!-- Application Logic with Cache Bashing Version Tag v20260730_v6 -->
+  <script src="js/firebase-config.js?v=20260730_v6"></script>
+  <script src="js/tech-bg.js?v=20260730_v6"></script>
+  <script src="js/auth.js?v=20260730_v6"></script>
+  <script src="js/storage-service.js?v=20260730_v6"></script>
+  <script src="js/chat-service.js?v=20260730_v6"></script>
+  <script src="js/ai-assistant.js?v=20260730_v6"></script>
+  <script src="js/app.js?v=20260730_v6"></script>
 </body>
 </html>

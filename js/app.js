@@ -1,5 +1,5 @@
 // ==========================================================================
-// MAIN APPLICATION CONTROLLER (RELIABLE LIVE FILE CONTENT PREVIEWER)
+// MAIN APPLICATION CONTROLLER (FOLDER-STRICT FILES TABLE & REAL-TIME COUNT)
 // ==========================================================================
 
 function escapeHTML(str) {
@@ -295,9 +295,19 @@ class AppController {
     `).join('');
   }
 
+  // DEPARTMENT FILES TABLE - SHOW ONLY WHEN INSIDE A FOLDER!
   renderDeptTable() {
     const tbody = document.getElementById('deptFilesTableBody');
+    const tableCard = document.querySelector('#viewDeptDocs .table-card');
     if (!tbody || !window.storageService) return;
+
+    // RULE: IF NOT INSIDE A FOLDER, HIDE THE TABLE OR SHOW SELECT PROMPT
+    if (!this.currentDeptFolderId) {
+      if (tableCard) tableCard.style.display = 'none';
+      return;
+    } else {
+      if (tableCard) tableCard.style.display = 'block';
+    }
 
     const docTypeVal = document.getElementById('deptDocTypeFilter')?.value || 'all';
     const fileTypeVal = document.getElementById('deptFileTypeFilter')?.value || 'all';
@@ -309,7 +319,7 @@ class AppController {
       tbody.innerHTML = `
         <tr>
           <td colspan="7" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
-            🏢 ${this.currentDeptFolderId ? 'Thư mục này chưa có văn bản nào.' : 'Kho KDDVKH chưa có văn bản nào.'} ${isAdmin ? 'Bấm "+ Thêm tài liệu phòng ban" ở trên để đăng bài!' : 'Chỉ Admin (letuananh18@gmail.com) được phép đăng văn bản chung cho Phòng Kinh doanh & DVKH.'}
+            🏢 Thư mục này chưa có văn bản nào. ${isAdmin ? 'Bấm "+ Thêm tài liệu phòng ban" ở trên để đăng tệp vào thư mục này!' : 'Chỉ Admin được phép đăng văn bản cho phòng ban.'}
           </td>
         </tr>
       `;
@@ -339,6 +349,7 @@ class AppController {
     `).join('');
   }
 
+  // DYNAMIC FILE COUNT CALCULATED REAL-TIME PER FOLDER
   renderDeptFolders() {
     const grid = document.getElementById('deptFoldersGrid');
     const allGrid = document.getElementById('allFoldersListGrid');
@@ -350,6 +361,7 @@ class AppController {
     if (!grid || !window.storageService) return;
 
     const folders = window.storageService.getFolders();
+    const allDeptFiles = window.storageService.getFiles('department');
     const isAdmin = window.authManager && window.authManager.isAdmin();
 
     if (this.currentDeptFolderId) {
@@ -369,21 +381,26 @@ class AppController {
       if (deptTitle) deptTitle.textContent = 'Kho nội bộ Phòng Kinh doanh & Dịch vụ Khách hàng';
     }
 
-    const html = folders.map(fold => `
-      <div class="folder-card-compact folder-card-item" data-folder-id="${escapeHTML(fold.id)}">
-        <div class="folder-header-row">
-          <div style="display: flex; align-items: flex-start; gap: 10px;">
-            <i data-lucide="folder" style="color: var(--accent-blue); width: 22px; height: 22px; flex-shrink: 0; margin-top: 2px;"></i>
-            <span class="folder-title-text">${escapeHTML(fold.name)}</span>
+    const html = folders.map(fold => {
+      // DYNAMICALLY CALCULATE REAL FILE COUNT FOR EACH FOLDER
+      const realFileCount = allDeptFiles.filter(f => f.folderId === fold.id).length;
+
+      return `
+        <div class="folder-card-compact folder-card-item" data-folder-id="${escapeHTML(fold.id)}">
+          <div class="folder-header-row">
+            <div style="display: flex; align-items: flex-start; gap: 10px;">
+              <i data-lucide="folder" style="color: var(--accent-blue); width: 22px; height: 22px; flex-shrink: 0; margin-top: 2px;"></i>
+              <span class="folder-title-text">${escapeHTML(fold.name)}</span>
+            </div>
+            ${isAdmin ? `<button class="icon-btn folder-opt-btn" data-folder-id="${escapeHTML(fold.id)}" title="Tùy chọn thư mục" style="padding: 2px 6px;">⋮</button>` : ''}
           </div>
-          ${isAdmin ? `<button class="icon-btn folder-opt-btn" data-folder-id="${escapeHTML(fold.id)}" title="Tùy chọn thư mục" style="padding: 2px 6px;">⋮</button>` : ''}
+          <div class="folder-meta-row">
+            <span style="font-weight: 700; color: var(--accent-blue);">📂 ${realFileCount} tệp</span>
+            <span>📅 ${escapeHTML(fold.date)}</span>
+          </div>
         </div>
-        <div class="folder-meta-row">
-          <span>📂 ${fold.filesCount || 0} tệp</span>
-          <span>📅 ${escapeHTML(fold.date)}</span>
-        </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
     grid.innerHTML = html;
     if (allGrid) allGrid.innerHTML = html;
@@ -531,6 +548,10 @@ class AppController {
         alert("⛔ Bị từ chối: Bạn đang ở quyền Client. Chỉ Admin (letuananh18@gmail.com) mới có quyền tải lên Kho nội bộ phòng ban!");
         return;
       }
+      if (!this.currentDeptFolderId) {
+        alert("⚠️ Vui lòng nhấp mở một Thư mục cụ thể trước khi bấm 'Thêm tài liệu phòng ban'!");
+        return;
+      }
       if (hiddenInput) hiddenInput.setAttribute('data-target-cat', 'department');
       hiddenInput?.click();
     });
@@ -575,7 +596,7 @@ class AppController {
         this.closeModal('uploadMetaModal');
         this.pendingUploadFiles = null;
         if (successCount > 0) {
-          alert(`✅ Đã tải lên ${successCount} tệp thành công vào ${this.currentDeptFolderId ? 'Thư mục đang chọn' : 'Kho KDDVKH'}!`);
+          alert(`✅ Đã tải lên ${successCount} tệp thành công vào Thư mục đang chọn!`);
         }
       }
     });
@@ -630,7 +651,6 @@ class AppController {
           const isPdf = ext === 'PDF' || /\.pdf$/i.test(file.name);
 
           if (docViewer) {
-            // 1. REAL IMAGE RENDERING
             if (isImage) {
               const imageSource = (fileSrc && fileSrc !== "#") ? fileSrc : "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?w=800&auto=format&fit=crop&q=80";
               docViewer.innerHTML = `
@@ -639,7 +659,6 @@ class AppController {
                 </div>
               `;
             } 
-            // 2. REAL INLINE PDF RENDERING
             else if (isPdf && fileSrc && fileSrc !== "#") {
               docViewer.innerHTML = `
                 <div style="width: 100%; height: 500px;">
@@ -647,7 +666,6 @@ class AppController {
                 </div>
               `;
             } 
-            // 3. TEXT & RAW CODE RENDERING
             else if (['TXT', 'CSV', 'JSON', 'LOG', 'MD', 'HTML', 'JS'].includes(ext) && rawFile) {
               const reader = new FileReader();
               reader.onload = (event) => {
@@ -657,7 +675,6 @@ class AppController {
               };
               reader.readAsText(rawFile);
             } 
-            // 4. DOCUMENT CARD PREVIEW WITH ACTION SUMMARY
             else {
               docViewer.innerHTML = `
                 <div class="doc-reader-paper">
