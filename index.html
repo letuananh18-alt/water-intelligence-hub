@@ -341,17 +341,26 @@
           </div>
         </section>
 
-        <!-- 3. DEPARTMENT VAULT VIEW (KHO NỘI BỘ PHÒNG KINH DOANH & DỊCH VỤ KHÁCH HÀNG) -->
+        <!-- 3. DEPARTMENT VAULT VIEW (KHO NỘI BỘ PHÒNG KINH DOANH & DỊCH VỤ KHÁCH HÀNG - ENHANCED) -->
         <section id="viewDeptDocs" class="view-panel" style="display: none;">
           <div class="page-header">
             <div>
-              <h2 class="welcome-title">Kho nội bộ Phòng Kinh doanh & Dịch vụ Khách hàng</h2>
-              <p class="welcome-sub">Hợp đồng, quy trình nghiệp vụ và báo cáo dịch vụ khách hàng do Admin quản lý</p>
+              <!-- Breadcrumbs Navigation -->
+              <div id="deptBreadcrumbs" style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--accent-blue); margin-bottom: 6px;">
+                <span>Kho KDDVKH</span>
+                <span id="breadcrumbFolderPart"></span>
+              </div>
+              <h2 class="welcome-title" id="deptTitle">Kho nội bộ Phòng Kinh doanh & Dịch vụ Khách hàng</h2>
+              <p class="welcome-sub" id="deptSub">Hợp đồng, quy trình nghiệp vụ và báo cáo dịch vụ khách hàng do Admin quản lý</p>
             </div>
             <div style="display: flex; gap: 10px;">
+              <button class="btn-primary" id="btnBackToRootFolder" style="display: none; background: var(--slate-100); color: var(--slate-800); border: 1px solid var(--slate-300);">
+                <i data-lucide="arrow-left"></i>
+                <span>← Quay lại Thư mục gốc</span>
+              </button>
               <button class="btn-primary" id="btnCreateNewFolder" style="background: white; color: var(--accent-blue); border: 1px solid var(--slate-200); box-shadow: var(--shadow-sm);">
                 <i data-lucide="folder-plus"></i>
-                <span>+ Tạo thư mục (New Folder)</span>
+                <span>+ Tạo thư mục mới</span>
               </button>
               <button class="btn-primary" id="adminUploadDeptBtn" style="display: flex;">
                 <i data-lucide="plus"></i>
@@ -361,20 +370,43 @@
           </div>
 
           <!-- Department Folders Grid Section -->
-          <div class="card-title" style="margin-bottom: 12px; font-size: 15px; font-weight: 700;">📁 Danh sách Thư mục Phòng ban</div>
-          <div id="deptFoldersGrid" class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 24px;"></div>
+          <div id="deptFoldersSection">
+            <div class="card-title" style="margin-bottom: 12px; font-size: 15px; font-weight: 700;">📁 Thư mục Nghiệp vụ KDDVKH</div>
+            <div id="deptFoldersGrid" class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 24px;"></div>
+          </div>
 
-          <!-- Department Files Data Table -->
+          <!-- Department Files Data Table with Filters & Status Badges -->
           <div class="table-card">
-            <div class="table-header-bar">
-              <h3 class="card-title">Văn bản & Tài liệu Phòng Kinh doanh & DVKH</h3>
+            <div class="table-header-bar" style="flex-wrap: wrap; gap: 12px;">
+              <h3 class="card-title" id="deptTableTitle">Văn bản & Tài liệu Phòng Kinh doanh & DVKH</h3>
+              
+              <!-- Specialized KDDVKH Document Filters -->
+              <div style="display: flex; gap: 10px;">
+                <select id="deptDocTypeFilter" class="filter-select">
+                  <option value="all">Phân loại: Tất cả văn bản</option>
+                  <option value="Hợp đồng cấp nước">📝 Hợp đồng cấp nước</option>
+                  <option value="Biểu giá dịch vụ">💰 Biểu giá dịch vụ</option>
+                  <option value="Quy trình CSKH">📋 Quy trình CSKH</option>
+                  <option value="Văn bản chỉ đạo">🏛️ Văn bản chỉ đạo</option>
+                  <option value="Biên bản sự cố">⚠️ Biên bản sự cố</option>
+                </select>
+
+                <select id="deptFileTypeFilter" class="filter-select">
+                  <option value="all">Loại tệp: Tất cả</option>
+                  <option value="pdf">PDF</option>
+                  <option value="docx">DOCX</option>
+                  <option value="xlsx">XLSX</option>
+                </select>
+              </div>
             </div>
+            
             <div class="data-table-wrapper">
               <table class="data-table">
                 <thead>
                   <tr>
-                    <th>Tên văn bản phòng ban</th>
-                    <th>Loại</th>
+                    <th>Tên văn bản</th>
+                    <th>Phân loại KDDVKH</th>
+                    <th>Trạng thái & Độ khẩn</th>
                     <th>Dung lượng</th>
                     <th>Người đăng (Admin)</th>
                     <th>Ngày ban hành</th>
@@ -383,7 +415,7 @@
                 </thead>
                 <tbody id="deptFilesTableBody">
                   <tr>
-                    <td colspan="6" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
+                    <td colspan="7" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
                       🏢 Kho nội bộ chưa có văn bản nào. Admin có quyền tải thêm tài liệu chung cho phòng ban!
                     </td>
                   </tr>
@@ -506,6 +538,42 @@
         <p id="previewFileMeta" style="font-size: 12px; color: var(--slate-400); margin-top: 6px;">PDF • 0 MB</p>
         <div style="margin-top: 20px;">
           <a href="#" id="previewDownloadBtn" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">Tải về máy</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPLOAD CLASSIFICATION MODAL (CHO KDDVKH) -->
+  <div id="uploadMetaModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Phân loại Văn bản Kho KDDVKH</h3>
+        <i data-lucide="x" class="close-btn" id="closeUploadMetaModalBtn"></i>
+      </div>
+      <div style="padding: 10px 0;">
+        <div style="margin-bottom: 14px;">
+          <label class="form-label">Chọn phân loại văn bản:</label>
+          <select id="modalDocTypeSelect" class="form-input" style="padding: 10px;">
+            <option value="Hợp đồng cấp nước">📝 Hợp đồng cấp nước</option>
+            <option value="Biểu giá dịch vụ">💰 Biểu giá dịch vụ</option>
+            <option value="Quy trình CSKH">📋 Quy trình CSKH</option>
+            <option value="Văn bản chỉ đạo">🏛️ Văn bản chỉ đạo</option>
+            <option value="Biên bản sự cố">⚠️ Biên bản sự cố</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label class="form-label">Gắn nhãn độ khẩn & bảo mật:</label>
+          <select id="modalStatusTagSelect" class="form-input" style="padding: 10px;">
+            <option value="🟢 Đã ban hành">🟢 Đã ban hành (Dùng chung)</option>
+            <option value="🔴 Khẩn">🔴 Khẩn (Cần xử lý ngay)</option>
+            <option value="🟡 Chờ duyệt">🟡 Chờ duyệt (Dự thảo)</option>
+            <option value="🔒 Mật">🔒 Mật (Nội bộ Admin)</option>
+          </select>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button id="btnConfirmUploadMeta" class="btn-primary" style="padding: 10px 20px; width: auto;">Xác nhận Đăng bài</button>
         </div>
       </div>
     </div>

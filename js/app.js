@@ -1,5 +1,5 @@
 // ==========================================================================
-// MAIN APPLICATION CONTROLLER (BULLETPROOF MODAL CLOSING & FOLDER FIX)
+// MAIN APPLICATION CONTROLLER (KDDVKH 4 ENHANCED FEATURES)
 // ==========================================================================
 
 function escapeHTML(str) {
@@ -16,6 +16,9 @@ class AppController {
   constructor() {
     this.currentView = 'dashboard';
     this.selectedFolderId = null;
+    this.currentDeptFolderId = null;
+    this.pendingUploadFiles = null;
+    this.pendingUploadCategory = 'personal';
     this.init();
   }
 
@@ -27,6 +30,7 @@ class AppController {
       this.bindFileUploadEvents();
       this.bindTableActions();
       this.bindFolderEvents();
+      this.bindDeptFilterEvents();
       this.bindGlobalModalEvents();
       this.bindChatEvents();
       this.bindAiEvents();
@@ -295,14 +299,17 @@ class AppController {
     const tbody = document.getElementById('deptFilesTableBody');
     if (!tbody || !window.storageService) return;
 
-    const files = window.storageService.getFiles('department');
+    const docTypeVal = document.getElementById('deptDocTypeFilter')?.value || 'all';
+    const fileTypeVal = document.getElementById('deptFileTypeFilter')?.value || 'all';
+
+    const files = window.storageService.getFiles('department', '', fileTypeVal, this.currentDeptFolderId, docTypeVal);
     const isAdmin = window.authManager && window.authManager.isAdmin();
 
     if (files.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="6" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
-            🏢 Kho KDDVKH chưa có văn bản nào. ${isAdmin ? 'Bấm "+ Thêm tài liệu phòng ban" ở trên để đăng bài!' : 'Chỉ Admin (letuananh18@gmail.com) được phép đăng văn bản chung cho Phòng Kinh doanh & DVKH.'}
+          <td colspan="7" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
+            🏢 ${this.currentDeptFolderId ? 'Thư mục này chưa có văn bản nào.' : 'Kho KDDVKH chưa có văn bản nào.'} ${isAdmin ? 'Bấm "+ Thêm tài liệu phòng ban" ở trên để đăng bài!' : 'Chỉ Admin (letuananh18@gmail.com) được phép đăng văn bản chung cho Phòng Kinh doanh & DVKH.'}
           </td>
         </tr>
       `;
@@ -317,7 +324,8 @@ class AppController {
             <span>${escapeHTML(file.name)}</span>
           </div>
         </td>
-        <td><span class="badge-tag type-${escapeHTML(file.type.toLowerCase())}">${escapeHTML(file.type)}</span></td>
+        <td><span class="badge-tag type-docx">${escapeHTML(file.docType || 'Hợp đồng cấp nước')}</span></td>
+        <td><span class="badge-tag" style="background: var(--slate-100); color: var(--slate-800);">${escapeHTML(file.statusTag || '🟢 Đã ban hành')}</span></td>
         <td>${escapeHTML(file.sizeFormatted)}</td>
         <td>${escapeHTML(file.uploadedBy)}</td>
         <td>${escapeHTML(file.uploadDate)}</td>
@@ -334,17 +342,43 @@ class AppController {
   renderDeptFolders() {
     const grid = document.getElementById('deptFoldersGrid');
     const allGrid = document.getElementById('allFoldersListGrid');
+    const foldersSection = document.getElementById('deptFoldersSection');
+    const breadcrumbFolderPart = document.getElementById('breadcrumbFolderPart');
+    const btnBackToRootFolder = document.getElementById('btnBackToRootFolder');
+    const deptTitle = document.getElementById('deptTitle');
+
     if (!grid || !window.storageService) return;
 
     const folders = window.storageService.getFolders();
     const isAdmin = window.authManager && window.authManager.isAdmin();
 
+    // STEP 1: FOLDER NAVIGATION & BREADCRUMBS
+    if (this.currentDeptFolderId) {
+      const activeFold = folders.find(f => f.id === this.currentDeptFolderId);
+      if (foldersSection) foldersSection.style.display = 'none';
+      if (btnBackToRootFolder) btnBackToRootFolder.style.display = 'flex';
+      if (breadcrumbFolderPart && activeFold) {
+        breadcrumbFolderPart.innerHTML = ` &gt; <span style="color: var(--slate-800);">${escapeHTML(activeFold.name)}</span>`;
+      }
+      if (deptTitle && activeFold) {
+        deptTitle.textContent = `Thư mục: ${activeFold.name}`;
+      }
+    } else {
+      if (foldersSection) foldersSection.style.display = 'block';
+      if (btnBackToRootFolder) btnBackToRootFolder.style.display = 'none';
+      if (breadcrumbFolderPart) breadcrumbFolderPart.innerHTML = '';
+      if (deptTitle) deptTitle.textContent = 'Kho nội bộ Phòng Kinh doanh & Dịch vụ Khách hàng';
+    }
+
     const html = folders.map(fold => `
-      <div class="stat-card" style="position: relative; flex-direction: column; cursor: pointer; border-left: 4px solid var(--accent-blue);">
+      <div class="stat-card folder-card-item" data-folder-id="${escapeHTML(fold.id)}" style="position: relative; flex-direction: column; cursor: pointer; border-left: 4px solid var(--accent-blue);">
         <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
           <div style="display: flex; align-items: center; gap: 10px;">
             <i data-lucide="folder" style="color: var(--accent-blue); width: 24px; height: 24px;"></i>
-            <strong style="font-size: 14px; color: var(--slate-900);">${escapeHTML(fold.name)}</strong>
+            <div>
+              <strong style="font-size: 14px; color: var(--slate-900); display: block;">${escapeHTML(fold.name)}</strong>
+              <span style="font-size: 11px; color: var(--slate-400);">${fold.filesCount || 0} tệp tin</span>
+            </div>
           </div>
           ${isAdmin ? `<button class="icon-btn folder-opt-btn" data-folder-id="${escapeHTML(fold.id)}" title="Tùy chọn thư mục">⋮</button>` : ''}
         </div>
@@ -357,6 +391,16 @@ class AppController {
 
     grid.innerHTML = html;
     if (allGrid) allGrid.innerHTML = html;
+  }
+
+  bindDeptFilterEvents() {
+    document.getElementById('deptDocTypeFilter')?.addEventListener('change', () => this.renderDeptTable());
+    document.getElementById('deptFileTypeFilter')?.addEventListener('change', () => this.renderDeptTable());
+
+    document.getElementById('btnBackToRootFolder')?.addEventListener('click', () => {
+      this.currentDeptFolderId = null;
+      this.renderCurrentView();
+    });
   }
 
   renderUsersTable() {
@@ -388,7 +432,17 @@ class AppController {
       }
     });
 
+    // STEP 1: OPEN FOLDER ON CARD CLICK
     document.addEventListener('click', (e) => {
+      const card = e.target.closest('.folder-card-item');
+      if (card && !e.target.classList.contains('folder-opt-btn')) {
+        const id = card.getAttribute('data-folder-id');
+        if (id) {
+          this.currentDeptFolderId = id;
+          this.renderCurrentView();
+        }
+      }
+
       if (e.target.classList.contains('folder-opt-btn')) {
         e.stopPropagation();
         const id = e.target.getAttribute('data-folder-id');
@@ -426,37 +480,30 @@ class AppController {
   }
 
   bindGlobalModalEvents() {
-    // Bulletproof event delegation for closing all modals
     document.addEventListener('click', (e) => {
-      // Close button X icon click
       if (e.target.closest('#closeFolderModalBtn') || e.target.closest('.close-btn')) {
         this.closeModal('folderActionModal');
         this.closeModal('filePreviewModal');
+        this.closeModal('uploadMetaModal');
       }
 
-      // Backdrop click outside content card
-      if (e.target.id === 'folderActionModal') {
-        this.closeModal('folderActionModal');
-      }
-      if (e.target.id === 'filePreviewModal') {
-        this.closeModal('filePreviewModal');
-      }
+      if (e.target.id === 'folderActionModal') this.closeModal('folderActionModal');
+      if (e.target.id === 'filePreviewModal') this.closeModal('filePreviewModal');
+      if (e.target.id === 'uploadMetaModal') this.closeModal('uploadMetaModal');
     });
 
-    // Keyboard ESC key listener
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         this.closeModal('folderActionModal');
         this.closeModal('filePreviewModal');
+        this.closeModal('uploadMetaModal');
       }
     });
   }
 
   closeModal(modalId) {
     const modal = document.getElementById(modalId);
-    if (modal) {
-      modal.style.display = 'none';
-    }
+    if (modal) modal.style.display = 'none';
   }
 
   bindFileUploadEvents() {
@@ -465,6 +512,8 @@ class AppController {
     const topUploadBtn = document.getElementById('topUploadBtn');
     const dropzone = document.getElementById('dashboardDropzone');
     const adminUploadDeptBtn = document.getElementById('adminUploadDeptBtn');
+    const uploadMetaModal = document.getElementById('uploadMetaModal');
+    const btnConfirmUploadMeta = document.getElementById('btnConfirmUploadMeta');
 
     const getActiveCategory = () => {
       if (this.currentView === 'dept-docs') return 'department';
@@ -500,13 +549,40 @@ class AppController {
       const files = e.target.files;
       const category = hiddenInput.getAttribute('data-target-cat') || getActiveCategory();
       if (files && files.length > 0) {
+        if (category === 'department') {
+          // Open KDDVKH document classification modal for Admin
+          this.pendingUploadFiles = Array.from(files);
+          this.pendingUploadCategory = 'department';
+          if (uploadMetaModal) uploadMetaModal.style.display = 'flex';
+        } else {
+          let successCount = 0;
+          Array.from(files).forEach(f => {
+            const res = window.storageService.addFile(f, 'personal', null);
+            if (res) successCount++;
+          });
+          if (successCount > 0) {
+            alert(`✅ Đã tải lên ${successCount} tệp thành công vào Kho cá nhân!`);
+          }
+        }
+      }
+    });
+
+    // STEP 4: CONFIRM CLASSIFICATION & UPLOAD TO CURRENT FOLDER
+    btnConfirmUploadMeta?.addEventListener('click', () => {
+      if (this.pendingUploadFiles) {
+        const docType = document.getElementById('modalDocTypeSelect')?.value || 'Hợp đồng cấp nước';
+        const statusTag = document.getElementById('modalStatusTagSelect')?.value || '🟢 Đã ban hành';
+        
         let successCount = 0;
-        Array.from(files).forEach(f => {
-          const res = window.storageService.addFile(f, category);
+        this.pendingUploadFiles.forEach(f => {
+          const res = window.storageService.addFile(f, 'department', this.currentDeptFolderId, docType, statusTag);
           if (res) successCount++;
         });
+
+        this.closeModal('uploadMetaModal');
+        this.pendingUploadFiles = null;
         if (successCount > 0) {
-          alert(`✅ Đã tải lên ${successCount} tệp thành công vào ${category === 'department' ? 'Kho Kinh doanh & DVKH' : 'Kho cá nhân'}!`);
+          alert(`✅ Đã tải lên ${successCount} tệp thành công vào ${this.currentDeptFolderId ? 'Thư mục đang chọn' : 'Kho KDDVKH'}!`);
         }
       }
     });
