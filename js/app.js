@@ -25,17 +25,21 @@ class AppController {
 
   init() {
     window.addEventListener('DOMContentLoaded', () => {
-      this.refreshLucideIcons();
-      this.bindAuthEvents();
-      this.bindNavigationEvents();
-      this.bindFileUploadEvents();
-      this.bindTableActions();
-      this.bindFolderEvents();
-      this.bindDeptFilterEvents();
-      this.bindGlobalModalEvents();
-      this.bindChatEvents();
-      this.bindAiEvents();
-      this.bindMobileSidebarEvents();
+      try {
+        this.bindAuthEvents();
+        this.bindNavigationEvents();
+        this.bindFileUploadEvents();
+        this.bindTableActions();
+        this.bindFolderEvents();
+        this.bindDeptFilterEvents();
+        this.bindGlobalModalEvents();
+        this.bindChatEvents();
+        this.bindAiEvents();
+        this.bindMobileSidebarEvents();
+        this.refreshLucideIcons();
+      } catch (err) {
+        console.warn("App initialization notice:", err);
+      }
 
       if (window.authManager) {
         window.authManager.onChange(user => this.onUserChanged(user));
@@ -54,9 +58,47 @@ class AppController {
     });
   }
 
+  bindAuthEvents() {
+    const authForm = document.getElementById('authForm');
+    const emailInput = document.getElementById('authEmail');
+    const passInput = document.getElementById('authPassword');
+    const btnGoogle = document.getElementById('btnGoogleSignIn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const togglePassBtn = document.getElementById('togglePasswordBtn');
+
+    authForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = emailInput?.value;
+      const pass = passInput?.value;
+      if (window.authManager) {
+        await window.authManager.login(email, pass);
+      }
+    });
+
+    btnGoogle?.addEventListener('click', async () => {
+      if (window.authManager) {
+        await window.authManager.signInWithGoogle();
+      }
+    });
+
+    logoutBtn?.addEventListener('click', async () => {
+      if (window.authManager) {
+        await window.authManager.logout();
+      }
+    });
+
+    togglePassBtn?.addEventListener('click', () => {
+      if (passInput) {
+        passInput.type = passInput.type === 'password' ? 'text' : 'password';
+      }
+    });
+  }
+
   refreshLucideIcons() {
     if (window.lucide) {
-      window.lucide.createIcons();
+      try {
+        window.lucide.createIcons();
+      } catch (e) {}
     }
   }
 
@@ -81,9 +123,11 @@ class AppController {
     if (!user) {
       if (authContainer) authContainer.style.display = 'flex';
       if (appShell) appShell.style.display = 'none';
+      if (window.techBgInstance) window.techBgInstance.start();
     } else {
       if (authContainer) authContainer.style.display = 'none';
       if (appShell) appShell.style.display = 'flex';
+      if (window.techBgInstance) window.techBgInstance.stop();
 
       const userNameTxt = document.getElementById('userNameTxt');
       const userRoleTxt = document.getElementById('userRoleTxt');
