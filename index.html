@@ -5,72 +5,100 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Water Intelligence Hub - Thủ Đức Water Portal</title>
   <meta name="description" content="Nền tảng lưu trữ và quản lý dữ liệu thông minh - Thủ Đức Water">
-  <link rel="stylesheet" href="css/styles.css?v=20260730_v14">
+  <link rel="stylesheet" href="css/styles.css?v=20260730_v15">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
 
   <!-- ==========================================================================
-       AUTHENTICATION CONTAINER (FUTURISTIC DIGITAL TRANSFORMATION BG)
+       AUTHENTICATION CONTAINER (3D DIGITAL WATER CANVAS + 2-COLUMN HERO LAYOUT)
        ========================================================================== -->
   <div id="authContainer" class="auth-container" style="display: none;">
     <!-- High-Tech Animated Digital Water Canvas -->
     <canvas id="techBgCanvas"></canvas>
 
-    <div class="auth-card">
-      <div class="brand-logo-wrapper">
-        <img src="assets/logo.png" alt="THUDUC WATER Logo" class="auth-brand-logo">
-        <h1 class="brand-title">Water Intelligence Hub</h1>
-        <p class="brand-subtitle">Nền tảng lưu trữ và quản lý dữ liệu thông minh<br>Kết nối trí thức, nâng tầm hiệu quả</p>
+    <div class="auth-layout-wrapper">
+      <!-- Left Hero Banner Showcase (Outside Card on 3D Motion Canvas) -->
+      <div class="auth-hero-banner">
+        <div class="hero-company-badge">CÔNG TY CỔ PHẦN CẤP NƯỚC THỦ ĐỨC</div>
+        <h1 class="hero-app-title">Water Intelligence Hub</h1>
+        <p class="hero-description">
+          Nền tảng lưu trữ, quản lý và chia sẻ dữ liệu thông minh hàng đầu. 
+          Tối ưu hóa quy trình nghiệp vụ Phòng Kinh doanh & Dịch vụ Khách hàng, 
+          kết nối tri thức nội bộ và bảo mật dữ liệu theo tiêu chuẩn chuyển đổi số hiện đại.
+        </p>
+
+        <div class="hero-features-list">
+          <div class="hero-feature-item">
+            <i data-lucide="shield-check" class="hero-feature-icon"></i>
+            <span>Bảo mật dữ liệu chuẩn CSDL Supabase Cloud</span>
+          </div>
+          <div class="hero-feature-item">
+            <i data-lucide="zap" class="hero-feature-icon"></i>
+            <span>Đồng bộ thời gian thực mượt mà trên mọi thiết bị</span>
+          </div>
+          <div class="hero-feature-item">
+            <i data-lucide="bot" class="hero-feature-icon"></i>
+            <span>Trợ lý AI tra cứu văn bản & quy trình KDDVKH 24/7</span>
+          </div>
+        </div>
       </div>
 
-      <form id="authForm" class="auth-form">
-        <div class="form-group">
-          <label class="form-label" for="authEmail">Email</label>
-          <div class="input-icon-wrapper">
-            <i data-lucide="mail" class="input-icon"></i>
-            <input type="email" id="authEmail" class="form-input" placeholder="Nhập email của bạn" required>
+      <!-- Right Login Card -->
+      <div class="auth-card">
+        <div class="brand-logo-wrapper">
+          <img src="assets/logo.png" alt="THUDUC WATER Logo" class="auth-brand-logo">
+          <div class="form-card-title">Đăng nhập hệ thống</div>
+        </div>
+
+        <form id="authForm" class="auth-form">
+          <div class="form-group">
+            <label class="form-label" for="authEmail">Email</label>
+            <div class="input-icon-wrapper">
+              <i data-lucide="mail" class="input-icon"></i>
+              <input type="email" id="authEmail" class="form-input" placeholder="Nhập email của bạn" required>
+            </div>
           </div>
-        </div>
 
-        <div class="form-group">
-          <label class="form-label" for="authPassword">Mật khẩu</label>
-          <div class="input-icon-wrapper">
-            <i data-lucide="lock" class="input-icon"></i>
-            <input type="password" id="authPassword" class="form-input" placeholder="Nhập mật khẩu" required>
-            <i data-lucide="eye" class="toggle-password" id="togglePasswordBtn"></i>
+          <div class="form-group">
+            <label class="form-label" for="authPassword">Mật khẩu</label>
+            <div class="input-icon-wrapper">
+              <i data-lucide="lock" class="input-icon"></i>
+              <input type="password" id="authPassword" class="form-input" placeholder="Nhập mật khẩu" required>
+              <i data-lucide="eye" class="toggle-password" id="togglePasswordBtn"></i>
+            </div>
           </div>
+
+          <div class="form-options">
+            <label class="checkbox-label">
+              <input type="checkbox" checked> Ghi nhớ đăng nhập trong phiên
+            </label>
+            <a href="#" id="forgotPasswordLink">Quên mật khẩu?</a>
+          </div>
+
+          <button type="submit" class="btn-primary" style="justify-content: center; width: 100%;">
+            <span>Đăng nhập</span>
+            <i data-lucide="arrow-right" style="width: 18px; height: 18px;"></i>
+          </button>
+        </form>
+
+        <div class="auth-divider">
+          <span>Hoặc</span>
         </div>
 
-        <div class="form-options">
-          <label class="checkbox-label">
-            <input type="checkbox" checked> Ghi nhớ đăng nhập trong phiên
-          </label>
-          <a href="#" id="forgotPasswordLink">Quên mật khẩu?</a>
-        </div>
-
-        <button type="submit" class="btn-primary">
-          <span>Đăng nhập</span>
-          <i data-lucide="arrow-right" style="width: 18px; height: 18px;"></i>
+        <button type="button" id="btnGoogleSignIn" class="btn-google">
+          <svg width="18" height="18" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <span>Đăng nhập với Google</span>
         </button>
-      </form>
 
-      <div class="auth-divider">
-        <span>Hoặc</span>
+        <p class="auth-footer">Chưa có tài khoản? <a href="#" id="toggleSignupLink">Đăng ký ngay</a></p>
       </div>
-
-      <button type="button" id="btnGoogleSignIn" class="btn-google">
-        <svg width="18" height="18" viewBox="0 0 24 24">
-          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-        </svg>
-        <span>Đăng nhập với Google</span>
-      </button>
-
-      <p class="auth-footer" style="margin-top: 20px;">Chưa có tài khoản? <a href="#" id="toggleSignupLink">Đăng ký ngay</a></p>
     </div>
   </div>
 
@@ -171,7 +199,7 @@
           <button class="icon-btn" title="Trợ giúp" id="helpBtn">
             <i data-lucide="help-circle"></i>
           </button>
-          <button class="btn-primary" id="topUploadBtn" style="padding: 8px 16px; font-size: 13px;">
+          <button class="btn-primary" id="topUploadBtn" style="padding: 8px 16px; font-size: 13px; width: auto;">
             <i data-lucide="upload" style="width: 16px; height: 16px;"></i>
             <span>Tải lên</span>
           </button>
@@ -360,15 +388,15 @@
               <p class="welcome-sub" id="deptSub">Hợp đồng, quy trình nghiệp vụ và báo cáo dịch vụ khách hàng do Admin quản lý</p>
             </div>
             <div style="display: flex; gap: 10px;">
-              <button class="btn-primary" id="btnBackToRootFolder" style="display: none; background: var(--slate-100); color: var(--slate-800); border: 1px solid var(--slate-300);">
+              <button class="btn-primary" id="btnBackToRootFolder" style="display: none; background: var(--slate-100); color: var(--slate-800); border: 1px solid var(--slate-300); width: auto;">
                 <i data-lucide="arrow-left"></i>
                 <span>← Quay lại Thư mục gốc</span>
               </button>
-              <button class="btn-primary" id="btnCreateNewFolder" style="background: white; color: var(--accent-blue); border: 1px solid var(--slate-200); box-shadow: var(--shadow-sm);">
+              <button class="btn-primary" id="btnCreateNewFolder" style="background: white; color: var(--accent-blue); border: 1px solid var(--slate-200); box-shadow: var(--shadow-sm); width: auto;">
                 <i data-lucide="folder-plus"></i>
                 <span>+ Tạo thư mục mới</span>
               </button>
-              <button class="btn-primary" id="adminUploadDeptBtn" style="display: flex;">
+              <button class="btn-primary" id="adminUploadDeptBtn" style="display: flex; width: auto;">
                 <i data-lucide="plus"></i>
                 <span>Thêm tài liệu phòng ban</span>
               </button>
@@ -523,7 +551,7 @@
                     <td>waterain8n@gmail.com</td>
                     <td>Ban Quản Trị - Phòng KDDVKH</td>
                     <td><span class="badge-tag type-pdf">ADMIN</span></td>
-                    <td>30/07/2026 15:20</td>
+                    <td>30/07/2026 15:35</td>
                   </tr>
                 </tbody>
               </table>
@@ -659,12 +687,12 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Application Logic with Supabase Backend -->
-  <script src="js/supabase-config.js?v=20260730_v14"></script>
-  <script src="js/tech-bg.js?v=20260730_v14"></script>
-  <script src="js/auth.js?v=20260730_v14"></script>
-  <script src="js/storage-service.js?v=20260730_v14"></script>
-  <script src="js/chat-service.js?v=20260730_v14"></script>
-  <script src="js/ai-assistant.js?v=20260730_v14"></script>
-  <script src="js/app.js?v=20260730_v14"></script>
+  <script src="js/supabase-config.js?v=20260730_v15"></script>
+  <script src="js/tech-bg.js?v=20260730_v15"></script>
+  <script src="js/auth.js?v=20260730_v15"></script>
+  <script src="js/storage-service.js?v=20260730_v15"></script>
+  <script src="js/chat-service.js?v=20260730_v15"></script>
+  <script src="js/ai-assistant.js?v=20260730_v15"></script>
+  <script src="js/app.js?v=20260730_v15"></script>
 </body>
 </html>
