@@ -26,6 +26,34 @@ class AuthManager {
   async init() {
     localStorage.removeItem('thuduc_water_user');
 
+    // Handle OAuth hash return (e.g. #access_token=...) from Supabase Google Sign-In
+    if (window.location.hash && window.location.hash.includes('access_token')) {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      if (accessToken && window.supabaseClient) {
+        try {
+          const { data: { user } } = await window.supabaseClient.auth.getUser(accessToken);
+          if (user) {
+            const isAdminEmail = user.email === 'waterain8n@gmail.com' || user.email === 'letuananh18@gmail.com';
+            this.currentUser = {
+              uid: user.id,
+              name: user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0],
+              email: user.email,
+              role: isAdminEmail ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
+              avatar: user.user_metadata?.avatar_url || DEMO_USERS.ADMIN.avatar,
+              department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
+              lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
+            };
+            this.saveUserSession(this.currentUser);
+            await this.syncUserToCloud(this.currentUser);
+            // Clean hash from URL
+            window.history.replaceState(null, null, window.location.pathname);
+            this.notify();
+          }
+        } catch (e) {}
+      }
+    }
+
     const savedSession = sessionStorage.getItem('thuduc_water_user_session');
     if (savedSession) {
       try {
@@ -33,8 +61,6 @@ class AuthManager {
       } catch (e) {
         this.currentUser = null;
       }
-    } else {
-      this.currentUser = null;
     }
 
     if (window.supabaseClient) {
@@ -183,13 +209,21 @@ class AuthManager {
   }
 
   async signInWithGoogle() {
+    const currentOrigin = window.location.origin + window.location.pathname;
+
     if (window.supabaseClient) {
       try {
-        await window.supabaseClient.auth.signInWithOAuth({
-          provider: 'google'
+        const { data, error } = await window.supabaseClient.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: currentOrigin
+          }
         });
+        if (error) throw error;
         return;
-      } catch (err) {}
+      } catch (err) {
+        console.warn("Supabase Google OAuth notice:", err);
+      }
     }
 
     const userEmail = prompt("⚠️ Vui lòng nhập địa chỉ Email/Gmail của bạn để đăng nhập:");
