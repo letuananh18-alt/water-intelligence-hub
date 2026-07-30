@@ -11,11 +11,18 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/styles.css?v=20260730_v40">
+  <link rel="stylesheet" href="css/styles.css?v=20260730_v41">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- Mammoth.js for Direct Client-side Word (.docx) Document Previewing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <!-- PDF.js for Direct Client-side PDF Text Extraction & Full Offline AI Summarizing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    if (window.pdfjsLib) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  </script>
 </head>
 <body>
 
@@ -559,7 +566,7 @@
                     <td>waterain8n@gmail.com</td>
                     <td>Ban Quản Trị - Phòng KDDVKH</td>
                     <td><span class="badge-tag type-pdf">ADMIN</span></td>
-                    <td>30/07/2026 21:56</td>
+                    <td>30/07/2026 21:59</td>
                   </tr>
                 </tbody>
               </table>
@@ -719,12 +726,12 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Application Logic with Supabase Backend -->
-  <script src="js/supabase-config.js?v=20260730_v40"></script>
-  <script src="js/tech-bg.js?v=20260730_v40"></script>
-  <script src="js/auth.js?v=20260730_v40"></script>
-  <script src="js/storage-service.js?v=20260730_v40"></script>
-  <script src="js/chat-service.js?v=20260730_v40"></script>
-  <script src="js/ai-assistant.js?v=20260730_v40"></script>
-  <script src="js/app.js?v=20260730_v40"></script>
+  <script src="js/supabase-config.js?v=20260730_v41"></script>
+  <script src="js/tech-bg.js?v=20260730_v41"></script>
+  <script src="js/auth.js?v=20260730_v41"></script>
+  <script src="js/storage-service.js?v=20260730_v41"></script>
+  <script src="js/chat-service.js?v=20260730_v41"></script>
+  <script src="js/ai-assistant.js?v=20260730_v41"></script>
+  <script src="js/app.js?v=20260730_v41"></script>
 </body>
 </html>

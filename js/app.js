@@ -760,12 +760,26 @@ class AppController {
                 reader.readAsDataURL(blob);
               });
             }
+        // 2. Extract real text from PDF file via PDF.js if available
+        let pdfText = '';
+        if (window.pdfjsLib && file.url) {
+          try {
+            const resp = await fetch(file.url);
+            if (resp.ok) {
+              const arrayBuf = await resp.arrayBuffer();
+              const pdfDoc = await window.pdfjsLib.getDocument({ data: arrayBuf }).promise;
+              for (let i = 1; i <= pdfDoc.numPages; i++) {
+                const page = await pdfDoc.getPage(i);
+                const tokenized = await page.getTextContent();
+                pdfText += tokenized.items.map(item => item.str).join(' ') + '\n';
+              }
+            }
           } catch (e) {
-            console.warn("Could not fetch file URL into Base64:", e);
+            console.warn("PDF.js extraction notice:", e);
           }
         }
 
-        const extractedText = docViewer.innerText || '';
+        const extractedText = (pdfText || docViewer.innerText || '').trim();
         const summary = await window.aiAssistant.summarizeRealContent(file, extractedText, base64Data);
 
         if (btn) {
