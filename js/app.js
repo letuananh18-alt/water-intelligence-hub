@@ -1,5 +1,6 @@
 // ==========================================================================
 // MAIN APPLICATION CONTROLLER (RESPONSIVE PC/MOBILE + ADMIN AUDIT MONITOR)
+// REALTIME DATA SYNC & EXACT FOLDER FILE COUNT CALCULATION
 // ==========================================================================
 
 function escapeHTML(str) {
@@ -103,35 +104,6 @@ class AppController {
     }
   }
 
-  bindAuthEvents() {
-    const authForm = document.getElementById('authForm');
-    if (authForm) {
-      authForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const email = document.getElementById('authEmail').value;
-        const pass = document.getElementById('authPassword').value;
-        window.authManager.login(email, pass);
-      });
-    }
-
-    document.getElementById('btnGoogleSignIn')?.addEventListener('click', (e) => {
-      e.preventDefault();
-      window.authManager.signInWithGoogle();
-    });
-
-    document.getElementById('logoutBtn')?.addEventListener('click', () => {
-      window.authManager.logout();
-    });
-
-    document.getElementById('toggleSignupLink')?.addEventListener('click', (e) => {
-      e.preventDefault();
-      const email = prompt("ĐĂNG KÝ TÀI KHOẢN CLIENT MỚI\nNhập địa chỉ Email của bạn:");
-      if (email && email.trim()) {
-        window.authManager.login(email, "123456");
-      }
-    });
-  }
-
   bindNavigationEvents() {
     const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
     navItems.forEach(item => {
@@ -227,7 +199,7 @@ class AppController {
       tbody.innerHTML = `
         <tr>
           <td colspan="5" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
-            📂 Chưa có tài liệu nào. Kéo & thả tệp vào ô trên để tải tệp cá nhân của bạn!
+            📂 Chưa có tài liệu nào. Kéo & thả tệp vào ô trên để bắt đầu tải lên!
           </td>
         </tr>
       `;
@@ -399,6 +371,7 @@ class AppController {
     }
 
     const html = folders.map(fold => {
+      // DYNAMIC REALTIME FILE COUNT PER FOLDER
       const realFileCount = allDeptFiles.filter(f => f.folderId === fold.id).length;
 
       return `
@@ -439,7 +412,6 @@ class AppController {
     if (!window.authManager) return;
 
     const users = window.authManager.getUsersList();
-    const isAdmin = window.authManager.isAdmin();
 
     if (tbody) {
       tbody.innerHTML = users.map(u => `
@@ -447,7 +419,7 @@ class AppController {
           <td><strong>${escapeHTML(u.name)}</strong></td>
           <td>${escapeHTML(u.email)}</td>
           <td>${escapeHTML(u.department || 'Phòng Kinh doanh & Dịch vụ Khách hàng')}</td>
-          <td><span class="badge-tag ${u.email === 'letuananh18@gmail.com' ? 'type-pdf' : 'type-docx'}">${u.email === 'letuananh18@gmail.com' ? 'ADMIN' : 'CLIENT'}</span></td>
+          <td><span class="badge-tag ${(u.email === 'waterain8n@gmail.com' || u.email === 'letuananh18@gmail.com') ? 'type-pdf' : 'type-docx'}">${(u.email === 'waterain8n@gmail.com' || u.email === 'letuananh18@gmail.com') ? 'ADMIN' : 'CLIENT'}</span></td>
           <td><span style="font-weight: 600; color: var(--slate-700);">⏱️ ${escapeHTML(u.lastLogin || 'Mới đăng nhập')}</span></td>
         </tr>
       `).join('');
@@ -593,7 +565,7 @@ class AppController {
 
     adminUploadDeptBtn?.addEventListener('click', () => {
       if (!window.authManager || !window.authManager.isAdmin()) {
-        alert("⛔ Bị từ chối: Bạn đang ở quyền Client. Chỉ Admin (letuananh18@gmail.com) mới có quyền tải lên Kho nội bộ phòng ban!");
+        alert("⛔ Bị từ chối: Bạn đang ở quyền Client. Chỉ Admin (waterain8n@gmail.com) mới có quyền tải lên Kho nội bộ phòng ban!");
         return;
       }
       if (!this.currentDeptFolderId) {
@@ -609,7 +581,7 @@ class AppController {
       hiddenInput?.click();
     });
 
-    hiddenInput?.addEventListener('change', (e) => {
+    hiddenInput?.addEventListener('change', async (e) => {
       const files = e.target.files;
       const category = hiddenInput.getAttribute('data-target-cat') || getActiveCategory();
       if (files && files.length > 0) {
@@ -619,10 +591,10 @@ class AppController {
           if (uploadMetaModal) uploadMetaModal.style.display = 'flex';
         } else {
           let successCount = 0;
-          Array.from(files).forEach(f => {
-            const res = window.storageService.addFile(f, 'personal', null);
+          for (const f of Array.from(files)) {
+            const res = await window.storageService.addFile(f, 'personal', null);
             if (res) successCount++;
-          });
+          }
           if (successCount > 0) {
             alert(`✅ Đã tải lên ${successCount} tệp thành công vào Kho cá nhân!`);
           }
@@ -630,21 +602,25 @@ class AppController {
       }
     });
 
-    btnConfirmUploadMeta?.addEventListener('click', () => {
+    btnConfirmUploadMeta?.addEventListener('click', async () => {
       if (this.pendingUploadFiles) {
         const docType = document.getElementById('modalDocTypeSelect')?.value || 'Hợp đồng cấp nước';
         const statusTag = document.getElementById('modalStatusTagSelect')?.value || '🟢 Đã ban hành';
         
+        // Auto assign to selected department folder or default to first folder
+        const deptFolders = window.storageService.getFolders('department');
+        const targetFolderId = this.currentDeptFolderId || (deptFolders[0] ? deptFolders[0].id : null);
+
         let successCount = 0;
-        this.pendingUploadFiles.forEach(f => {
-          const res = window.storageService.addFile(f, 'department', this.currentDeptFolderId, docType, statusTag);
+        for (const f of this.pendingUploadFiles) {
+          const res = await window.storageService.addFile(f, 'department', targetFolderId, docType, statusTag);
           if (res) successCount++;
-        });
+        }
 
         this.closeModal('uploadMetaModal');
         this.pendingUploadFiles = null;
         if (successCount > 0) {
-          alert(`✅ Đã tải lên ${successCount} tệp thành công vào Thư mục đang chọn!`);
+          alert(`✅ Đã tải lên ${successCount} tệp thành công vào Thư mục phòng ban!`);
         }
       }
     });
