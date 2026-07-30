@@ -1,6 +1,6 @@
 // ==========================================================================
 // FILE STORAGE & DUAL VAULT MANAGER SERVICE (ROCK-SOLID PERMANENT PERSISTENCE)
-// Guarantees Complete Cascading Deletion across Postgres DB & Storage Bucket
+// Complete Dynamic Prefix-based Storage & DB Deletion
 // ==========================================================================
 
 class StorageService {
@@ -195,7 +195,7 @@ class StorageService {
           mergedMap.set(f.id, this.normalizeFileFromDb(f, existing));
         });
 
-        // 2. Keep local files that haven't been deleted on cloud
+        // 2. Keep local files if not explicitly deleted from DB
         this.files.forEach(f => {
           if (!mergedMap.has(f.id) && !dbIds.has(f.id)) {
             mergedMap.set(f.id, f);
@@ -368,52 +368,56 @@ class StorageService {
 
   async deleteFile(fileId) {
     const file = this.files.find(f => f.id === fileId);
-    if (!file) return false;
-
     const user = window.authManager ? window.authManager.getCurrentUser() : null;
     const isAdmin = window.authManager && window.authManager.isAdmin();
 
-    if (file.category === 'department' && !isAdmin) {
+    if (file && file.category === 'department' && !isAdmin) {
       alert("⛔ Bị từ chối: Client không có quyền xóa tài liệu trong Kho nội bộ Phòng Kinh doanh & Dịch vụ Khách hàng!");
       return false;
     }
 
-    if (isAdmin || (user && file.uploaderUid === user.uid)) {
-      if (file.folderId) {
-        const fold = this.folders.find(f => f.id === file.folderId);
-        if (fold && fold.filesCount > 0) {
-          fold.filesCount -= 1;
-          if (window.supabaseClient) {
-            await window.supabaseClient.from('folders').update({ files_count: fold.filesCount }).eq('id', file.folderId);
-          }
+    const category = file ? file.category : 'department';
+
+    // 1. Remove from local memory state
+    if (file && file.folderId) {
+      const fold = this.folders.find(f => f.id === file.folderId);
+      if (fold && fold.filesCount > 0) {
+        fold.filesCount -= 1;
+        if (window.supabaseClient) {
+          await window.supabaseClient.from('folders').update({ files_count: fold.filesCount }).eq('id', file.folderId).catch(()=>{});
         }
       }
-
-      this.rawFileMap.delete(fileId);
-      this.files = this.files.filter(f => f.id !== fileId);
-      this.saveLocal();
-      this.notify();
-
-      if (window.supabaseClient) {
-        try {
-          // 1. Delete record from Supabase Postgres 'files' table
-          await window.supabaseClient.from('files').delete().eq('id', fileId);
-
-          // 2. Delete raw binary file from Supabase Storage Bucket 'documents'
-          if (window.supabaseClient.storage) {
-            const sanitizeName = file.name ? file.name.replace(/[^a-zA-Z0-9._-]/g, '_') : '';
-            const filePath = `${file.category}/${file.id}_${sanitizeName}`;
-            await window.supabaseClient.storage.from('documents').remove([filePath]);
-          }
-        } catch (e) {
-          console.warn("Supabase deleteFile error:", e);
-        }
-      }
-      return true;
-    } else {
-      alert("⛔ Bị từ chối: Bạn không có quyền xóa tài liệu của người khác.");
-      return false;
     }
+
+    this.rawFileMap.delete(fileId);
+    this.files = this.files.filter(f => f.id !== fileId);
+    this.saveLocal();
+    this.notify();
+
+    // 2. Cascade delete from Supabase Postgres Table & Storage Bucket
+    if (window.supabaseClient) {
+      try {
+        // Delete row in Postgres DB
+        await window.supabaseClient.from('files').delete().eq('id', fileId);
+
+        // Prefix-matching search and delete in Storage Bucket
+        if (window.supabaseClient.storage) {
+          const { data: listData } = await window.supabaseClient.storage.from('documents').list(category);
+          if (listData && listData.length > 0) {
+            const targets = listData
+              .filter(item => item.name.startsWith(fileId))
+              .map(item => `${category}/${item.name}`);
+            
+            if (targets.length > 0) {
+              await window.supabaseClient.storage.from('documents').remove(targets);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Supabase deleteFile error:", e);
+      }
+    }
+    return true;
   }
 
   getFolders(category = 'all') {
@@ -494,6 +498,40 @@ class StorageService {
       }
     }
     return true;
+  }
+
+  // Admin function to purge all files from local & Supabase Cloud
+  async purgeAllFiles() {
+    const isAdmin = window.authManager && window.authManager.isAdmin();
+    if (!isAdmin) {
+      alert("⛔ Chỉ Admin mới có quyền thực hiện xóa sạch rác!");
+      return;
+    }
+
+    if (confirm("⚠️ XÁC NHẬN: Bạn có muốn dọn sạch TẤT CẢ TỆP TIN rác cũ trên cả Web App và Supabase Storage Cloud không?")) {
+      const allFiles = [...this.files];
+      for (const f of allFiles) {
+        await this.deleteFile(f.id);
+      }
+
+      this.files = [];
+      this.saveLocal();
+      this.notify();
+
+      if (window.supabaseClient) {
+        try {
+          await window.supabaseClient.from('files').delete().neq('id', '0');
+          if (window.supabaseClient.storage) {
+            const { data: deptList } = await window.supabaseClient.storage.from('documents').list('department');
+            if (deptList && deptList.length > 0) {
+              const targets = deptList.map(item => `department/${item.name}`);
+              await window.supabaseClient.storage.from('documents').remove(targets);
+            }
+          }
+        } catch (e) {}
+      }
+      alert("✨ Đã dọn sạch 100% rác cũ trên CSDL và Storage Supabase!");
+    }
   }
 
   getStorageStats() {

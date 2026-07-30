@@ -36,6 +36,7 @@ class AppController {
         this.bindChatEvents();
         this.bindAiEvents();
         this.bindMobileSidebarEvents();
+        this.bindSettingsEvents();
         this.refreshLucideIcons();
       } catch (err) {
         console.warn("App initialization notice:", err);
@@ -55,6 +56,14 @@ class AppController {
       }
 
       this.onUserChanged(window.authManager ? window.authManager.getCurrentUser() : null);
+    });
+  }
+
+  bindSettingsEvents() {
+    document.getElementById('btnPurgeCloudTrash')?.addEventListener('click', () => {
+      if (window.storageService) {
+        window.storageService.purgeAllFiles();
+      }
     });
   }
 
@@ -292,7 +301,6 @@ class AppController {
     `).join('');
   }
 
-  // STRICT PRIVACY: CLIENT PERSONAL FILES ARE SHOWN ONLY TO THAT CLIENT! ADMIN PERSONAL FILES ONLY TO ADMIN!
   renderPersonalTable() {
     const tbody = document.getElementById('personalFilesTableBody');
     if (!tbody || !window.storageService) return;
@@ -449,7 +457,6 @@ class AppController {
     });
   }
 
-  // ADMIN AUDIT MONITORING DASHBOARD (CLIENT LOGIN TIME & UPLOAD LOGS WITH PRIVACY SHIELD)
   renderUsersTable() {
     const tbody = document.getElementById('usersTableBody');
     const auditTbody = document.getElementById('clientUploadAuditTableBody');
@@ -671,11 +678,12 @@ class AppController {
   }
 
   bindTableActions() {
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', async (e) => {
       if (e.target.classList.contains('delete-btn')) {
         const id = e.target.getAttribute('data-id');
         if (confirm("Bạn có chắc chắn muốn xóa tài liệu này không?")) {
-          window.storageService.deleteFile(id);
+          await window.storageService.deleteFile(id);
+          this.renderCurrentView();
         }
       }
 
