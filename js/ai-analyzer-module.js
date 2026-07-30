@@ -1,6 +1,6 @@
 // ==========================================================================
-// CHATGPT & GEMINI DUAL AI GATEWAY MODULE (OPENAI REST API & GEMINI VISION)
-// Acts as a direct Web App Gateway - Dispatches uploaded file payload to OpenAI ChatGPT/Gemini
+// CHATGPT & GEMINI DUAL AI GATEWAY MODULE (WITH PDF.JS CANVAS IMAGE OCR VISION)
+// Converts PDF Scanned Pages & Images into High-Res JPEG Base64 for ChatGPT GPT-4o Vision
 // 100% Isolated Module - Zero impact on Uploads, Storage, or Database Logic
 // ==========================================================================
 
@@ -32,8 +32,41 @@ class AiAnalyzerModule {
     return this.openaiApiKey || localStorage.getItem('openai_api_key') || '';
   }
 
-  // 1. DIRECT CHATGPT OPENAI API GATEWAY DISPATCHER (https://api.openai.com/v1/chat/completions)
-  async queryOpenAiGptGateway(promptText, base64Image = null) {
+  // 1. CONVERT PDF PAGE TO HIGH-RES JPEG BASE64 IMAGE FOR VISION OCR
+  async convertPdfPageToImageBase64(blobOrUrl, pageNum = 1) {
+    try {
+      if (!window.pdfjsLib) return null;
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+      let arrayBuffer;
+      if (typeof blobOrUrl === 'string' && blobOrUrl.startsWith('http')) {
+        const resp = await fetch(blobOrUrl);
+        arrayBuffer = await resp.arrayBuffer();
+      } else if (blobOrUrl instanceof Blob) {
+        arrayBuffer = await blobOrUrl.arrayBuffer();
+      } else {
+        return null;
+      }
+
+      const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const page = await pdf.getPage(Math.min(pageNum, pdf.numPages));
+      
+      const viewport = page.getViewport({ scale: 1.5 }); // High-quality 1.5x zoom for sharp OCR
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+
+      await page.render({ canvasContext: context, viewport: viewport }).promise;
+      return canvas.toDataURL('image/jpeg', 0.85);
+    } catch (e) {
+      console.warn("PDF page to image conversion notice:", e);
+      return null;
+    }
+  }
+
+  // 2. DIRECT CHATGPT OPENAI VISION API GATEWAY DISPATCHER (GPT-4o Vision Engine)
+  async queryOpenAiGptGateway(promptText, base64JpegImage = null) {
     const key = this.getOpenAiKey();
     if (!key) return null;
 
@@ -41,16 +74,17 @@ class AiAnalyzerModule {
       const messages = [
         {
           role: "system",
-          content: "Bạn là Trợ lý AI ChatGPT Engine tích hợp trên Cổng Web App Thư viện Điện tử - Công ty Cổ phần Cấp nước Thủ Đức (Thủ Đức Water). Hãy phân tích dữ liệu tệp được gửi đến và trả về bản tóm tắt tiếng Việt cực kỳ chi tiết, chuyên nghiệp, chính xác theo cấu trúc HTML định dạng đẹp mắt."
+          content: "Bạn là Trợ lý AI ChatGPT Engine tích hợp trên Cổng Web App Thư viện Điện tử - Công ty Cổ phần Cấp nước Thủ Đức (Thủ Đức Water). Bạn được cung cấp ảnh chụp thực tế của tài liệu. Hãy dùng mắt thần Vision OCR đọc kỹ tất cả nét chữ, con số, tiêu đề, ngày tháng, tên các bên trên ảnh scan tài liệu và trả về bản tóm tắt tiếng Việt cực kỳ chi tiết, chuyên nghiệp, chính xác."
         }
       ];
 
-      if (base64Image && base64Image.length > 100) {
+      if (base64JpegImage && base64JpegImage.length > 100) {
+        const imageUrl = base64JpegImage.startsWith('data:') ? base64JpegImage : `data:image/jpeg;base64,${base64JpegImage}`;
         messages.push({
           role: "user",
           content: [
             { type: "text", text: promptText },
-            { type: "image_url", image_url: { url: base64Image.startsWith('data:') ? base64Image : `data:image/jpeg;base64,${base64Image}` } }
+            { type: "image_url", image_url: { url: imageUrl, detail: "high" } }
           ]
         });
       } else {
@@ -85,8 +119,8 @@ class AiAnalyzerModule {
     return null;
   }
 
-  // 2. GOOGLE GEMINI API GATEWAY DISPATCHER
-  async queryGeminiAI(promptText, base64Data = null, mimeType = null) {
+  // 3. GOOGLE GEMINI VISION API GATEWAY DISPATCHER
+  async queryGeminiAI(promptText, base64JpegImage = null) {
     const key = localStorage.getItem('gemini_api_key') || this.geminiApiKey;
     if (!key) return null;
 
@@ -96,11 +130,11 @@ class AiAnalyzerModule {
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
         
         const parts = [{ text: promptText }];
-        if (base64Data && base64Data.length > 50) {
-          const cleanBase64 = base64Data.includes('base64,') ? base64Data.split('base64,')[1] : base64Data;
+        if (base64JpegImage && base64JpegImage.length > 50) {
+          const cleanBase64 = base64JpegImage.includes('base64,') ? base64JpegImage.split('base64,')[1] : base64JpegImage;
           parts.push({
             inline_data: {
-              mime_type: mimeType || 'application/pdf',
+              mime_type: 'image/jpeg',
               data: cleanBase64.replace(/\s+/g, '')
             }
           });
@@ -126,7 +160,7 @@ class AiAnalyzerModule {
     return null;
   }
 
-  // 3. EXTRACT VECTOR TEXT FROM PDF BLOB USING PDF.JS
+  // 4. EXTRACT VECTOR TEXT FROM PDF BLOB USING PDF.JS
   async extractTextFromPdfBlob(blobOrUrl) {
     try {
       if (!window.pdfjsLib) return { text: "", numPages: 1 };
@@ -162,7 +196,7 @@ class AiAnalyzerModule {
     }
   }
 
-  // 4. EXTRACT TEXT FROM WORD (.DOCX) USING MAMMOTH.JS
+  // 5. EXTRACT TEXT FROM WORD (.DOCX) USING MAMMOTH.JS
   async extractTextFromDocxBlob(blobOrArrayBuffer) {
     try {
       if (!window.mammoth) return "";
@@ -180,7 +214,7 @@ class AiAnalyzerModule {
     }
   }
 
-  // 5. MAIN GATEWAY ANALYZER - DIRECT DUAL DISPATCH TO CHATGPT OR GEMINI API
+  // 6. MAIN GATEWAY ANALYZER - RENDERS PDF PAGES TO HIGH-RES JPEG IMAGES & SENDS TO CHATGPT VISION
   async analyzeDocument(fileObj, rawBlob = null) {
     if (!fileObj) return null;
 
@@ -188,14 +222,20 @@ class AiAnalyzerModule {
     let totalPdfPages = 1;
     const fileName = fileObj.name || "Tài liệu";
     const ext = fileName.split('.').pop().toLowerCase();
+    let pageBase64Image = null;
 
-    // A. Extract Text & Page Info based on File Extension
+    // A. Extract Text & Render PDF Page 1 to Crisp High-Res JPEG Image
     if (ext === 'pdf') {
       const pdfRes = await this.extractTextFromPdfBlob(rawBlob || fileObj.url);
       extractedText = pdfRes.text;
       totalPdfPages = pdfRes.numPages;
+
+      // Render Page 1 to Canvas JPEG Base64 for ChatGPT Vision OCR
+      pageBase64Image = await this.convertPdfPageToImageBase64(rawBlob || fileObj.url, 1);
     } else if (ext === 'docx' || ext === 'doc') {
       extractedText = await this.extractTextFromDocxBlob(rawBlob);
+    } else if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+      pageBase64Image = fileObj.dataUrl || fileObj.url;
     }
 
     const cleanText = (extractedText || "").replace(/\s+/g, ' ').trim();
@@ -205,29 +245,31 @@ class AiAnalyzerModule {
     const openAiKey = this.getOpenAiKey();
     const geminiKey = localStorage.getItem('gemini_api_key') || this.geminiApiKey;
 
-    const prompt = `Đây là dữ liệu văn bản từ tệp "${fileName}" (Thuộc Cổng Web App Thư viện Điện tử KDDVKH):\n\nNỘI DUNG VĂN BẢN TRÍCH XUẤT:\n"""${cleanText.substring(0, 8000) || `Tệp scan PDF gồm ${totalPdfPages} trang ảnh chụp.`}"""\n\nHãy tổng hợp bản tóm tắt tiếng Việt cực kỳ chi tiết bao gồm:\n1. TỔNG QUAN VĂN BẢN (Mục đích, thời gian, địa điểm, các bên liên quan nếu có).\n2. CÁC ĐIỀU KHOẢN & QUYẾT ĐỊNH CỐT LÕI (Liệt kê 3-4 mục chính).\n3. HÀNH ĐỘNG & TIẾN ĐỘ THỰC HIỆN.`;
+    const prompt = `Đây là dữ liệu tài liệu "${fileName}" từ Cổng Web App Thư viện Điện tử KDDVKH (Công ty Cổ phần Cấp nước Thủ Đức).\n` +
+      (pageBase64Image ? `Tôi gửi kèm ẢNH CHỤP SẮC NÉT TRỰC TIẾP của trang văn bản. Hãy dùng mắt thần Vision OCR đọc kỹ tất cả nét chữ, con số, bảng biểu, tên các bên, tiêu đề, ngày tháng trên ảnh scan này.` : `Nội dung chữ trích xuất: "${cleanText.substring(0, 8000)}"`) +
+      `\n\nHãy tổng hợp bản tóm tắt tiếng Việt cực kỳ chi tiết bao gồm:\n1. TỔNG QUAN VĂN BẢN (Tên văn bản, cơ quan/đơn vị ban hành, số hiệu, ngày tháng, các bên liên quan).\n2. CÁC NỘI DUNG & ĐIỀU KHOẢN CỐT LÕI (Liệt kê chi tiết 3-4 điểm chính đọc được từ ảnh scan).\n3. KẾT LUẬN & HÀNH ĐỘNG THỰC HIỆN.`;
 
-    // B1. DISPATCH TO OPENAI CHATGPT API GATEWAY IF OPENAI KEY IS SET
+    // B1. DISPATCH TO OPENAI CHATGPT VISION API GATEWAY IF OPENAI KEY IS SET
     if (openAiKey) {
-      const gptResponse = await this.queryOpenAiGptGateway(prompt, fileObj.dataUrl);
+      const gptResponse = await this.queryOpenAiGptGateway(prompt, pageBase64Image);
       if (gptResponse) {
         return {
-          title: `🤖 Báo cáo Tóm tắt OpenAI ChatGPT Gateway: ${fileName}`,
+          title: `🤖 Báo cáo Vision OCR OpenAI ChatGPT Gateway: ${fileName}`,
           isRealOcr: true,
-          modeText: `⚡ Đã chuyển trực tiếp qua Cổng Gateway OpenAI ChatGPT (GPT-4o Engine) xử lý.`,
+          modeText: pageBase64Image ? `⚡ ChatGPT Vision OCR đã quét trực tiếp ảnh sắc nét của trang tệp scan.` : `⚡ ChatGPT AI đã phân tích văn bản thực tế.`,
           contentHtml: gptResponse.replace(/\n/g, '<br>')
         };
       }
     }
 
-    // B2. DISPATCH TO GOOGLE GEMINI API GATEWAY IF GEMINI KEY IS SET
+    // B2. DISPATCH TO GOOGLE GEMINI VISION API GATEWAY IF GEMINI KEY IS SET
     if (geminiKey) {
-      const geminiResponse = await this.queryGeminiAI(prompt, fileObj.dataUrl, ext === 'pdf' ? 'application/pdf' : 'text/plain');
+      const geminiResponse = await this.queryGeminiAI(prompt, pageBase64Image);
       if (geminiResponse) {
         return {
-          title: `🤖 Báo cáo Tóm tắt Google Gemini AI Gateway: ${fileName}`,
+          title: `🤖 Báo cáo Vision OCR Google Gemini AI Gateway: ${fileName}`,
           isRealOcr: true,
-          modeText: `⚡ Đã chuyển trực tiếp qua Cổng Gateway Google Gemini AI xử lý.`,
+          modeText: pageBase64Image ? `⚡ Gemini Vision OCR đã đọc trực tiếp ảnh trang scan.` : `⚡ Gemini AI đã phân tích văn bản.`,
           contentHtml: geminiResponse.replace(/\n/g, '<br>')
         };
       }
@@ -235,20 +277,20 @@ class AiAnalyzerModule {
 
     // B3. IF NO API KEY IS SET - PROVIDE INTERACTIVE KEY SETTING GATEWAY BOX IN MODAL
     let summaryTitle = `🌐 Cổng Kết Nối AI Gateway: ${fileName}`;
-    let overviewText = `Tệp **"${fileName}"** (${isScannedPdf ? `${totalPdfPages} trang ảnh scan` : `${pureTextLength} ký tự văn bản`}) đã sẵn sàng để gửi trực tiếp cho Bot AI xử lý.`;
+    let overviewText = `Tệp **"${fileName}"** (${isScannedPdf ? `${totalPdfPages} trang ảnh scan` : `${pureTextLength} ký tự văn bản`}) đã được chuyển thành **ảnh chụp sắc nét** sẵn sàng gửi cho ChatGPT Vision OCR đọc chữ.`;
     
     const formattedHtml = `
       <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 18px; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
         <div style="font-weight: 800; font-size: 15px; color: #38bdf8; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
-          <span>🔑 CỔNG KẾT NỐI CHATGPT & GEMINI AI GATEWAY</span>
+          <span>🔑 CỔNG KẾT NỐI CHATGPT & GEMINI AI VISION GATEWAY</span>
         </div>
         <p style="font-size: 12.5px; color: #94a3b8; margin-bottom: 12px; line-height: 1.5;">
-          Web App của anh hoạt động như 1 Cổng dữ liệu trung gian (Gateway). Hãy dán mã **OpenAI ChatGPT API Key (sk-...)** hoặc **Google Gemini API Key (AIzaSy...)** bên dưới để gửi dữ liệu trực tiếp cho ChatGPT xử lý và trả kết quả về giao diện Web App:
+          Hệ thống vừa tự động chuyển đổi trang PDF scan sang dạng **Ảnh chụp sắc nét**. Hãy dán mã **OpenAI ChatGPT API Key (sk-...)** hoặc **Google Gemini API Key (AIzaSy...)** bên dưới để Mắt thần ChatGPT Vision đọc chữ trực tiếp trên ảnh và trả kết quả về giao diện Web App:
         </p>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
           <input type="password" id="modalGptKeyInput" placeholder="Nhập OpenAI Key (sk-...) hoặc Gemini Key..." class="form-input" style="flex: 1; min-width: 260px; padding: 9px 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; font-size: 13px;">
           <button id="btnSaveModalGptKey" class="btn-primary" style="padding: 9px 18px; font-size: 13px; width: auto; background: #0284c7;">
-            ⚡ Lưu Key & Gửi ChatGPT
+            ⚡ Lưu Key & Gửi ChatGPT Vision
           </button>
         </div>
         <div id="modalGptKeyStatus" style="font-size: 12px; margin-top: 8px; font-weight: 600; color: #4ade80;"></div>
@@ -268,7 +310,7 @@ class AiAnalyzerModule {
     return {
       title: summaryTitle,
       isRealOcr: false,
-      modeText: `🌐 Cổng Gateway Web App: Sẵn sàng gửi dữ liệu tệp cho ChatGPT / Gemini AI.`,
+      modeText: `🌐 Cổng Gateway Web App: Sẵn sàng gửi ảnh trang scan cho ChatGPT / Gemini Vision OCR.`,
       contentHtml: formattedHtml
     };
   }

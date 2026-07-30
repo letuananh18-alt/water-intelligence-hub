@@ -11,10 +11,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/styles.css?v=20260730_v59">
+  <link rel="stylesheet" href="css/styles.css?v=20260730_v60">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- PDF.js for 100% Real Text PDF Document Extracting -->
+  <!-- PDF.js for 100% Real Text PDF Document Extracting & Canvas Page Rendering -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <!-- Mammoth.js for Direct Client-side Word (.docx) Document Previewing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
@@ -581,7 +581,7 @@
                     <td>waterain8n@gmail.com</td>
                     <td>Ban Quản Trị - Phòng KDDVKH</td>
                     <td><span class="badge-tag type-pdf">ADMIN</span></td>
-                    <td>30/07/2026 23:14</td>
+                    <td>30/07/2026 23:23</td>
                   </tr>
                 </tbody>
               </table>
@@ -671,7 +671,7 @@
         <div style="display: flex; gap: 10px;">
           <button id="btnAiSummarizeDoc" class="btn-primary" style="padding: 10px 18px; font-size: 13px; background: linear-gradient(135deg, #0052CC 0%, #00B8D9 100%); width: auto;">
             <i data-lucide="bot" style="width: 16px; height: 16px;"></i>
-            <span>🤖 Gửi ChatGPT Tóm tắt</span>
+            <span>🤖 Gửi ChatGPT Vision Tóm tắt</span>
           </button>
           <a href="#" id="previewDownloadBtn" class="btn-primary" style="padding: 10px 20px; font-size: 13.5px; width: auto;">
             <i data-lucide="download" style="width: 16px; height: 16px;"></i>
@@ -686,7 +686,7 @@
   <div id="aiDocAnalyzerModal" class="modal-backdrop" style="display: none;">
     <div class="modal-content" style="max-width: 680px; width: 92%; border-radius: 16px;">
       <div class="modal-header">
-        <h3 id="aiAnalyzerModalTitle" class="modal-title" style="color: var(--accent-blue);">🤖 Cổng AI Gateway - ChatGPT / Gemini AI Engine</h3>
+        <h3 id="aiAnalyzerModalTitle" class="modal-title" style="color: var(--accent-blue);">🤖 Cổng AI Gateway - ChatGPT / Gemini Vision Engine</h3>
         <i data-lucide="x" class="close-btn" id="closeAiAnalyzerModalBtn"></i>
       </div>
       <div style="padding: 14px 0;">
@@ -799,13 +799,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Application Logic with Supabase Backend -->
-  <script src="js/supabase-config.js?v=20260730_v59"></script>
-  <script src="js/tech-bg.js?v=20260730_v59"></script>
-  <script src="js/auth.js?v=20260730_v59"></script>
-  <script src="js/storage-service.js?v=20260730_v59"></script>
-  <script src="js/chat-service.js?v=20260730_v59"></script>
-  <script src="js/ai-assistant.js?v=20260730_v59"></script>
-  <script src="js/ai-analyzer-module.js?v=20260730_v59"></script>
-  <script src="js/app.js?v=20260730_v59"></script>
+  <script src="js/supabase-config.js?v=20260730_v60"></script>
+  <script src="js/tech-bg.js?v=20260730_v60"></script>
+  <script src="js/auth.js?v=20260730_v50"></script>
+  <script src="js/storage-service.js?v=20260730_v60"></script>
+  <script src="js/chat-service.js?v=20260730_v60"></script>
+  <script src="js/ai-assistant.js?v=20260730_v60"></script>
+  <script src="js/ai-analyzer-module.js?v=20260730_v60"></script>
+  <script src="js/app.js?v=20260730_v60"></script>
 </body>
 </html>
