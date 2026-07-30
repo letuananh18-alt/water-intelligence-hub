@@ -724,6 +724,9 @@ class AppController {
           const ext = file.type ? file.type.toUpperCase() : file.name.split('.').pop().toUpperCase();
           const isImage = ['JPG', 'PNG', 'JPEG', 'WEBP', 'SVG', 'GIF'].includes(ext) || /\.(png|jpg|jpeg|webp|svg|gif)$/i.test(file.name);
           const isPdf = ext === 'PDF' || /\.pdf$/i.test(file.name);
+          const isDocx = ['DOCX', 'DOC'].includes(ext) || /\.(docx|doc)$/i.test(file.name);
+
+          if (modal) modal.style.display = 'flex';
 
           if (docViewer) {
             if (isImage) {
@@ -741,6 +744,103 @@ class AppController {
                 </div>
               `;
             } 
+            else if (isDocx) {
+              docViewer.innerHTML = `
+                <div style="text-align: center; padding: 50px 20px; color: var(--accent-blue);">
+                  <div style="font-size: 32px; margin-bottom: 12px;">📄</div>
+                  <div style="font-weight: 700; font-size: 15px; margin-bottom: 6px;">Đang giải mã và định dạng tài liệu Word (.docx)...</div>
+                  <div style="font-size: 12px; color: var(--slate-500);">Vui lòng chờ trong giây lát...</div>
+                </div>
+              `;
+
+              const renderDocxHtml = (htmlContent) => {
+                docViewer.innerHTML = `
+                  <div class="doc-reader-paper" style="max-height: 520px; overflow-y: auto; text-align: left; background: white; padding: 30px 40px; border-radius: 8px; border: 1px solid var(--slate-200); box-shadow: var(--shadow-sm);">
+                    <div class="doc-reader-header" style="border-bottom: 2px solid var(--slate-200); padding-bottom: 14px; margin-bottom: 20px;">
+                      <div style="font-size: 11px; font-weight: 800; color: var(--accent-blue); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px;">CÔNG TY CỔ PHẦN CẤP NƯỚC THỦ ĐỨC</div>
+                      <h3 class="doc-reader-title" style="margin: 4px 0 8px 0; font-size: 18px; color: var(--slate-900); font-weight: 800;">${escapeHTML(file.name)}</h3>
+                      <div class="doc-reader-meta" style="font-size: 12px; color: var(--slate-500);">
+                        📌 <strong>Phân loại:</strong> ${escapeHTML(file.docType || 'Văn bản Nghiệp vụ KDDVKH')} | 
+                        🏷️ <strong>Trạng thái:</strong> ${escapeHTML(file.statusTag || '🟢 Đã ban hành')} | 
+                        📅 <strong>Ngày đăng:</strong> ${escapeHTML(file.uploadDate)}
+                      </div>
+                    </div>
+                    <div class="doc-reader-body docx-rendered-content" style="font-size: 14px; line-height: 1.7; color: var(--slate-800);">
+                      ${htmlContent}
+                    </div>
+                  </div>
+                `;
+              };
+
+              const tryConvertArrayBuffer = async (arrayBuffer) => {
+                if (window.mammoth) {
+                  try {
+                    const result = await window.mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
+                    if (result && result.value) {
+                      renderDocxHtml(result.value);
+                      return true;
+                    }
+                  } catch (mErr) {
+                    console.warn("Mammoth conversion notice:", mErr);
+                  }
+                }
+                return false;
+              };
+
+              (async () => {
+                let success = false;
+                // 1. Try from memory rawFile
+                if (rawFile) {
+                  try {
+                    const buffer = await rawFile.arrayBuffer();
+                    success = await tryConvertArrayBuffer(buffer);
+                  } catch (e) {}
+                }
+
+                // 2. Try from Base64 dataUrl
+                if (!success && file.dataUrl && file.dataUrl.includes('base64,')) {
+                  try {
+                    const base64Str = file.dataUrl.split('base64,')[1];
+                    const binaryStr = window.atob(base64Str);
+                    const len = binaryStr.length;
+                    const bytes = new Uint8Array(len);
+                    for (let i = 0; i < len; i++) {
+                      bytes[i] = binaryStr.charCodeAt(i);
+                    }
+                    success = await tryConvertArrayBuffer(bytes.buffer);
+                  } catch (e) {}
+                }
+
+                // 3. Try fetching from public file.url
+                if (!success && file.url && file.url !== "#") {
+                  try {
+                    const resp = await fetch(file.url);
+                    const buffer = await resp.arrayBuffer();
+                    success = await tryConvertArrayBuffer(buffer);
+                  } catch (e) {}
+                }
+
+                // 4. Fallback to Microsoft Office Online Iframe Viewer
+                if (!success) {
+                  if (file.url && file.url !== "#" && file.url.startsWith("http")) {
+                    docViewer.innerHTML = `
+                      <div style="width: 100%; height: 520px;">
+                        <iframe src="https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(file.url)}" width="100%" height="100%" style="border: none; border-radius: 8px;"></iframe>
+                      </div>
+                    `;
+                  } else {
+                    renderDocxHtml(`
+                      <div style="background: var(--slate-50); padding: 20px; border-left: 4px solid var(--accent-blue); border-radius: 6px;">
+                        <p>📄 Tệp Word: <strong>${escapeHTML(file.name)}</strong></p>
+                        <p style="font-size: 13px; color: var(--slate-600); margin-top: 8px;">
+                          Hệ thống đã lưu trữ và bảo vệ văn bản Word này. Anh hãy bấm nút <strong>"Tải tệp này về máy"</strong> bên dưới để mở file bằng Microsoft Word.
+                        </p>
+                      </div>
+                    `);
+                  }
+                }
+              })();
+            }
             else if (['TXT', 'CSV', 'JSON', 'LOG', 'MD', 'HTML', 'JS'].includes(ext) && rawFile) {
               const reader = new FileReader();
               reader.onload = (event) => {
@@ -775,7 +875,6 @@ class AppController {
             }
           }
 
-          if (modal) modal.style.display = 'flex';
           this.refreshLucideIcons();
         }
       }
