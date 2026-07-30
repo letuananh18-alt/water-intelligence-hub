@@ -1,17 +1,23 @@
 // ==========================================================================
-// FILE STORAGE & DUAL VAULT MANAGER SERVICE (STRICT FIRESTORE MIRRORING)
+// FILE STORAGE & DUAL VAULT MANAGER SERVICE (STABLE DEPARTMENT FOLDERS)
 // ==========================================================================
 
 class StorageService {
   constructor() {
     this.files = [];
-    this.folders = []; // Strictly empty by default - no hardcoded sample folders
+    this.folders = [];
     this.rawFileMap = new Map();
     this.listeners = [];
     this.init();
   }
 
   init() {
+    const defaultFolders = [
+      { id: "fold_kddvkh_1", name: "Hợp đồng Dịch vụ Khách hàng 2026", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "30/07/2026", filesCount: 0 },
+      { id: "fold_kddvkh_2", name: "Báo cáo Doanh thu & Cấp nước KDDVKH", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "30/07/2026", filesCount: 0 },
+      { id: "fold_kddvkh_3", name: "Biểu giá & Quy trình Dịch vụ Khách hàng", department: "dept_kddvkh", createdBy: "Lê Tuấn Anh", date: "30/07/2026", filesCount: 0 }
+    ];
+
     const savedFiles = localStorage.getItem('thuduc_water_files');
     if (savedFiles !== null) {
       try {
@@ -24,19 +30,20 @@ class StorageService {
     const savedFolders = localStorage.getItem('thuduc_water_folders');
     if (savedFolders !== null) {
       try {
-        // Filter out legacy hardcoded sample folders (fold_1, fold_2, fold_3)
-        this.folders = JSON.parse(savedFolders).filter(f => f.id !== 'fold_1' && f.id !== 'fold_2' && f.id !== 'fold_3');
+        const parsed = JSON.parse(savedFolders);
+        this.folders = parsed.length > 0 ? parsed : defaultFolders;
       } catch (e) {
-        this.folders = [];
+        this.folders = defaultFolders;
       }
     } else {
-      this.folders = [];
+      this.folders = defaultFolders;
+      this.saveLocal();
     }
 
-    // 100% Real-time Cloud Firestore Mirroring with Zero Default Seeding
+    // 100% Real-time Cloud Firestore Synchronization with Default Seeding
     if (typeof firebase !== 'undefined' && firebase.firestore) {
       try {
-        // Real-time Files Listener
+        // Files Listener
         firebase.firestore().collection("files").onSnapshot(snapshot => {
           const cloudFiles = [];
           snapshot.forEach(doc => {
@@ -50,20 +57,22 @@ class StorageService {
           this.notify();
         }, err => console.warn("Firestore files notice:", err));
 
-        // Real-time Folders Listener
+        // Folders Listener
         firebase.firestore().collection("folders").onSnapshot(snapshot => {
           const cloudFolders = [];
           snapshot.forEach(doc => {
-            const id = doc.id;
-            // Automatically purge legacy hardcoded sample folders if they exist in Firestore
-            if (id === 'fold_1' || id === 'fold_2' || id === 'fold_3') {
-              firebase.firestore().collection("folders").doc(id).delete().catch(e => {});
-            } else {
-              cloudFolders.push({ id: id, ...doc.data() });
-            }
+            cloudFolders.push({ id: doc.id, ...doc.data() });
           });
           
-          this.folders = cloudFolders;
+          if (cloudFolders.length === 0) {
+            defaultFolders.forEach(f => {
+              firebase.firestore().collection("folders").doc(f.id).set(f).catch(e => {});
+            });
+            this.folders = defaultFolders;
+          } else {
+            this.folders = cloudFolders;
+          }
+
           this.saveLocal();
           this.notify();
         }, err => console.warn("Firestore folders notice:", err));
