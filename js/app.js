@@ -760,23 +760,41 @@ class AppController {
                 reader.readAsDataURL(blob);
               });
             }
-        // 2. Extract real text from PDF file via PDF.js if available
+        // 2. Safe non-blocking PDF text extraction with 2.5s safety timeout
         let pdfText = '';
         if (window.pdfjsLib && file.url) {
           try {
-            const resp = await fetch(file.url);
-            if (resp.ok) {
-              const arrayBuf = await resp.arrayBuffer();
-              const pdfDoc = await window.pdfjsLib.getDocument({ data: arrayBuf }).promise;
-              for (let i = 1; i <= pdfDoc.numPages; i++) {
-                const page = await pdfDoc.getPage(i);
-                const tokenized = await page.getTextContent();
-                pdfText += tokenized.items.map(item => item.str).join(' ') + '\n';
-              }
-            }
-          } catch (e) {
-            console.warn("PDF.js extraction notice:", e);
-          }
+            pdfText = await new Promise((resolve) => {
+              const timer = setTimeout(() => resolve(''), 2500);
+              fetch(file.url)
+                .then(res => res.ok ? res.arrayBuffer() : null)
+                .then(arrayBuf => {
+                  if (!arrayBuf) { clearTimeout(timer); return resolve(''); }
+                  const loadingTask = window.pdfjsLib.getDocument({
+                    data: new Uint8Array(arrayBuf),
+                    isEvalSupported: false,
+                    useSystemFonts: true
+                  });
+                  return loadingTask.promise;
+                })
+                .then(async (pdfDoc) => {
+                  if (!pdfDoc) { clearTimeout(timer); return resolve(''); }
+                  let text = '';
+                  const maxPages = Math.min(pdfDoc.numPages, 10);
+                  for (let i = 1; i <= maxPages; i++) {
+                    const page = await pdfDoc.getPage(i);
+                    const textContent = await page.getTextContent();
+                    text += textContent.items.map(item => item.str).join(' ') + '\n';
+                  }
+                  clearTimeout(timer);
+                  resolve(text);
+                })
+                .catch(() => {
+                  clearTimeout(timer);
+                  resolve('');
+                });
+            });
+          } catch (e) {}
         }
 
         const extractedText = (pdfText || docViewer.innerText || '').trim();
