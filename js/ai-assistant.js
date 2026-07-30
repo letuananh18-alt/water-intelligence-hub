@@ -55,20 +55,18 @@ class AiAssistant {
     return this.messages;
   }
 
-  // CALL GOOGLE GEMINI REST API WITH OFFICIAL ACTIVE PRODUCTION MODELS
+  // CALL GOOGLE GEMINI REST API WITH OFFICIAL PRODUCTION MODEL NAMES
   async callGeminiApi(promptText, base64Data = null, mimeType = null) {
     const key = this.getApiKey();
     if (!key) {
       return null;
     }
 
-    // Active production models supported by Google AI Studio for API keys
+    // Standard official model identifiers for Google Generative AI REST API v1beta
     const models = [
-      'gemini-1.5-flash-latest',
-      'gemini-2.0-flash',
-      'gemini-2.0-flash-exp',
       'gemini-1.5-flash',
-      'gemini-1.5-pro-latest'
+      'gemini-2.0-flash',
+      'gemini-1.5-pro'
     ];
 
     let firstErrorDetails = "";
@@ -109,7 +107,7 @@ class AiAssistant {
         } else {
           const errJson = await response.json().catch(() => ({}));
           const errMsg = errJson.error ? (errJson.error.message || `HTTP ${response.status}`) : `HTTP ${response.status}`;
-          if (!firstErrorDetails) firstErrorDetails = errMsg;
+          if (!firstErrorDetails) firstErrorDetails = `${model}: ${errMsg}`;
           console.warn(`Gemini model ${model} HTTP Error:`, response.status, errMsg);
         }
       } catch (e) {
@@ -118,7 +116,7 @@ class AiAssistant {
       }
     }
 
-    // 2. Secondary Failover: Text-only request if PDF binary format was rejected
+    // 2. Secondary Failover: Text-only request if PDF binary format was rejected by API
     if (cleanBase64) {
       for (const model of models) {
         try {
