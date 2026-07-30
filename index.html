@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Water Intelligence Hub - Thủ Đức Water Portal</title>
   <meta name="description" content="Nền tảng lưu trữ và quản lý dữ liệu thông minh - Thủ Đức Water">
-  <link rel="stylesheet" href="css/styles.css?v=20260730_v10">
+  <link rel="stylesheet" href="css/styles.css?v=20260730_v11">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -80,6 +80,9 @@
        ========================================================================== -->
   <div id="appShell" class="app-shell" style="display: flex;">
 
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
     <!-- Left Navigation Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-header">
@@ -125,7 +128,7 @@
         </div>
         <div class="nav-item" data-view="users">
           <i data-lucide="users"></i>
-          <span>Người dùng & Phân quyền</span>
+          <span>Người dùng & Giám sát</span>
         </div>
         <div class="nav-item" data-view="settings">
           <i data-lucide="settings"></i>
@@ -152,6 +155,10 @@
 
       <!-- Top Header Bar -->
       <header class="topbar">
+        <button id="mobileMenuToggleBtn" class="mobile-menu-btn" title="Mở Menu">
+          <i data-lucide="menu"></i>
+        </button>
+
         <div class="global-search">
           <i data-lucide="search" class="search-icon"></i>
           <input type="text" id="globalSearchInput" class="search-input" placeholder="Tìm kiếm tài liệu, thư mục, quy trình...">
@@ -296,12 +303,12 @@
           </div>
         </section>
 
-        <!-- 2. PERSONAL DOCUMENTS VIEW -->
+        <!-- 2. PERSONAL DOCUMENTS VIEW (STRICT PRIVACY - ONLY FOR CURRENT USER) -->
         <section id="viewPersonalDocs" class="view-panel" style="display: none;">
           <div class="page-header">
             <div>
               <h2 class="welcome-title">Tài liệu cá nhân</h2>
-              <p class="welcome-sub">Quản lý và lưu trữ các tệp làm việc riêng của bạn</p>
+              <p class="welcome-sub">Quản lý và lưu trữ các tệp làm việc riêng của bạn (Bảo mật 100%, chỉ bạn mới có quyền xem)</p>
             </div>
           </div>
 
@@ -341,7 +348,7 @@
           </div>
         </section>
 
-        <!-- 3. DEPARTMENT VAULT VIEW (KHO NỘI BỘ PHÒNG KINH DOANH & DỊCH VỤ KHÁCH HÀNG - COMPACT FOLDERS) -->
+        <!-- 3. DEPARTMENT VAULT VIEW (KHO NỘI BỘ PHÒNG KINH DOANH & DỊCH VỤ KHÁCH HÀNG) -->
         <section id="viewDeptDocs" class="view-panel" style="display: none;">
           <div class="page-header">
             <div>
@@ -368,13 +375,11 @@
             </div>
           </div>
 
-          <!-- Compact & Balanced Department Folders Grid Section -->
           <div id="deptFoldersSection">
             <div class="card-title" style="margin-bottom: 12px; font-size: 15px; font-weight: 700;">📁 Thư mục Nghiệp vụ KDDVKH</div>
             <div id="deptFoldersGrid" class="folder-grid-compact"></div>
           </div>
 
-          <!-- Department Files Data Table with Filters & Status Badges (Hidden when outside folders) -->
           <div class="table-card" style="display: none;">
             <div class="table-header-bar" style="flex-wrap: wrap; gap: 12px;">
               <h3 class="card-title" id="deptTableTitle">Văn bản & Tài liệu Phòng Kinh doanh & DVKH</h3>
@@ -487,21 +492,69 @@
           </div>
         </section>
 
-        <!-- 6. USERS VIEW -->
+        <!-- 6. USERS & ADMIN MONITORING DASHBOARD -->
         <section id="viewUsers" class="view-panel" style="display: none;">
-          <div class="page-header"><h2 class="welcome-title">Danh sách người dùng & Phân quyền</h2></div>
+          <div class="page-header">
+            <div>
+              <h2 class="welcome-title">Quản lý Người dùng & Giám sát Hệ thống</h2>
+              <p class="welcome-sub">Theo dõi thời gian đăng nhập Client & Nhật ký tải lên (Bảo vệ 100% nội dung riêng tư)</p>
+            </div>
+          </div>
+
+          <!-- Table 1: Client Login Timestamp Audit -->
           <div class="table-card">
-            <table class="data-table">
-              <thead><tr><th>Họ và tên</th><th>Email</th><th>Chức danh / Phòng ban</th><th>Quyền hạn</th></tr></thead>
-              <tbody id="usersTableBody">
-                <tr>
-                  <td><strong>Lê Tuấn Anh</strong></td>
-                  <td>letuananh18@gmail.com</td>
-                  <td>Ban Quản Trị - Phòng KDDVKH</td>
-                  <td><span class="badge-tag type-pdf">ADMIN</span></td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="table-header-bar">
+              <h3 class="card-title">👥 Nhật ký Đăng nhập của Client vào hệ thống</h3>
+            </div>
+            <div class="data-table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Họ và tên</th>
+                    <th>Email</th>
+                    <th>Chức danh / Phòng ban</th>
+                    <th>Quyền hạn</th>
+                    <th>Thời gian Đăng nhập gần nhất</th>
+                  </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                  <tr>
+                    <td><strong>Lê Tuấn Anh</strong></td>
+                    <td>letuananh18@gmail.com</td>
+                    <td>Ban Quản Trị - Phòng KDDVKH</td>
+                    <td><span class="badge-tag type-pdf">ADMIN</span></td>
+                    <td>30/07/2026 11:35</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Table 2: Client Upload Audit Log with Privacy Protection -->
+          <div class="table-card" style="margin-top: 20px;">
+            <div class="table-header-bar">
+              <h3 class="card-title">📤 Nhật ký Tải tệp mới từ Client (Nội dung file được bảo mật)</h3>
+            </div>
+            <div class="data-table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Client thực hiện</th>
+                    <th>Định dạng</th>
+                    <th>Dung lượng</th>
+                    <th>Ngày giờ tải lên</th>
+                    <th>Chế độ Bảo mật Quyền riêng tư</th>
+                  </tr>
+                </thead>
+                <tbody id="clientUploadAuditTableBody">
+                  <tr>
+                    <td colspan="5" style="text-align: center; padding: 25px; color: var(--slate-400);">
+                      🔒 Chưa có nhật ký tải lên nào từ Client.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
@@ -607,13 +660,13 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 
-  <!-- Application Logic with Cache Bashing Version Tag v20260730_v10 -->
-  <script src="js/firebase-config.js?v=20260730_v10"></script>
-  <script src="js/tech-bg.js?v=20260730_v10"></script>
-  <script src="js/auth.js?v=20260730_v10"></script>
-  <script src="js/storage-service.js?v=20260730_v10"></script>
-  <script src="js/chat-service.js?v=20260730_v10"></script>
-  <script src="js/ai-assistant.js?v=20260730_v10"></script>
-  <script src="js/app.js?v=20260730_v10"></script>
+  <!-- Application Logic with Cache Bashing Version Tag v20260730_v11 -->
+  <script src="js/firebase-config.js?v=20260730_v11"></script>
+  <script src="js/tech-bg.js?v=20260730_v11"></script>
+  <script src="js/auth.js?v=20260730_v11"></script>
+  <script src="js/storage-service.js?v=20260730_v11"></script>
+  <script src="js/chat-service.js?v=20260730_v11"></script>
+  <script src="js/ai-assistant.js?v=20260730_v11"></script>
+  <script src="js/app.js?v=20260730_v11"></script>
 </body>
 </html>

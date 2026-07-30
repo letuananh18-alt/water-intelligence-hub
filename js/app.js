@@ -1,5 +1,5 @@
 // ==========================================================================
-// MAIN APPLICATION CONTROLLER (FOLDER-STRICT FILES TABLE & REAL-TIME COUNT)
+// MAIN APPLICATION CONTROLLER (RESPONSIVE PC/MOBILE + ADMIN AUDIT MONITOR)
 // ==========================================================================
 
 function escapeHTML(str) {
@@ -34,6 +34,7 @@ class AppController {
       this.bindGlobalModalEvents();
       this.bindChatEvents();
       this.bindAiEvents();
+      this.bindMobileSidebarEvents();
 
       if (window.authManager) {
         window.authManager.onChange(user => this.onUserChanged(user));
@@ -56,6 +57,20 @@ class AppController {
     if (window.lucide) {
       window.lucide.createIcons();
     }
+  }
+
+  bindMobileSidebarEvents() {
+    const mobileBtn = document.getElementById('mobileMenuToggleBtn');
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+
+    const toggleSidebar = () => {
+      sidebar?.classList.toggle('mobile-open');
+      overlay?.classList.toggle('mobile-open');
+    };
+
+    mobileBtn?.addEventListener('click', toggleSidebar);
+    overlay?.addEventListener('click', toggleSidebar);
   }
 
   onUserChanged(user) {
@@ -126,6 +141,10 @@ class AppController {
           navItems.forEach(i => i.classList.remove('active'));
           item.classList.add('active');
           this.switchView(viewName);
+
+          // Close mobile sidebar on nav click
+          document.querySelector('.sidebar')?.classList.remove('mobile-open');
+          document.getElementById('sidebarOverlay')?.classList.remove('mobile-open');
         }
       });
     });
@@ -257,6 +276,7 @@ class AppController {
     `).join('');
   }
 
+  // STRICT PRIVACY: CLIENT PERSONAL FILES ARE SHOWN ONLY TO THAT CLIENT! ADMIN PERSONAL FILES ONLY TO ADMIN!
   renderPersonalTable() {
     const tbody = document.getElementById('personalFilesTableBody');
     if (!tbody || !window.storageService) return;
@@ -295,13 +315,11 @@ class AppController {
     `).join('');
   }
 
-  // DEPARTMENT FILES TABLE - SHOW ONLY WHEN INSIDE A FOLDER!
   renderDeptTable() {
     const tbody = document.getElementById('deptFilesTableBody');
     const tableCard = document.querySelector('#viewDeptDocs .table-card');
     if (!tbody || !window.storageService) return;
 
-    // RULE: IF NOT INSIDE A FOLDER, HIDE THE TABLE OR SHOW SELECT PROMPT
     if (!this.currentDeptFolderId) {
       if (tableCard) tableCard.style.display = 'none';
       return;
@@ -349,7 +367,6 @@ class AppController {
     `).join('');
   }
 
-  // DYNAMIC FILE COUNT CALCULATED REAL-TIME PER FOLDER
   renderDeptFolders() {
     const grid = document.getElementById('deptFoldersGrid');
     const allGrid = document.getElementById('allFoldersListGrid');
@@ -360,7 +377,7 @@ class AppController {
 
     if (!grid || !window.storageService) return;
 
-    const folders = window.storageService.getFolders();
+    const folders = window.storageService.getFolders('department');
     const allDeptFiles = window.storageService.getFiles('department');
     const isAdmin = window.authManager && window.authManager.isAdmin();
 
@@ -382,7 +399,6 @@ class AppController {
     }
 
     const html = folders.map(fold => {
-      // DYNAMICALLY CALCULATE REAL FILE COUNT FOR EACH FOLDER
       const realFileCount = allDeptFiles.filter(f => f.folderId === fold.id).length;
 
       return `
@@ -416,19 +432,51 @@ class AppController {
     });
   }
 
+  // ADMIN AUDIT MONITORING DASHBOARD (CLIENT LOGIN TIME & UPLOAD LOGS WITH PRIVACY SHIELD)
   renderUsersTable() {
     const tbody = document.getElementById('usersTableBody');
-    if (!tbody || !window.authManager) return;
+    const auditTbody = document.getElementById('clientUploadAuditTableBody');
+    if (!window.authManager) return;
 
     const users = window.authManager.getUsersList();
-    tbody.innerHTML = users.map(u => `
-      <tr>
-        <td><strong>${escapeHTML(u.name)}</strong></td>
-        <td>${escapeHTML(u.email)}</td>
-        <td>${escapeHTML(u.department || 'Phòng Kinh doanh & Dịch vụ Khách hàng')}</td>
-        <td><span class="badge-tag ${u.email === 'letuananh18@gmail.com' ? 'type-pdf' : 'type-docx'}">${u.email === 'letuananh18@gmail.com' ? 'ADMIN' : 'CLIENT'}</span></td>
-      </tr>
-    `).join('');
+    const isAdmin = window.authManager.isAdmin();
+
+    if (tbody) {
+      tbody.innerHTML = users.map(u => `
+        <tr>
+          <td><strong>${escapeHTML(u.name)}</strong></td>
+          <td>${escapeHTML(u.email)}</td>
+          <td>${escapeHTML(u.department || 'Phòng Kinh doanh & Dịch vụ Khách hàng')}</td>
+          <td><span class="badge-tag ${u.email === 'letuananh18@gmail.com' ? 'type-pdf' : 'type-docx'}">${u.email === 'letuananh18@gmail.com' ? 'ADMIN' : 'CLIENT'}</span></td>
+          <td><span style="font-weight: 600; color: var(--slate-700);">⏱️ ${escapeHTML(u.lastLogin || 'Mới đăng nhập')}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    if (auditTbody && window.storageService) {
+      const allFiles = window.storageService.files;
+      const clientUploads = allFiles.filter(f => f.category === 'personal');
+
+      if (clientUploads.length === 0) {
+        auditTbody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 25px; color: var(--slate-400);">
+              🔒 Chưa có nhật ký tải lên nào từ Client.
+            </td>
+          </tr>
+        `;
+      } else {
+        auditTbody.innerHTML = clientUploads.map(f => `
+          <tr>
+            <td><strong>${escapeHTML(f.uploadedBy)}</strong></td>
+            <td><span class="badge-tag type-${escapeHTML(f.type.toLowerCase())}">${escapeHTML(f.type)}</span></td>
+            <td>${escapeHTML(f.sizeFormatted)}</td>
+            <td>${escapeHTML(f.uploadDate)}</td>
+            <td><span class="privacy-badge">🔒 Bảo mật riêng tư (Nội dung tệp ẩn đối với Admin)</span></td>
+          </tr>
+        `).join('');
+      }
+    }
   }
 
   bindFolderEvents() {
@@ -440,7 +488,7 @@ class AppController {
     btnCreateFolder?.addEventListener('click', async () => {
       const name = prompt("NHẬP TÊN THƯ MỤC MỚI KHU VỰC KDDVKH:");
       if (name && name.trim()) {
-        await window.storageService.createFolder(name);
+        await window.storageService.createFolder(name, 'department');
         alert("✨ Đã tạo thư mục mới thành công!");
       }
     });
@@ -602,7 +650,6 @@ class AppController {
     });
   }
 
-  // RELIABLE REAL FILE CONTENT PREVIEWER
   bindTableActions() {
     document.addEventListener('click', (e) => {
       if (e.target.classList.contains('delete-btn')) {

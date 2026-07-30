@@ -1,5 +1,5 @@
 // ==========================================================================
-// USER AUTHENTICATION & REAL-TIME USER DIRECTORY SYNC
+// USER AUTHENTICATION & REAL-TIME USER DIRECTORY SYNC (AUDIT LOGGING)
 // SESSION-ONLY PERSISTENCE (Requires login every time browser is closed)
 // Real Admin: letuananh18@gmail.com
 // ==========================================================================
@@ -24,10 +24,8 @@ class AuthManager {
   }
 
   init() {
-    // Purge legacy persistent localStorage login token to ensure browser-close requires fresh login
     localStorage.removeItem('thuduc_water_user');
 
-    // Read session-only storage (auto-cleared on browser/tab close)
     const savedSession = sessionStorage.getItem('thuduc_water_user_session');
     if (savedSession) {
       try {
@@ -41,7 +39,6 @@ class AuthManager {
 
     if (typeof firebase !== 'undefined' && firebase.auth) {
       try {
-        // Enforce SESSION-ONLY persistence: token is wiped when browser/tab is closed
         firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(err => {});
 
         firebase.auth().onAuthStateChanged(user => {
@@ -52,7 +49,8 @@ class AuthManager {
               email: user.email,
               role: user.email === 'letuananh18@gmail.com' ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
               avatar: user.photoURL || DEMO_USERS.ADMIN.avatar,
-              department: "Phòng Kinh doanh & Dịch vụ Khách hàng"
+              department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
+              lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
             };
             
             this.saveUserSession(this.currentUser);
@@ -63,7 +61,6 @@ class AuthManager {
       } catch (e) {}
     }
 
-    // Sync cloud users collection to usersList in real-time
     if (typeof firebase !== 'undefined' && firebase.firestore) {
       try {
         firebase.firestore().collection("users").onSnapshot(snapshot => {
@@ -92,7 +89,21 @@ class AuthManager {
     if (typeof firebase !== 'undefined' && firebase.firestore) {
       try {
         const docId = userObj.uid || userObj.email.replace(/[^a-zA-Z0-9]/g, '_');
-        await firebase.firestore().collection("users").doc(docId).set(userObj, { merge: true });
+        const loginTime = new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+        
+        await firebase.firestore().collection("users").doc(docId).set({
+          ...userObj,
+          lastLogin: loginTime
+        }, { merge: true });
+
+        // Record Client login timestamp audit log
+        await firebase.firestore().collection("login_logs").add({
+          uid: userObj.uid,
+          name: userObj.name || userObj.email.split('@')[0],
+          email: userObj.email,
+          role: userObj.role,
+          timestamp: loginTime
+        });
       } catch (e) {
         console.warn("User cloud sync notice:", e);
       }
@@ -140,10 +151,11 @@ class AuthManager {
                 email: email,
                 role: email === 'letuananh18@gmail.com' ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
                 avatar: DEMO_USERS.ADMIN.avatar,
-                department: "Phòng Kinh doanh & Dịch vụ Khách hàng"
+                department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
+                lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
               };
               await this.syncUserToCloud(newUserObj);
-              alert("✨ Tạo và lưu tài khoản mới thành công vào Danh sách Người dùng!");
+              alert("✨ Tạo và lưu tài khoản mới thành công!");
               return newUserRes.user;
             } catch (cErr) {
               alert("⚠️ Không thể tạo tài khoản: " + cErr.message);
@@ -168,7 +180,8 @@ class AuthManager {
         email: email,
         role: email === 'letuananh18@gmail.com' ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
         avatar: DEMO_USERS.ADMIN.avatar,
-        department: "Phòng Kinh doanh & Dịch vụ Khách hàng"
+        department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
+        lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
       };
 
       this.saveUserSession(this.currentUser);
@@ -198,7 +211,8 @@ class AuthManager {
             email: result.user.email,
             role: result.user.email === 'letuananh18@gmail.com' ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
             avatar: result.user.photoURL || DEMO_USERS.ADMIN.avatar,
-            department: "Phòng Kinh doanh & Dịch vụ Khách hàng"
+            department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
+            lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
           };
           await this.syncUserToCloud(userObj);
         }
