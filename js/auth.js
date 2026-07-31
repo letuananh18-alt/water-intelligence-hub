@@ -1,6 +1,6 @@
 // ==========================================================================
 // UNSTOPPABLE HYBRID AUTHENTICATION & USER APPROVAL MANAGEMENT ENGINE
-// Dual OAuth Google & Password Auth with Admin Approval Workflow
+// Dual OAuth Google & Password Auth with Strict Admin Approval Workflow
 // ==========================================================================
 
 const DEMO_USERS = {
@@ -67,13 +67,52 @@ class AuthManager {
       const { data: { session } } = await window.supabaseClient.auth.getSession();
       if (session && session.user) {
         const u = session.user;
-        const isAdminEmail = u.email === 'waterain8n@gmail.com' || u.email === 'letuananh18@gmail.com';
-        const name = u.user_metadata?.full_name || u.user_metadata?.name || u.email.split('@')[0];
+        const cleanEmail = u.email ? u.email.toLowerCase().trim() : '';
+        const isAdminEmail = cleanEmail === 'waterain8n@gmail.com' || cleanEmail === 'letuananh18@gmail.com';
+        const name = u.user_metadata?.full_name || u.user_metadata?.name || cleanEmail.split('@')[0];
 
+        // 1. Check existing user status in Supabase Database
+        let userStatus = isAdminEmail ? 'approved' : 'pending';
+        
+        try {
+          const { data: dbUser } = await window.supabaseClient.from('users').select('status').eq('email', cleanEmail).maybeSingle();
+          if (dbUser && dbUser.status) {
+            userStatus = dbUser.status;
+          }
+        } catch (e) {}
+
+        // Admin accounts are ALWAYS approved
+        if (isAdminEmail) userStatus = 'approved';
+
+        // 2. Enforce Approval Check for Gmail / Google OAuth
+        if (userStatus === 'pending' && !isAdminEmail) {
+          // Register user in DB as pending if new
+          await this.syncUserToCloud({
+            uid: u.id,
+            name: name,
+            email: cleanEmail,
+            role: "Nhân viên / Client",
+            status: "pending",
+            avatar: u.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0284c7&color=fff&bold=true`,
+            department: "Phòng Kinh doanh & Dịch vụ Khách hàng"
+          });
+
+          alert(`⏳ ĐANG CHỜ PHÊ DUYỆT: Tài khoản Gmail (${cleanEmail}) của bạn đã được ghi nhận vào hệ thống và đang CHỜ BAN QUẢN TRỊ ADMIN PHÊ DUYỆT!\n\nVui lòng liên hệ Admin (waterain8n@gmail.com) để được kích hoạt truy cập.`);
+          await this.logout();
+          return;
+        }
+
+        if (userStatus === 'blocked' && !isAdminEmail) {
+          alert(`⛔ TỪ CHỐI TRUY CẬP: Tài khoản Gmail (${cleanEmail}) của bạn đã bị Ban Quản trị Admin KHÓA QUYỀN TRUY CẬP vào hệ thống!`);
+          await this.logout();
+          return;
+        }
+
+        // 3. User is approved: Proceed with login
         this.currentUser = {
           uid: u.id,
           name: name,
-          email: u.email,
+          email: cleanEmail,
           role: isAdminEmail ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
           status: "approved",
           avatar: u.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0284c7&color=fff&bold=true`,
@@ -120,7 +159,7 @@ class AuthManager {
       }
 
       window.supabaseClient
-        .channel('schema-users-changes-v2')
+        .channel('schema-users-changes-v3')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, async () => {
           const { data: updatedUsers } = await window.supabaseClient.from('users').select('*');
           if (updatedUsers) {
