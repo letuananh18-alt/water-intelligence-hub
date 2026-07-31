@@ -23,28 +23,20 @@ const DEMO_USERS = {
     avatar: "https://ui-avatars.com/api/?name=Tu+Anh&background=0369a1&color=fff&bold=true",
     department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
     lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
-  },
-  CLIENT_VY: {
-    uid: "user_client_vy",
-    name: "Vy Phan",
-    email: "vy.pnt1612@gmail.com",
-    role: "Cán bộ P.KDDVKH",
-    status: "approved",
-    avatar: "https://ui-avatars.com/api/?name=Vy+Phan&background=0d9488&color=fff&bold=true",
-    department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
-    lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
   }
 };
 
 class AuthManager {
   constructor() {
     this.currentUser = null;
-    this.usersList = [DEMO_USERS.ADMIN, DEMO_USERS.ADMIN_ALT, DEMO_USERS.CLIENT_VY];
+    this.usersList = [DEMO_USERS.ADMIN, DEMO_USERS.ADMIN_ALT];
+    this.deletedEmails = new Set();
     this.listeners = [];
     this.init();
   }
 
   init() {
+    // 1. Load session & deleted users cache
     const savedSession = sessionStorage.getItem('thuduc_water_user_session');
     if (savedSession) {
       try {
@@ -52,6 +44,16 @@ class AuthManager {
       } catch (e) {
         this.currentUser = null;
       }
+    }
+
+    const savedDeleted = localStorage.getItem('thuduc_deleted_users');
+    if (savedDeleted) {
+      try {
+        const arr = JSON.parse(savedDeleted);
+        if (Array.isArray(arr)) {
+          this.deletedEmails = new Set(arr.map(x => x.toLowerCase().trim()));
+        }
+      } catch (e) {}
     }
 
     if (window.supabaseClient) {
@@ -133,14 +135,16 @@ class AuthManager {
     if (!window.supabaseClient) return;
 
     try {
-      const list = [DEMO_USERS.ADMIN, DEMO_USERS.ADMIN_ALT, DEMO_USERS.CLIENT_VY];
+      const list = [DEMO_USERS.ADMIN, DEMO_USERS.ADMIN_ALT];
 
       // 1. Fetch users from users table
       const { data: usersData, error: userErr } = await window.supabaseClient.from('users').select('*');
-      if (!userErr && usersData && usersData.length > 0) {
+      if (!error && usersData && usersData.length > 0) {
         usersData.forEach(uData => {
           if (uData && uData.email) {
             const clean = uData.email.toLowerCase().trim();
+            if (this.deletedEmails.has(clean)) return; // Exclude deleted accounts
+
             const isAdminEmail = clean === 'waterain8n@gmail.com' || clean === 'letuananh18@gmail.com';
             const formattedUser = {
               uid: uData.uid || uData.id,
@@ -169,6 +173,8 @@ class AuthManager {
           logsData.forEach(log => {
             if (log && log.email) {
               const clean = log.email.toLowerCase().trim();
+              if (this.deletedEmails.has(clean)) return; // Exclude deleted accounts
+
               const isAdminEmail = clean === 'waterain8n@gmail.com' || clean === 'letuananh18@gmail.com';
               if (!list.some(x => x.email.toLowerCase().trim() === clean)) {
                 list.push({
@@ -187,12 +193,13 @@ class AuthManager {
         }
       } catch (e) {}
 
-      this.usersList = list;
+      // Filter out any deleted emails again
+      this.usersList = list.filter(u => !this.deletedEmails.has(u.email.toLowerCase().trim()));
       this.notify();
 
       // Realtime listener on users table for instantaneous Admin table refresh
       window.supabaseClient
-        .channel('schema-users-changes-v4')
+        .channel('schema-users-changes-v5')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, async () => {
           this.loadUsersFromCloud();
         })
@@ -270,6 +277,10 @@ class AuthManager {
 
     const cleanEmail = email.toLowerCase().trim();
     const isAdminEmail = cleanEmail === 'waterain8n@gmail.com' || cleanEmail === 'letuananh18@gmail.com';
+
+    // Remove from deleted list if Admin re-adds or logs in
+    this.deletedEmails.delete(cleanEmail);
+    localStorage.setItem('thuduc_deleted_users', JSON.stringify(Array.from(this.deletedEmails)));
 
     // 1. Check if user exists in usersList or DB
     let existingUser = this.usersList.find(u => u.email.toLowerCase().trim() === cleanEmail);
@@ -350,13 +361,17 @@ class AuthManager {
   }
 
   async approveUser(email) {
-    const u = this.usersList.find(x => x.email.toLowerCase().trim() === email.toLowerCase().trim());
+    const clean = email.toLowerCase().trim();
+    this.deletedEmails.delete(clean);
+    localStorage.setItem('thuduc_deleted_users', JSON.stringify(Array.from(this.deletedEmails)));
+
+    const u = this.usersList.find(x => x.email.toLowerCase().trim() === clean);
     if (u) {
       u.status = 'approved';
     }
     if (window.supabaseClient) {
       try {
-        await window.supabaseClient.from('users').update({ status: 'approved' }).eq('email', email.toLowerCase().trim());
+        await window.supabaseClient.from('users').update({ status: 'approved' }).eq('email', clean);
       } catch (e) {}
     }
     this.notify();
@@ -364,13 +379,14 @@ class AuthManager {
   }
 
   async blockUser(email) {
-    const u = this.usersList.find(x => x.email.toLowerCase().trim() === email.toLowerCase().trim());
+    const clean = email.toLowerCase().trim();
+    const u = this.usersList.find(x => x.email.toLowerCase().trim() === clean);
     if (u) {
       u.status = 'blocked';
     }
     if (window.supabaseClient) {
       try {
-        await window.supabaseClient.from('users').update({ status: 'blocked' }).eq('email', email.toLowerCase().trim());
+        await window.supabaseClient.from('users').update({ status: 'blocked' }).eq('email', clean);
       } catch (e) {}
     }
     this.notify();
@@ -378,19 +394,30 @@ class AuthManager {
   }
 
   async deleteUserAccount(email) {
-    this.usersList = this.usersList.filter(x => x.email.toLowerCase().trim() !== email.toLowerCase().trim());
+    const clean = email.toLowerCase().trim();
+
+    // Add to deleted set and persist to localStorage
+    this.deletedEmails.add(clean);
+    localStorage.setItem('thuduc_deleted_users', JSON.stringify(Array.from(this.deletedEmails)));
+
+    this.usersList = this.usersList.filter(x => x.email.toLowerCase().trim() !== clean);
+
     if (window.supabaseClient) {
       try {
-        await window.supabaseClient.from('users').delete().eq('email', email.toLowerCase().trim());
-        await window.supabaseClient.from('login_logs').delete().eq('email', email.toLowerCase().trim());
+        await window.supabaseClient.from('users').delete().eq('email', clean);
+        await window.supabaseClient.from('login_logs').delete().eq('email', clean);
       } catch (e) {}
     }
+
     this.notify();
     if (window.appController) window.appController.renderUsersTable();
   }
 
   async createUserAccount(name, email, role, department) {
     const cleanEmail = email.toLowerCase().trim();
+    this.deletedEmails.delete(cleanEmail);
+    localStorage.setItem('thuduc_deleted_users', JSON.stringify(Array.from(this.deletedEmails)));
+
     const newUser = {
       uid: "user_" + Date.now(),
       name: name.trim(),
