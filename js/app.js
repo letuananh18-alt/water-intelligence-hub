@@ -36,7 +36,7 @@ class AppController {
   }
 
   init() {
-    window.addEventListener('DOMContentLoaded', () => {
+    const setup = () => {
       try {
         this.bindAuthEvents();
         this.bindNavigationEvents();
@@ -71,7 +71,13 @@ class AppController {
       }
 
       this.onUserChanged(window.authManager ? window.authManager.getCurrentUser() : null);
-    });
+    };
+
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', setup);
+    } else {
+      setup();
+    }
   }
 
   bindGlobalSearchEvents() {
@@ -217,12 +223,12 @@ class AppController {
   }
 
   bindNavigationEvents() {
-    const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
-    navItems.forEach(item => {
-      item.addEventListener('click', () => {
+    document.addEventListener('click', (e) => {
+      const item = e.target.closest('.sidebar-nav .nav-item');
+      if (item) {
         const viewName = item.getAttribute('data-view');
         if (viewName) {
-          navItems.forEach(i => i.classList.remove('active'));
+          document.querySelectorAll('.sidebar-nav .nav-item').forEach(i => i.classList.remove('active'));
           item.classList.add('active');
           this.switchView(viewName);
 
@@ -230,7 +236,7 @@ class AppController {
           document.querySelector('.sidebar')?.classList.remove('mobile-open');
           document.getElementById('sidebarOverlay')?.classList.remove('mobile-open');
         }
-      });
+      }
     });
   }
 
