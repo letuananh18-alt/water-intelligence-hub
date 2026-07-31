@@ -1,6 +1,6 @@
 // ==========================================================================
 // SUPABASE REALTIME TEAM CHAT & UNREAD NOTIFICATION ENGINE
-// Real-time Chat Sync, 10s Presence Heartbeat & Instant Unread Message Badges
+// Real-time Chat Sync, 10s Presence Heartbeat & Targeted DM Notifications
 // ==========================================================================
 
 const INITIAL_CHANNELS = [
@@ -78,12 +78,37 @@ class ChatService {
     }, 10000);
   }
 
+  // Check if incoming room targetId is targeted for the current logged-in user
+  isMessageForCurrentUser(targetId, currentUser) {
+    if (!currentUser || !currentUser.email) return false;
+    const cleanEmail = currentUser.email.toLowerCase().trim();
+    const cleanEmailSlug = cleanEmail.replace(/[@.]/g, '_');
+
+    // 1. For 1:1 Direct Messages (dm_email1__email2): Target room ID MUST contain current user's email slug!
+    if (targetId.startsWith('dm_')) {
+      return targetId.includes(cleanEmailSlug);
+    }
+
+    // 2. For Group Channels (chan_...): Check if user is a member of the channel
+    if (targetId.startsWith('chan_')) {
+      const chan = this.channels.find(c => c.id === targetId);
+      if (!chan) return true;
+      if (chan.members && chan.members.includes('all')) return true;
+      if (chan.members && Array.isArray(chan.members)) {
+        return chan.members.some(m => m.toLowerCase().trim() === cleanEmail || m.toLowerCase().trim().replace(/[@.]/g, '_') === cleanEmailSlug);
+      }
+      return true;
+    }
+
+    return true;
+  }
+
   setupSupabaseRealtime() {
     if (!window.supabaseClient) return;
 
     try {
       // Broadcast Channel for Instant Message Syncing between devices
-      this.realtimeChannel = window.supabaseClient.channel('thuduc_realtime_chat_v5', {
+      this.realtimeChannel = window.supabaseClient.channel('thuduc_realtime_chat_v6', {
         config: { broadcast: { self: true } }
       });
 
@@ -101,10 +126,18 @@ class ChatService {
                 const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
                 const currentEmail = currentUser ? (currentUser.email || '').toLowerCase().trim() : '';
 
-                // Trigger notification if message is from another user
-                if (message.senderEmail !== currentEmail && message.senderUid !== (currentUser ? currentUser.uid : '')) {
-                  this.unreadCounts[targetId] = (this.unreadCounts[targetId] || 0) + 1;
-                  this.notifyNotification(message, targetId);
+                const isForMe = this.isMessageForCurrentUser(targetId, currentUser);
+                const isFromOther = message.senderEmail !== currentEmail && message.senderUid !== (currentUser ? currentUser.uid : '');
+
+                // Strictly ONLY increment unread count & trigger toast notification if the message is FOR ME and FROM ANOTHER USER
+                if (isForMe && isFromOther) {
+                  const isChatViewActive = window.appController && window.appController.currentView === 'team-chat';
+                  const isRoomActive = targetId === this.activeTargetId;
+
+                  if (!isChatViewActive || !isRoomActive) {
+                    this.unreadCounts[targetId] = (this.unreadCounts[targetId] || 0) + 1;
+                    this.notifyNotification(message, targetId);
+                  }
                 }
 
                 this.saveLocal();
@@ -116,7 +149,7 @@ class ChatService {
         .subscribe();
 
       // Presence Channel for Tracking Real Online Accounts
-      this.presenceChannel = window.supabaseClient.channel('thuduc_presence_v5');
+      this.presenceChannel = window.supabaseClient.channel('thuduc_presence_v6');
 
       this.presenceChannel
         .on('presence', { event: 'sync' }, () => {
