@@ -467,7 +467,48 @@ class StorageService {
     return this.rawFileObjects[fileId] || null;
   }
 
+  async deleteStorageBucketFile(fileUrlOrPath) {
+    if (!window.supabaseClient || !fileUrlOrPath) return;
+    try {
+      let path = fileUrlOrPath;
+      if (path.includes('/documents/')) {
+        path = path.split('/documents/').pop();
+      }
+      if (path && path !== '#') {
+        await window.supabaseClient.storage.from('documents').remove([path]);
+      }
+    } catch (e) {}
+  }
+
+  async purgeAllSupabaseStorageBucketFiles() {
+    if (!window.supabaseClient) return;
+    try {
+      const { data: deptFiles } = await window.supabaseClient.storage.from('documents').list('department');
+      if (deptFiles && deptFiles.length > 0) {
+        const deptPaths = deptFiles.map(f => `department/${f.name}`);
+        await window.supabaseClient.storage.from('documents').remove(deptPaths);
+      }
+
+      const { data: personalFiles } = await window.supabaseClient.storage.from('documents').list('personal');
+      if (personalFiles && personalFiles.length > 0) {
+        const personalPaths = personalFiles.map(f => `personal/${f.name}`);
+        await window.supabaseClient.storage.from('documents').remove(personalPaths);
+      }
+
+      const { data: rootFiles } = await window.supabaseClient.storage.from('documents').list('');
+      if (rootFiles && rootFiles.length > 0) {
+        const rootPaths = rootFiles.filter(f => f.name && !f.name.startsWith('.')).map(f => f.name);
+        if (rootPaths.length > 0) {
+          await window.supabaseClient.storage.from('documents').remove(rootPaths);
+        }
+      }
+    } catch (e) {
+      console.warn("Supabase storage bucket purge notice:", e);
+    }
+  }
+
   async deleteFile(fileId) {
+    const targetFile = this.files.find(f => f.id === fileId);
     this.files = this.files.filter(f => f.id !== fileId);
     delete this.rawFileObjects[fileId];
     this.saveLocal();
@@ -475,6 +516,9 @@ class StorageService {
     if (window.supabaseClient) {
       try {
         await window.supabaseClient.from('files').delete().eq('id', fileId);
+        if (targetFile && targetFile.url) {
+          await this.deleteStorageBucketFile(targetFile.url);
+        }
         if (this.realtimeStorageChannel) {
           this.realtimeStorageChannel.send({
             type: 'broadcast',
@@ -490,6 +534,7 @@ class StorageService {
 
   async deleteFilesBatch(fileIds = []) {
     if (!fileIds || fileIds.length === 0) return;
+    const targetFiles = this.files.filter(f => fileIds.includes(f.id));
     this.files = this.files.filter(f => !fileIds.includes(f.id));
     fileIds.forEach(id => delete this.rawFileObjects[id]);
     this.saveLocal();
@@ -497,6 +542,9 @@ class StorageService {
     if (window.supabaseClient) {
       try {
         await window.supabaseClient.from('files').delete().in('id', fileIds);
+        for (const f of targetFiles) {
+          if (f.url) await this.deleteStorageBucketFile(f.url);
+        }
         fileIds.forEach(id => {
           if (this.realtimeStorageChannel) {
             this.realtimeStorageChannel.send({
@@ -519,6 +567,8 @@ class StorageService {
     if (window.supabaseClient) {
       try {
         await window.supabaseClient.from('files').delete().neq('id', '0_keep_clean_id_9999');
+        await this.purgeAllSupabaseStorageBucketFiles();
+
         if (this.realtimeStorageChannel) {
           this.realtimeStorageChannel.send({
             type: 'broadcast',
