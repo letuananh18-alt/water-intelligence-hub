@@ -1,59 +1,50 @@
 // ==========================================================================
-// USER AUTHENTICATION & REAL-TIME USER DIRECTORY SYNC (SUPABASE BACKEND)
-// ALWAYS PROMPT ACCOUNT SELECTION ON GOOGLE SIGN-IN & LOGIN
-// Admin Accounts: waterain8n@gmail.com & letuananh18@gmail.com
+// UNSTOPPABLE HYBRID AUTHENTICATION & USER APPROVAL MANAGEMENT ENGINE
+// Dual OAuth Google & Password Auth with Admin Approval Workflow
 // ==========================================================================
 
 const DEMO_USERS = {
   ADMIN: {
-    uid: "admin_waterain8n",
+    uid: "user_admin_001",
     name: "Lê Tuấn Anh",
     email: "waterain8n@gmail.com",
     role: "Admin / Quản trị hệ thống",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    department: "Phòng Kinh doanh & Dịch vụ Khách hàng"
+    status: "approved",
+    avatar: "https://ui-avatars.com/api/?name=Le+Tuan+Anh&background=0284c7&color=fff&bold=true",
+    department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
+    lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
+  },
+  ADMIN_ALT: {
+    uid: "user_admin_002",
+    name: "Lê Tuấn Anh (Admin)",
+    email: "letuananh18@gmail.com",
+    role: "Admin / Quản trị hệ thống",
+    status: "approved",
+    avatar: "https://ui-avatars.com/api/?name=Tu+Anh&background=0369a1&color=fff&bold=true",
+    department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
+    lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
+  },
+  CLIENT_VY: {
+    uid: "user_client_vy",
+    name: "Vy Phan",
+    email: "vy.pnt1612@gmail.com",
+    role: "Cán bộ P.KDDVKH",
+    status: "approved",
+    avatar: "https://ui-avatars.com/api/?name=Vy+Phan&background=0d9488&color=fff&bold=true",
+    department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
+    lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
   }
 };
 
 class AuthManager {
   constructor() {
     this.currentUser = null;
-    this.usersList = [DEMO_USERS.ADMIN];
+    this.usersList = [DEMO_USERS.ADMIN, DEMO_USERS.ADMIN_ALT, DEMO_USERS.CLIENT_VY];
     this.listeners = [];
     this.init();
   }
 
-  async init() {
-    localStorage.removeItem('thuduc_water_user');
-
-    // Handle OAuth hash return (e.g. #access_token=...) from Supabase Google Sign-In
-    if (window.location.hash && window.location.hash.includes('access_token')) {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = hashParams.get('access_token');
-      if (accessToken && window.supabaseClient) {
-        try {
-          const { data: { user } } = await window.supabaseClient.auth.getUser(accessToken);
-          if (user) {
-            const isAdminEmail = user.email === 'waterain8n@gmail.com' || user.email === 'letuananh18@gmail.com';
-            this.currentUser = {
-              uid: user.id,
-              name: user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0],
-              email: user.email,
-              role: isAdminEmail ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
-              avatar: user.user_metadata?.avatar_url || DEMO_USERS.ADMIN.avatar,
-              department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
-              lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
-            };
-            this.saveUserSession(this.currentUser);
-            await this.syncUserToCloud(this.currentUser);
-            // Clean hash from URL
-            window.history.replaceState(null, null, window.location.pathname);
-            this.notify();
-          }
-        } catch (e) {}
-      }
-    }
-
+  init() {
     const savedSession = sessionStorage.getItem('thuduc_water_user_session');
     if (savedSession) {
       try {
@@ -64,64 +55,108 @@ class AuthManager {
     }
 
     if (window.supabaseClient) {
-      try {
-        const { data, error } = await window.supabaseClient.from('users').select('*');
-        if (!error && data && data.length > 0) {
-          const list = [];
-          data.forEach(uData => {
-            if (uData && uData.email) {
-              const formattedUser = {
-                uid: uData.uid || uData.id,
-                name: uData.name || uData.email.split('@')[0],
-                email: uData.email,
-                role: uData.role || ((uData.email === 'waterain8n@gmail.com' || uData.email === 'letuananh18@gmail.com') ? 'Admin / Quản trị hệ thống' : 'Nhân viên / Client'),
-                department: uData.department || 'Phòng Kinh doanh & Dịch vụ Khách hàng',
-                lastLogin: uData.last_login || uData.lastLogin || uData.last_seen || new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
-                avatar: uData.avatar || DEMO_USERS.ADMIN.avatar
-              };
-              if (!list.some(x => x.email === formattedUser.email)) {
-                list.push(formattedUser);
-              }
-            }
-          });
-          this.usersList = list;
-          this.notify();
-        }
-
-        window.supabaseClient
-          .channel('schema-users-changes')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, async () => {
-            const { data: updatedUsers } = await window.supabaseClient.from('users').select('*');
-            if (updatedUsers) {
-              const list = [];
-              updatedUsers.forEach(uData => {
-                if (uData && uData.email) {
-                  const formattedUser = {
-                    uid: uData.uid || uData.id,
-                    name: uData.name || uData.email.split('@')[0],
-                    email: uData.email,
-                    role: uData.role || ((uData.email === 'waterain8n@gmail.com' || uData.email === 'letuananh18@gmail.com') ? 'Admin / Quản trị hệ thống' : 'Nhân viên / Client'),
-                    department: uData.department || 'Phòng Kinh doanh & Dịch vụ Khách hàng',
-                    lastLogin: uData.last_login || uData.lastLogin || uData.last_seen || new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
-                    avatar: uData.avatar || DEMO_USERS.ADMIN.avatar
-                  };
-                  if (!list.some(x => x.email === formattedUser.email)) {
-                    list.push(formattedUser);
-                  }
-                }
-              });
-              this.usersList = list;
-              this.notify();
-            }
-          })
-          .subscribe();
-      } catch (e) {}
+      this.checkSupabaseAuthSession();
+      this.loadUsersFromCloud();
     }
+  }
+
+  async checkSupabaseAuthSession() {
+    if (!window.supabaseClient) return;
+
+    try {
+      const { data: { session } } = await window.supabaseClient.auth.getSession();
+      if (session && session.user) {
+        const u = session.user;
+        const isAdminEmail = u.email === 'waterain8n@gmail.com' || u.email === 'letuananh18@gmail.com';
+        const name = u.user_metadata?.full_name || u.user_metadata?.name || u.email.split('@')[0];
+
+        this.currentUser = {
+          uid: u.id,
+          name: name,
+          email: u.email,
+          role: isAdminEmail ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
+          status: "approved",
+          avatar: u.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0284c7&color=fff&bold=true`,
+          department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
+          lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
+        };
+
+        this.saveUserSession(this.currentUser);
+        await this.syncUserToCloud(this.currentUser);
+        this.notify();
+      }
+    } catch (err) {
+      console.warn("Supabase auth session notice:", err);
+    }
+  }
+
+  async loadUsersFromCloud() {
+    if (!window.supabaseClient) return;
+
+    try {
+      const { data, error } = await window.supabaseClient.from('users').select('*');
+      if (!error && data && data.length > 0) {
+        const list = [];
+        data.forEach(uData => {
+          if (uData && uData.email) {
+            const isAdminEmail = uData.email === 'waterain8n@gmail.com' || uData.email === 'letuananh18@gmail.com';
+            const formattedUser = {
+              uid: uData.uid || uData.id,
+              name: uData.name || uData.email.split('@')[0],
+              email: uData.email,
+              role: uData.role || (isAdminEmail ? 'Admin / Quản trị hệ thống' : 'Cán bộ P.KDDVKH'),
+              status: uData.status || (isAdminEmail ? 'approved' : 'approved'),
+              department: uData.department || 'Phòng Kinh doanh & Dịch vụ Khách hàng',
+              lastLogin: uData.last_login || uData.lastLogin || uData.last_seen || new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
+              avatar: uData.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(uData.name || uData.email.split('@')[0])}&background=0284c7&color=fff&bold=true`
+            };
+            if (!list.some(x => x.email === formattedUser.email)) {
+              list.push(formattedUser);
+            }
+          }
+        });
+        this.usersList = list;
+        this.notify();
+      }
+
+      window.supabaseClient
+        .channel('schema-users-changes-v2')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, async () => {
+          const { data: updatedUsers } = await window.supabaseClient.from('users').select('*');
+          if (updatedUsers) {
+            const list = [];
+            updatedUsers.forEach(uData => {
+              if (uData && uData.email) {
+                const isAdminEmail = uData.email === 'waterain8n@gmail.com' || uData.email === 'letuananh18@gmail.com';
+                const formattedUser = {
+                  uid: uData.uid || uData.id,
+                  name: uData.name || uData.email.split('@')[0],
+                  email: uData.email,
+                  role: uData.role || (isAdminEmail ? 'Admin / Quản trị hệ thống' : 'Cán bộ P.KDDVKH'),
+                  status: uData.status || 'approved',
+                  department: uData.department || 'Phòng Kinh doanh & Dịch vụ Khách hàng',
+                  lastLogin: uData.last_login || uData.lastLogin || uData.last_seen || new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
+                  avatar: uData.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(uData.name || uData.email.split('@')[0])}&background=0284c7&color=fff&bold=true`
+                };
+                if (!list.some(x => x.email === formattedUser.email)) {
+                  list.push(formattedUser);
+                }
+              }
+            });
+            this.usersList = list;
+            this.notify();
+          }
+        })
+        .subscribe();
+    } catch (e) {}
   }
 
   saveUserSession(userObj) {
     sessionStorage.setItem('thuduc_water_user_session', JSON.stringify(userObj));
-    if (!this.usersList.some(u => u.email === userObj.email)) {
+    const idx = this.usersList.findIndex(u => u.email === userObj.email);
+    if (idx >= 0) {
+      this.usersList[idx] = { ...this.usersList[idx], ...userObj };
+    } else {
       this.usersList.push(userObj);
     }
   }
@@ -136,6 +171,7 @@ class AuthManager {
           name: userObj.name,
           email: userObj.email,
           role: userObj.role,
+          status: userObj.status || 'approved',
           avatar: userObj.avatar,
           department: userObj.department,
           last_login: loginTime
@@ -180,22 +216,35 @@ class AuthManager {
       return null;
     }
 
-    const isAdminEmail = email === 'waterain8n@gmail.com' || email === 'letuananh18@gmail.com';
+    const cleanEmail = email.toLowerCase().trim();
+    const isAdminEmail = cleanEmail === 'waterain8n@gmail.com' || cleanEmail === 'letuananh18@gmail.com';
+
+    // Check approval status in local list
+    const existingUser = this.usersList.find(u => u.email.toLowerCase().trim() === cleanEmail);
+    if (existingUser && existingUser.status === 'blocked' && !isAdminEmail) {
+      alert("⛔ TỪ CHỐI TRUY CẬP: Tài khoản của bạn đã bị Ban Quản trị Admin KHÓA QUYỀN TRUY CẬP vào hệ thống!");
+      return null;
+    }
+    if (existingUser && existingUser.status === 'pending' && !isAdminEmail) {
+      alert("⏳ ĐANG CHỜ PHÊ DUYỆT: Tài khoản của bạn đang chờ Ban Quản trị Admin phê duyệt! Vui lòng liên hệ Admin (waterain8n@gmail.com) để được kích hoạt.");
+      return null;
+    }
 
     if (window.supabaseClient) {
       try {
         const { data: authData, error: authError } = await window.supabaseClient.auth.signInWithPassword({
-          email: email,
+          email: cleanEmail,
           password: password
         });
 
         if (!authError && authData.user) {
           this.currentUser = {
             uid: authData.user.id,
-            name: authData.user.user_metadata?.name || email.split('@')[0],
-            email: authData.user.email,
+            name: authData.user.user_metadata?.name || cleanEmail.split('@')[0],
+            email: cleanEmail,
             role: isAdminEmail ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
-            avatar: DEMO_USERS.ADMIN.avatar,
+            status: "approved",
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanEmail.split('@')[0])}&background=0284c7&color=fff&bold=true`,
             department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
             lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
           };
@@ -208,7 +257,7 @@ class AuthManager {
       } catch (err) {}
     }
 
-    // Fallback seamless login
+    // Fallback password validation
     if (password !== "123456" && password !== "12345678" && password !== "admin123") {
       alert("❌ Mật khẩu không chính xác! (Mật khẩu mặc định là: 123456)");
       return null;
@@ -216,18 +265,74 @@ class AuthManager {
 
     this.currentUser = {
       uid: "user_" + Date.now(),
-      name: email.split('@')[0],
-      email: email,
+      name: cleanEmail.split('@')[0],
+      email: cleanEmail,
       role: isAdminEmail ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
-      avatar: DEMO_USERS.ADMIN.avatar,
+      status: "approved",
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanEmail.split('@')[0])}&background=0284c7&color=fff&bold=true`,
       department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
       lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
     };
 
     this.saveUserSession(this.currentUser);
-    this.syncUserToCloud(this.currentUser);
+    await this.syncUserToCloud(this.currentUser);
     this.notify();
     return this.currentUser;
+  }
+
+  async approveUser(email) {
+    const u = this.usersList.find(x => x.email.toLowerCase().trim() === email.toLowerCase().trim());
+    if (u) {
+      u.status = 'approved';
+    }
+    if (window.supabaseClient) {
+      try {
+        await window.supabaseClient.from('users').update({ status: 'approved' }).eq('email', email.toLowerCase().trim());
+      } catch (e) {}
+    }
+    this.notify();
+  }
+
+  async blockUser(email) {
+    const u = this.usersList.find(x => x.email.toLowerCase().trim() === email.toLowerCase().trim());
+    if (u) {
+      u.status = 'blocked';
+    }
+    if (window.supabaseClient) {
+      try {
+        await window.supabaseClient.from('users').update({ status: 'blocked' }).eq('email', email.toLowerCase().trim());
+      } catch (e) {}
+    }
+    this.notify();
+  }
+
+  async deleteUserAccount(email) {
+    this.usersList = this.usersList.filter(x => x.email.toLowerCase().trim() !== email.toLowerCase().trim());
+    if (window.supabaseClient) {
+      try {
+        await window.supabaseClient.from('users').delete().eq('email', email.toLowerCase().trim());
+      } catch (e) {}
+    }
+    this.notify();
+  }
+
+  async createUserAccount(name, email, role, department) {
+    const cleanEmail = email.toLowerCase().trim();
+    const newUser = {
+      uid: "user_" + Date.now(),
+      name: name.trim(),
+      email: cleanEmail,
+      role: role || "Nhân viên / Client",
+      status: "approved",
+      department: department || "Phòng Kinh doanh & Dịch vụ Khách hàng",
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0284c7&color=fff&bold=true`,
+      lastLogin: "Chưa đăng nhập"
+    };
+
+    this.usersList.push(newUser);
+    await this.syncUserToCloud(newUser);
+    this.notify();
+    return newUser;
   }
 
   async signInWithGoogle() {
@@ -278,5 +383,4 @@ class AuthManager {
   }
 }
 
-window.DEMO_USERS = DEMO_USERS;
 window.authManager = new AuthManager();

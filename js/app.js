@@ -561,7 +561,13 @@ class AppController {
   renderUsersTable() {
     const tbody = document.getElementById('usersTableBody');
     const auditTbody = document.getElementById('clientUploadAuditTableBody');
+    const btnCreateUserModal = document.getElementById('btnCreateUserModal');
     if (!window.authManager) return;
+
+    const isAdmin = window.authManager.isAdmin();
+    if (btnCreateUserModal) {
+      btnCreateUserModal.style.display = isAdmin ? 'inline-block' : 'none';
+    }
 
     const users = window.authManager.getUsersList();
 
@@ -569,6 +575,8 @@ class AppController {
       tbody.innerHTML = users.map(u => {
         const lastTime = u.lastLogin || u.last_login || 'Vừa truy cập';
         const isOnline = window.chatService ? window.chatService.isUserOnline(u.email) : false;
+        const uStatus = u.status || 'approved';
+        const isAdminUser = u.email === 'waterain8n@gmail.com' || u.email === 'letuananh18@gmail.com';
 
         const statusBadge = isOnline ? `
           <span style="display: inline-flex; align-items: center; gap: 5px; background: #dcfce7; color: #15803d; border: 1px solid #86efac; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">
@@ -580,18 +588,48 @@ class AppController {
           </span>
         `;
 
+        let approvalBadge = '';
+        if (uStatus === 'pending') {
+          approvalBadge = `<span class="badge-tag" style="background: #fef3c7; color: #d97706; border: 1px solid #fde68a;">⏳ Chờ Phê Duyệt</span>`;
+        } else if (uStatus === 'blocked') {
+          approvalBadge = `<span class="badge-tag" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5;">⛔ Bị Khóa</span>`;
+        } else {
+          approvalBadge = `<span class="badge-tag" style="background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd;">✅ Đã Phê Duyệt</span>`;
+        }
+
+        let adminActionsHtml = '<span style="color: var(--slate-400); font-size: 12px; font-style: italic;">Ban Quản Trị</span>';
+        if (isAdmin && !isAdminUser) {
+          const approveBtn = uStatus === 'pending' ? `<button class="table-btn btn-approve-user" data-email="${escapeHTML(u.email)}" style="padding: 4px 8px; font-size: 11px; background: #10b981; color: white; border: none; font-weight: 700;">✅ Duyệt</button>` : '';
+          const toggleBlockBtn = uStatus === 'blocked' ? `<button class="table-btn btn-unblock-user" data-email="${escapeHTML(u.email)}" style="padding: 4px 8px; font-size: 11px; background: #0284c7; color: white; border: none;">🔓 Mở Khóa</button>` : `<button class="table-btn btn-block-user" data-email="${escapeHTML(u.email)}" style="padding: 4px 8px; font-size: 11px; background: #f59e0b; color: white; border: none;">⛔ Khóa</button>`;
+          const deleteBtn = `<button class="table-btn table-btn-delete btn-delete-user" data-email="${escapeHTML(u.email)}" style="padding: 4px 8px; font-size: 11px;">🗑️ Xóa</button>`;
+
+          adminActionsHtml = `
+            <div style="display: flex; gap: 4px; justify-content: center;">
+              ${approveBtn}
+              ${toggleBlockBtn}
+              ${deleteBtn}
+            </div>
+          `;
+        }
+
         return `
           <tr>
             <td><strong>${escapeHTML(u.name)}</strong></td>
             <td>${escapeHTML(u.email)}</td>
             <td>${escapeHTML(u.department || 'Phòng Kinh doanh & Dịch vụ Khách hàng')}</td>
-            <td><span class="badge-tag ${(u.email === 'waterain8n@gmail.com' || u.email === 'letuananh18@gmail.com') ? 'type-pdf' : 'type-docx'}">${(u.email === 'waterain8n@gmail.com' || u.email === 'letuananh18@gmail.com') ? 'ADMIN' : 'CLIENT'}</span></td>
+            <td>
+              <div style="display: flex; gap: 4px; align-items: center;">
+                <span class="badge-tag ${isAdminUser ? 'type-pdf' : 'type-docx'}">${isAdminUser ? 'ADMIN' : 'CLIENT'}</span>
+                ${approvalBadge}
+              </div>
+            </td>
             <td>
               <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                 <span style="font-weight: 600; color: var(--slate-700); font-size: 12.5px;">⏱️ ${escapeHTML(lastTime)}</span>
                 ${statusBadge}
               </div>
             </td>
+            <td style="text-align: center;">${adminActionsHtml}</td>
           </tr>
         `;
       }).join('');
@@ -950,6 +988,96 @@ class AppController {
       this.updateBatchToolbar();
       this.renderCurrentView();
       alert(`✅ Đã cập nhật Phân loại & Trạng thái thành công cho ${count} tệp đã chọn!`);
+    });
+
+    // Event listener for User Management Admin Action Buttons (Approve, Block, Unblock, Delete)
+    document.addEventListener('click', async (e) => {
+      const approveBtn = e.target.closest('.btn-approve-user');
+      const blockBtn = e.target.closest('.btn-block-user');
+      const unblockBtn = e.target.closest('.btn-unblock-user');
+      const deleteUserBtn = e.target.closest('.btn-delete-user');
+
+      if (approveBtn) {
+        const email = approveBtn.getAttribute('data-email');
+        if (email && window.authManager) {
+          await window.authManager.approveUser(email);
+          this.renderUsersTable();
+          alert(`✅ Đã phê duyệt cấp quyền truy cập thành công cho cán bộ ${email}!`);
+        }
+      }
+
+      if (blockBtn) {
+        const email = blockBtn.getAttribute('data-email');
+        if (email && confirm(`⚠️ XÁC NHẬN KHÓA: Bạn có chắc chắn muốn TẠM KHÓA QUYỀN TRUY CẬP của ${email} không?`)) {
+          if (window.authManager) {
+            await window.authManager.blockUser(email);
+            this.renderUsersTable();
+            alert(`⛔ Đã tạm khóa quyền truy cập của ${email}!`);
+          }
+        }
+      }
+
+      if (unblockBtn) {
+        const email = unblockBtn.getAttribute('data-email');
+        if (email && window.authManager) {
+          await window.authManager.approveUser(email);
+          this.renderUsersTable();
+          alert(`🔓 Đã khôi phục mở khóa truy cập cho ${email}!`);
+        }
+      }
+
+      if (deleteUserBtn) {
+        const email = deleteUserBtn.getAttribute('data-email');
+        if (email && confirm(`⚠️ XÁC NHẬN XÓA TÀI KHOẢN: Bạn có chắc chắn muốn XÓA VĨNH VIỄN tài khoản ${email} khỏi hệ thống không?`)) {
+          if (window.authManager) {
+            await window.authManager.deleteUserAccount(email);
+            this.renderUsersTable();
+            alert(`🗑️ Đã xóa tài khoản ${email} thành công!`);
+          }
+        }
+      }
+    });
+
+    // Create User Modal Listeners
+    const btnCreateUserModal = document.getElementById('btnCreateUserModal');
+    const createUserModal = document.getElementById('createUserModal');
+    const btnCloseCreateUser = document.getElementById('closeCreateUserModalBtn');
+    const btnCancelCreateUser = document.getElementById('btnCancelCreateUser');
+    const btnConfirmCreateUser = document.getElementById('btnConfirmCreateUser');
+
+    btnCreateUserModal?.addEventListener('click', () => {
+      if (createUserModal) createUserModal.style.display = 'flex';
+    });
+
+    const closeCreateUserModalFunc = () => {
+      if (createUserModal) createUserModal.style.display = 'none';
+    };
+
+    btnCloseCreateUser?.addEventListener('click', closeCreateUserModalFunc);
+    btnCancelCreateUser?.addEventListener('click', closeCreateUserModalFunc);
+
+    btnConfirmCreateUser?.addEventListener('click', async () => {
+      const nameInput = document.getElementById('newUserNameInput');
+      const emailInput = document.getElementById('newUserEmailInput');
+      const deptInput = document.getElementById('newUserDeptInput');
+      const roleSelect = document.getElementById('newUserRoleSelect');
+
+      const name = nameInput ? nameInput.value.trim() : '';
+      const email = emailInput ? emailInput.value.trim() : '';
+      const dept = deptInput ? deptInput.value.trim() : '';
+      const role = roleSelect ? roleSelect.value : 'Cán bộ P.KDDVKH';
+
+      if (!name || !email) {
+        alert("⚠️ Vui lòng nhập đầy đủ Họ tên và Email cán bộ!");
+        return;
+      }
+
+      if (window.authManager) {
+        await window.authManager.createUserAccount(name, email, role, dept);
+        closeCreateUserModalFunc();
+        this.renderUsersTable();
+        alert(`🎉 Đã tạo thành công tài khoản cho cán bộ ${name} (${email})!`);
+      }
     });
 
     // Nút AI Tóm Tắt 3 Giây - Kết nối Module AI Phân tích Độc lập (Không chạm đến Storage/DB)
