@@ -1,6 +1,6 @@
 // ==========================================================================
 // UNSTOPPABLE HYBRID AUTHENTICATION & USER APPROVAL MANAGEMENT ENGINE
-// Dual OAuth Google & Password Auth with Dual-Cloud User Approval Sync
+// Dual OAuth Google & Password Auth with Quad-Tier Realtime User Sync
 // ==========================================================================
 
 const DEMO_USERS = {
@@ -30,7 +30,7 @@ class AuthManager {
   constructor() {
     this.currentUser = null;
     this.usersList = [DEMO_USERS.ADMIN, DEMO_USERS.ADMIN_ALT];
-    this.approvedEmails = new Set(["waterain8n@gmail.com", "letuananh18@gmail.com", "vy.pnt1612@gmail.com", "mr.saigonchip@gmail.com"]);
+    this.approvedEmails = new Set(["waterain8n@gmail.com", "letuananh18@gmail.com", "mr.saigonchip@gmail.com"]);
     this.blockedEmails = new Set();
     this.deletedEmails = new Set();
     this.listeners = [];
@@ -39,7 +39,7 @@ class AuthManager {
   }
 
   init() {
-    // 1. Load session & caches
+    // 1. Load session & local caches
     const savedSession = sessionStorage.getItem('thuduc_water_user_session');
     if (savedSession) {
       try {
@@ -47,6 +47,20 @@ class AuthManager {
       } catch (e) {
         this.currentUser = null;
       }
+    }
+
+    const savedKnownUsers = localStorage.getItem('thuduc_all_known_users');
+    if (savedKnownUsers) {
+      try {
+        const arr = JSON.parse(savedKnownUsers);
+        if (Array.isArray(arr) && arr.length > 0) {
+          arr.forEach(u => {
+            if (u && u.email && !this.usersList.some(x => x.email.toLowerCase().trim() === u.email.toLowerCase().trim())) {
+              this.usersList.push(u);
+            }
+          });
+        }
+      } catch (e) {}
     }
 
     const savedApproved = localStorage.getItem('thuduc_approved_users');
@@ -90,11 +104,44 @@ class AuthManager {
     if (!window.supabaseClient) return;
 
     try {
-      this.realtimeChannel = window.supabaseClient.channel('thuduc_user_approval_v1', {
+      this.realtimeChannel = window.supabaseClient.channel('thuduc_user_approval_v3', {
         config: { broadcast: { self: true } }
       });
 
       this.realtimeChannel
+        .on('broadcast', { event: 'user_logged_in' }, (payload) => {
+          if (payload && payload.payload && payload.payload.email) {
+            const uData = payload.payload;
+            const clean = uData.email.toLowerCase().trim();
+
+            if (this.deletedEmails.has(clean)) return;
+
+            const existingIdx = this.usersList.findIndex(x => x.email.toLowerCase().trim() === clean);
+            const isAdmin = clean === 'waterain8n@gmail.com' || clean === 'letuananh18@gmail.com';
+            const status = isAdmin ? 'approved' : (this.approvedEmails.has(clean) ? 'approved' : (this.blockedEmails.has(clean) ? 'blocked' : (uData.status || 'pending')));
+
+            const formattedUser = {
+              uid: uData.uid || 'user_' + Date.now(),
+              name: uData.name || clean.split('@')[0],
+              email: clean,
+              role: uData.role || (isAdmin ? 'Admin / Quản trị hệ thống' : 'Cán bộ P.KDDVKH'),
+              status: status,
+              department: uData.department || 'Phòng Kinh doanh & Dịch vụ Khách hàng',
+              lastLogin: uData.lastLogin || new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
+              avatar: uData.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(uData.name || clean.split('@')[0])}&background=0284c7&color=fff&bold=true`
+            };
+
+            if (existingIdx >= 0) {
+              this.usersList[existingIdx] = { ...this.usersList[existingIdx], ...formattedUser };
+            } else {
+              this.usersList.push(formattedUser);
+            }
+
+            this.saveLocalCaches();
+            this.notify();
+            if (window.appController) window.appController.renderUsersTable();
+          }
+        })
         .on('broadcast', { event: 'user_approved' }, (payload) => {
           if (payload && payload.payload && payload.payload.email) {
             const clean = payload.payload.email.toLowerCase().trim();
@@ -127,6 +174,8 @@ class AuthManager {
     localStorage.setItem('thuduc_approved_users', JSON.stringify(Array.from(this.approvedEmails)));
     localStorage.setItem('thuduc_blocked_users', JSON.stringify(Array.from(this.blockedEmails)));
     localStorage.setItem('thuduc_deleted_users', JSON.stringify(Array.from(this.deletedEmails)));
+    const cleanList = this.usersList.filter(u => !this.deletedEmails.has(u.email.toLowerCase().trim()));
+    localStorage.setItem('thuduc_all_known_users', JSON.stringify(cleanList));
   }
 
   async checkSupabaseAuthSession() {
@@ -163,18 +212,23 @@ class AuthManager {
           this.approvedEmails.add(cleanEmail);
         }
 
+        const userObj = {
+          uid: u.id,
+          name: name,
+          email: cleanEmail,
+          role: isAdminEmail ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
+          status: userStatus,
+          avatar: u.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0284c7&color=fff&bold=true`,
+          department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
+          lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
+        };
+
+        // Broadcast to Realtime Channel so Admin sees new user login instantly
+        this.broadcastUserLogin(userObj);
+
         // Enforce Approval Check for Gmail / Google OAuth
         if (userStatus === 'pending' && !isAdminEmail) {
-          await this.syncUserToCloud({
-            uid: u.id,
-            name: name,
-            email: cleanEmail,
-            role: "Nhân viên / Client",
-            status: "pending",
-            avatar: u.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0284c7&color=fff&bold=true`,
-            department: "Phòng Kinh doanh & Dịch vụ Khách hàng"
-          });
-
+          await this.syncUserToCloud(userObj);
           alert(`⏳ ĐANG CHỜ PHÊ DUYỆT: Tài khoản Gmail (${cleanEmail}) của bạn đã được ghi nhận vào hệ thống và đang CHỜ BAN QUẢN TRỊ ADMIN PHÊ DUYỆT!\n\nVui lòng báo Admin (waterain8n@gmail.com) bấm [✅ Duyệt] ở mục "Người dùng & Giám sát".`);
           await this.logout();
           return;
@@ -187,17 +241,7 @@ class AuthManager {
         }
 
         // User is approved: Proceed with login
-        this.currentUser = {
-          uid: u.id,
-          name: name,
-          email: cleanEmail,
-          role: isAdminEmail ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
-          status: "approved",
-          avatar: u.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0284c7&color=fff&bold=true`,
-          department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
-          lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
-        };
-
+        this.currentUser = userObj;
         this.saveUserSession(this.currentUser);
         await this.syncUserToCloud(this.currentUser);
         this.notify();
@@ -207,15 +251,27 @@ class AuthManager {
     }
   }
 
+  broadcastUserLogin(userObj) {
+    if (this.realtimeChannel) {
+      try {
+        this.realtimeChannel.send({
+          type: 'broadcast',
+          event: 'user_logged_in',
+          payload: userObj
+        });
+      } catch (e) {}
+    }
+  }
+
   async loadUsersFromCloud() {
     if (!window.supabaseClient) return;
 
     try {
-      const list = [DEMO_USERS.ADMIN, DEMO_USERS.ADMIN_ALT];
+      const list = [...this.usersList];
 
       // 1. Fetch users from users table
       const { data: usersData, error: userErr } = await window.supabaseClient.from('users').select('*');
-      if (!error && usersData && usersData.length > 0) {
+      if (!userErr && usersData && usersData.length > 0) {
         usersData.forEach(uData => {
           if (uData && uData.email) {
             const clean = uData.email.toLowerCase().trim();
@@ -290,11 +346,12 @@ class AuthManager {
 
       // Filter out deleted emails
       this.usersList = list.filter(u => !this.deletedEmails.has(u.email.toLowerCase().trim()));
+      this.saveLocalCaches();
       this.notify();
 
       // Realtime listener on users table
       window.supabaseClient
-        .channel('schema-users-changes-v6')
+        .channel('schema-users-changes-v7')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, async () => {
           this.loadUsersFromCloud();
         })
@@ -313,6 +370,7 @@ class AuthManager {
     } else {
       this.usersList.push(userObj);
     }
+    this.saveLocalCaches();
   }
 
   async syncUserToCloud(userObj) {
@@ -353,7 +411,7 @@ class AuthManager {
   }
 
   getUsersList() {
-    return this.usersList;
+    return this.usersList.filter(u => !this.deletedEmails.has(u.email.toLowerCase().trim()));
   }
 
   isAdmin() {
@@ -388,12 +446,26 @@ class AuthManager {
       userStatus = 'blocked';
     }
 
+    const userObj = {
+      uid: "user_" + Date.now(),
+      name: cleanEmail.split('@')[0],
+      email: cleanEmail,
+      role: isAdminEmail ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
+      status: userStatus,
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanEmail.split('@')[0])}&background=0284c7&color=fff&bold=true`,
+      department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
+      lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
+    };
+
+    this.broadcastUserLogin(userObj);
+
     if (userStatus === 'blocked' && !isAdminEmail) {
       alert("⛔ TỪ CHỐI TRUY CẬP: Tài khoản của bạn đã bị Ban Quản trị Admin KHÓA QUYỀN TRUY CẬP vào hệ thống!");
       return null;
     }
 
     if (userStatus === 'pending' && !isAdminEmail) {
+      await this.syncUserToCloud(userObj);
       alert(`⏳ ĐANG CHỜ PHÊ DUYỆT: Tài khoản (${cleanEmail}) của bạn đã được ghi nhận trên hệ thống và đang CHỜ BAN QUẢN TRỊ ADMIN PHÊ DUYỆT!\n\nVui lòng báo Admin (waterain8n@gmail.com) bấm [✅ Duyệt] ở mục "Người dùng & Giám sát".`);
       return null;
     }
@@ -431,17 +503,7 @@ class AuthManager {
       return null;
     }
 
-    this.currentUser = {
-      uid: "user_" + Date.now(),
-      name: cleanEmail.split('@')[0],
-      email: cleanEmail,
-      role: isAdminEmail ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
-      status: "approved",
-      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanEmail.split('@')[0])}&background=0284c7&color=fff&bold=true`,
-      department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
-      lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
-    };
-
+    this.currentUser = userObj;
     this.saveUserSession(this.currentUser);
     await this.syncUserToCloud(this.currentUser);
     this.notify();
@@ -527,8 +589,19 @@ class AuthManager {
       } catch (e) {}
     }
 
+    // PURGE ALL ASSOCIATED USER DATA (Files, Chat Messages, DMs, Presence)
+    if (window.storageService && typeof window.storageService.purgeFilesByUser === 'function') {
+      await window.storageService.purgeFilesByUser(clean);
+    }
+    if (window.chatService && typeof window.chatService.purgeUserData === 'function') {
+      window.chatService.purgeUserData(clean);
+    }
+
     this.notify();
-    if (window.appController) window.appController.renderUsersTable();
+    if (window.appController) {
+      window.appController.renderUsersTable();
+      window.appController.renderCurrentView();
+    }
   }
 
   async createUserAccount(name, email, role, department) {
