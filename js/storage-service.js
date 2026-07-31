@@ -692,20 +692,53 @@ class StorageService {
   }
 
   async deleteFolder(folderId) {
+    if (!folderId) return;
+
+    // 1. Find all files contained inside this folder
+    const childFiles = this.files.filter(f => f.folderId === folderId || f.folder_id === folderId);
+    const childFileIds = childFiles.map(f => f.id);
+
+    // 2. Clear folder and contained files from local memory & cache
     this.folders = this.folders.filter(f => f.id !== folderId);
+    if (childFileIds.length > 0) {
+      this.files = this.files.filter(f => f.folderId !== folderId && f.folder_id !== folderId);
+      childFileIds.forEach(id => delete this.rawFileObjects[id]);
+    }
     this.saveLocal();
 
+    // 3. Purge from Supabase Cloud (PostgreSQL DB tables + Storage Bucket)
     if (window.supabaseClient) {
       try {
+        // Cascade delete all contained files from DB table 'files'
+        if (childFileIds.length > 0) {
+          await window.supabaseClient.from('files').delete().in('id', childFileIds);
+          // Delete binary objects from Storage Bucket 'documents'
+          for (const f of childFiles) {
+            if (f.url) await this.deleteStorageBucketFile(f.url);
+          }
+        }
+
+        // Delete folder record from DB table 'folders'
         await window.supabaseClient.from('folders').delete().eq('id', folderId);
+
+        // Send live realtime broadcast notifications
         if (this.realtimeStorageChannel) {
           this.realtimeStorageChannel.send({
             type: 'broadcast',
             event: 'folder_deleted',
-            payload: { id: folderId }
+            payload: { id: folderId, deletedFileIds: childFileIds }
+          });
+          childFileIds.forEach(fId => {
+            this.realtimeStorageChannel.send({
+              type: 'broadcast',
+              event: 'file_deleted',
+              payload: { id: fId }
+            });
           });
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn("Supabase cascade deleteFolder notice:", e);
+      }
     }
 
     this.notify();
