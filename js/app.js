@@ -197,8 +197,11 @@ class AppController {
       if (adminUploadDeptBtn) adminUploadDeptBtn.style.display = isAdmin ? 'flex' : 'none';
       if (btnCreateNewFolder) btnCreateNewFolder.style.display = isAdmin ? 'flex' : 'none';
 
-      // Update Supabase Realtime Online Presence tracking for chat
-      if (window.chatService) window.chatService.updateUserPresence();
+      // Update Supabase Realtime Online Presence & Custom Channels Sync for chat
+      if (window.chatService) {
+        window.chatService.updateUserPresence();
+        window.chatService.syncCustomChannelsWithCloud();
+      }
 
       this.renderCurrentView();
     }
