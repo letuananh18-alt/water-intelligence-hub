@@ -250,11 +250,11 @@
             <div class="stat-card">
               <div class="stat-info" style="flex: 1;">
                 <span class="stat-label">Dung lượng đã dùng</span>
-                <span class="stat-value">0 MB <span style="font-size: 13px; font-weight: 500; color: var(--slate-400);">/ 500 GB</span></span>
+                <span class="stat-value" id="dashUsedStorageVal">0 MB <span style="font-size: 13px; font-weight: 500; color: var(--slate-400);">/ 500 GB</span></span>
                 <div class="progress-bar-bg" style="margin-top: 6px;">
-                  <div class="progress-bar-fill" style="width: 0%;"></div>
+                  <div class="progress-bar-fill" id="dashStorageProgressFill" style="width: 0.1%;"></div>
                 </div>
-                <span class="stat-subtext" style="color: var(--slate-500); margin-top: 6px;">0% đã sử dụng</span>
+                <span class="stat-subtext" id="dashStoragePercentText" style="color: var(--slate-500); margin-top: 6px;">0.1% đã sử dụng</span>
               </div>
               <div class="stat-icon-wrapper stat-icon-cyan">
                 <i data-lucide="cloud-upload"></i>
@@ -1152,13 +1152,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Application Logic with Supabase Backend -->
-  <script src="js/supabase-config.js?v=20260731_v109"></script>
-  <script src="js/tech-bg.js?v=20260731_v109"></script>
-  <script src="js/auth.js?v=20260731_v109"></script>
-  <script src="js/storage-service.js?v=20260731_v109"></script>
-  <script src="js/chat-service.js?v=20260731_v109"></script>
-  <script src="js/ai-assistant.js?v=20260731_v109"></script>
-  <script src="js/ai-analyzer-module.js?v=20260731_v109"></script>
-  <script src="js/app.js?v=20260731_v109"></script>
+  <script src="js/supabase-config.js?v=20260731_v110"></script>
+  <script src="js/tech-bg.js?v=20260731_v110"></script>
+  <script src="js/auth.js?v=20260731_v110"></script>
+  <script src="js/storage-service.js?v=20260731_v110"></script>
+  <script src="js/chat-service.js?v=20260731_v110"></script>
+  <script src="js/ai-assistant.js?v=20260731_v110"></script>
+  <script src="js/ai-analyzer-module.js?v=20260731_v110"></script>
+  <script src="js/app.js?v=20260731_v110"></script>
 </body>
 </html>

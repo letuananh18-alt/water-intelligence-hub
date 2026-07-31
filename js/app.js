@@ -297,19 +297,19 @@ class AppController {
     const elDeptCount = document.getElementById('dashDeptDocCount');
     if (elDeptCount) elDeptCount.textContent = deptFiles.length.toString();
 
-    const elUsed = document.querySelector('.stat-card:nth-child(2) .stat-value');
+    const elUsed = document.getElementById('dashUsedStorageVal');
     if (elUsed) {
-      elUsed.innerHTML = `${escapeHTML(stats.usedFormatted)} <span style="font-size: 13px; font-weight: 500; color: var(--slate-400);">/ 500 GB</span>`;
+      elUsed.innerHTML = `${escapeHTML(stats.usedFormatted || '0.0 MB')} <span style="font-size: 13px; font-weight: 500; color: var(--slate-400);">/ 500 GB</span>`;
     }
 
-    const elProgress = document.querySelector('.progress-bar-fill');
+    const elProgress = document.getElementById('dashStorageProgressFill');
     if (elProgress) {
-      elProgress.style.width = `${stats.percentage}%`;
+      elProgress.style.width = `${stats.percentage || 0.1}%`;
     }
 
-    const elProgressSub = document.querySelector('.stat-card:nth-child(2) .stat-subtext');
+    const elProgressSub = document.getElementById('dashStoragePercentText');
     if (elProgressSub) {
-      elProgressSub.textContent = `${stats.percentage}% đã sử dụng`;
+      elProgressSub.textContent = `${stats.percentage || 0.1}% đã sử dụng`;
     }
 
     const elShared = document.querySelector('.stat-card:nth-child(3) .stat-value');

@@ -215,16 +215,29 @@ class StorageService {
   getStorageStats() {
     const deptFiles = this.getFiles('department');
     let totalBytes = 0;
-    deptFiles.forEach(f => {
-      totalBytes += (f.size || 1000000);
+    this.files.forEach(f => {
+      totalBytes += (f.size || 1048576);
     });
 
-    const usedMB = (totalBytes / (1024 * 1024)).toFixed(1);
+    const usedMBNum = totalBytes / (1024 * 1024);
+    let usedFormatted = "";
+    if (usedMBNum >= 1024) {
+      usedFormatted = (usedMBNum / 1024).toFixed(2) + " GB";
+    } else {
+      usedFormatted = usedMBNum.toFixed(1) + " MB";
+    }
+
+    const limitGB = 500;
+    const usedGB = usedMBNum / 1024;
+    const percentage = Math.min(100, Math.max(0.1, parseFloat(((usedGB / limitGB) * 100).toFixed(2))));
+
     return {
       totalFiles: deptFiles.length,
-      usedMB: usedMB,
-      limitMB: 1000,
-      percentUsed: Math.min(100, Math.round((usedMB / 1000) * 100))
+      usedMB: usedMBNum.toFixed(1),
+      usedFormatted: usedFormatted,
+      limitGB: limitGB,
+      percentage: percentage,
+      percentUsed: percentage
     };
   }
 
