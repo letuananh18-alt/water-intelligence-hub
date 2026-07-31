@@ -512,6 +512,28 @@ class StorageService {
     this.notify();
   }
 
+  async purgeAllSupabaseCloudFiles() {
+    this.files = [];
+    this.saveLocal();
+
+    if (window.supabaseClient) {
+      try {
+        await window.supabaseClient.from('files').delete().neq('id', '0_keep_clean_id_9999');
+        if (this.realtimeStorageChannel) {
+          this.realtimeStorageChannel.send({
+            type: 'broadcast',
+            event: 'file_deleted',
+            payload: { id: 'ALL' }
+          });
+        }
+      } catch (e) {
+        console.warn("Supabase purge all notice:", e);
+      }
+    }
+
+    this.notify();
+  }
+
   async purgeFilesByUser(cleanEmail) {
     if (!cleanEmail) return;
     const clean = cleanEmail.toLowerCase().trim();

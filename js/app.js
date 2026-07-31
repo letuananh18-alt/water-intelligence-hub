@@ -201,10 +201,12 @@ class AppController {
       const isAdmin = window.authManager && window.authManager.isAdmin();
       const adminUploadDeptBtn = document.getElementById('adminUploadDeptBtn');
       const btnCreateNewFolder = document.getElementById('btnCreateNewFolder');
+      const btnPurgeCloudFiles = document.getElementById('btnPurgeCloudFiles');
       const navItemUsers = document.getElementById('navItemUsers');
 
       if (adminUploadDeptBtn) adminUploadDeptBtn.style.display = isAdmin ? 'flex' : 'none';
       if (btnCreateNewFolder) btnCreateNewFolder.style.display = isAdmin ? 'flex' : 'none';
+      if (btnPurgeCloudFiles) btnPurgeCloudFiles.style.display = isAdmin ? 'flex' : 'none';
       if (navItemUsers) navItemUsers.style.display = isAdmin ? 'flex' : 'none';
 
       if (!isAdmin && this.currentView === 'users') {
@@ -829,6 +831,15 @@ class AppController {
       if (name && name.trim()) {
         await window.storageService.createFolder(name, 'department');
         alert("✨ Đã tạo thư mục mới thành công!");
+      }
+    });
+
+    const btnPurgeCloudFiles = document.getElementById('btnPurgeCloudFiles');
+    btnPurgeCloudFiles?.addEventListener('click', async () => {
+      if (confirm("⚠️ ANH CÓ CHẮC CHẮN MUỐN DỌN DẸP SẠCH DỮ LIỆU TỆP DƯ THỪA TRÊN SUPABASE CLOUD KHÔNG?\n\nThao tác này sẽ dọn dẹp toàn bộ dữ liệu tệp tin cũ trên Supabase PostgreSQL để CSDL sạch sẽ 100% đồng bộ với giao diện hiện tại!")) {
+        await window.storageService.purgeAllSupabaseCloudFiles();
+        this.renderCurrentView();
+        alert("✨ Đã dọn dẹp dứt điểm toàn bộ dữ liệu tệp cũ trên CSDL Supabase Cloud thành công!");
       }
     });
 
