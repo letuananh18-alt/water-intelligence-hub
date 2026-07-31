@@ -1,6 +1,6 @@
 // ==========================================================================
 // SUPABASE REALTIME TEAM CHAT & UNREAD NOTIFICATION ENGINE
-// Real-time Chat Sync, Presence Tracking & Instant Unread Message Badges
+// Real-time Chat Sync, 10s Presence Heartbeat & Instant Unread Message Badges
 // ==========================================================================
 
 const INITIAL_CHANNELS = [
@@ -34,6 +34,7 @@ class ChatService {
     this.listeners = [];
     this.realtimeChannel = null;
     this.presenceChannel = null;
+    this.heartbeatTimer = null;
     this.init();
   }
 
@@ -69,6 +70,12 @@ class ChatService {
 
     // 2. Connect Supabase Realtime Chat Broadcast & Presence Tracking
     this.setupSupabaseRealtime();
+
+    // 3. Periodic Presence Heartbeat (every 10s) to keep all online accounts 100% in sync across devices
+    if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+    this.heartbeatTimer = setInterval(() => {
+      this.updateUserPresence();
+    }, 10000);
   }
 
   setupSupabaseRealtime() {
@@ -76,7 +83,7 @@ class ChatService {
 
     try {
       // Broadcast Channel for Instant Message Syncing between devices
-      this.realtimeChannel = window.supabaseClient.channel('thuduc_realtime_chat_v4', {
+      this.realtimeChannel = window.supabaseClient.channel('thuduc_realtime_chat_v5', {
         config: { broadcast: { self: true } }
       });
 
@@ -92,10 +99,10 @@ class ChatService {
                 this.messages[targetId].push(message);
 
                 const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
-                const currentUid = currentUser ? currentUser.uid : '';
+                const currentEmail = currentUser ? (currentUser.email || '').toLowerCase().trim() : '';
 
-                // Increment unread count if message came from another user AND target is not active
-                if (message.senderUid !== currentUid) {
+                // Trigger notification if message is from another user
+                if (message.senderEmail !== currentEmail && message.senderUid !== (currentUser ? currentUser.uid : '')) {
                   this.unreadCounts[targetId] = (this.unreadCounts[targetId] || 0) + 1;
                   this.notifyNotification(message, targetId);
                 }
@@ -109,7 +116,7 @@ class ChatService {
         .subscribe();
 
       // Presence Channel for Tracking Real Online Accounts
-      this.presenceChannel = window.supabaseClient.channel('thuduc_presence_v4');
+      this.presenceChannel = window.supabaseClient.channel('thuduc_presence_v5');
 
       this.presenceChannel
         .on('presence', { event: 'sync' }, () => {
@@ -124,6 +131,12 @@ class ChatService {
               }
             });
           });
+
+          // Always add current logged-in user to online list
+          const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
+          if (currentUser && currentUser.email) {
+            activeEmails.add(currentUser.email.toLowerCase().trim());
+          }
 
           this.onlineUserEmails = activeEmails;
           this.notify();
@@ -141,17 +154,20 @@ class ChatService {
 
   updateUserPresence() {
     const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
-    if (this.presenceChannel && currentUser && currentUser.email) {
-      try {
-        const cleanEmail = currentUser.email.toLowerCase().trim();
-        this.presenceChannel.track({
-          uid: currentUser.uid,
-          email: cleanEmail,
-          name: currentUser.name || cleanEmail,
-          online_at: new Date().toISOString()
-        });
-        this.onlineUserEmails.add(cleanEmail);
-      } catch (e) {}
+    if (currentUser && currentUser.email) {
+      const cleanEmail = currentUser.email.toLowerCase().trim();
+      this.onlineUserEmails.add(cleanEmail);
+
+      if (this.presenceChannel) {
+        try {
+          this.presenceChannel.track({
+            uid: currentUser.uid,
+            email: cleanEmail,
+            name: currentUser.name || cleanEmail,
+            online_at: new Date().toISOString()
+          });
+        } catch (e) {}
+      }
     }
   }
 
@@ -191,11 +207,14 @@ class ChatService {
     const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
     const currentEmail = currentUser ? (currentUser.email || '').toLowerCase().trim() : '';
 
+    // Standard known accounts
     const knownAccounts = [
       { name: "Lê Tuấn Anh", email: "letuananh18@gmail.com", role: "Admin / Quản trị hệ thống" },
-      { name: "Tuấn Anh (Water Admin)", email: "waterain8n@gmail.com", role: "Admin Ban Quản Trị" }
+      { name: "Tuấn Anh (Water Admin)", email: "waterain8n@gmail.com", role: "Admin Ban Quản Trị" },
+      { name: "Vy Phan", email: "vy.pnt1612@gmail.com", role: "Cán bộ P.KDDVKH" }
     ];
 
+    // Merge with registered accounts from authManager
     const registeredUsers = window.authManager ? window.authManager.getUsersList() : [];
     registeredUsers.forEach(u => {
       if (u && u.email && !knownAccounts.some(k => k.email.toLowerCase() === u.email.toLowerCase())) {
@@ -207,11 +226,12 @@ class ChatService {
       }
     });
 
+    // Filter out current user's own email from 1:1 DM list
     const otherUsers = knownAccounts.filter(acc => acc.email.toLowerCase() !== currentEmail);
-    const onlineUsersOnly = otherUsers.filter(acc => this.onlineUserEmails.has(acc.email.toLowerCase().trim()));
 
-    return onlineUsersOnly.map(u => {
+    return otherUsers.map(u => {
       const emailClean = u.email.toLowerCase().trim();
+      const isOnline = this.onlineUserEmails.has(emailClean);
       const dmRoomId = currentEmail ? this.getCanonicalDmId(currentEmail, emailClean) : `dm_guest_${emailClean.replace(/[@.]/g, '_')}`;
 
       return {
@@ -220,8 +240,8 @@ class ChatService {
         name: u.name,
         email: emailClean,
         role: u.role,
-        status: "🟢 Trực tuyến",
-        isOnline: true,
+        status: isOnline ? "🟢 Trực tuyến" : "⚪ Ngoại tuyến",
+        isOnline: isOnline,
         desc: `Trò chuyện riêng 1:1 với ${u.name} (${emailClean})`
       };
     });
@@ -284,6 +304,7 @@ class ChatService {
     const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
     const senderName = currentUser ? (currentUser.name || currentUser.email.split('@')[0]) : "Cán bộ P.KDDVKH";
     const senderRole = currentUser ? (currentUser.role || "Cán bộ") : "Nhân viên";
+    const senderEmail = currentUser ? currentUser.email.toLowerCase().trim() : "guest@capnuocthuduc.vn";
     const senderUid = currentUser ? currentUser.uid : "user_guest";
 
     if (!text.trim() && !attachment) return;
@@ -292,6 +313,7 @@ class ChatService {
       id: "msg_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
       senderName: senderName,
       senderRole: senderRole,
+      senderEmail: senderEmail,
       senderUid: senderUid,
       text: text.trim(),
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),

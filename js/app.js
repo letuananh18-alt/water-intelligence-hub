@@ -1333,28 +1333,35 @@ class AppController {
       }).join('');
     }
 
-    // 2. Render direct 1:1 user accounts with Unread Badges & Glowing Green Status
+    // 2. Render direct 1:1 user accounts with Dynamic Glowing Online / Offline Badges
     const realUsers = window.chatService.getRealDirectUsers();
     if (dmContainer) {
       if (realUsers.length === 0) {
         dmContainer.innerHTML = `
           <div style="font-size: 11.5px; color: var(--slate-400); padding: 8px 10px; text-align: center; font-style: italic;">
-            ⚪ Chưa có cán bộ nào khác đang trực tuyến
+            ⚪ Chưa có cán bộ nào khác trong danh sách
           </div>
         `;
       } else {
         dmContainer.innerHTML = realUsers.map(u => {
           const unread = window.chatService.getUnreadCount(u.id);
           const unreadBadgeHtml = unread > 0 ? `<span class="unread-pill">${unread}</span>` : '';
+          const isOnline = u.isOnline;
+
+          const statusHtml = isOnline ? `
+            <span style="font-size: 10px; color: #10b981; float: right; font-weight: 700; display: flex; align-items: center; gap: 5px;">
+              <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981; display: inline-block;"></span>
+              Trực tuyến
+            </span>
+          ` : `
+            <span style="font-size: 10px; color: #94a3b8; float: right; font-weight: 500;">⚪ Ngoại tuyến</span>
+          `;
 
           return `
             <div class="thread-item ${window.chatService.activeTargetId === u.id ? 'active' : ''}" data-target="${escapeHTML(u.id)}">
               ${unreadBadgeHtml}
-              👤 ${escapeHTML(u.name)} 
-              <span style="font-size: 10px; color: #10b981; float: right; font-weight: 700; display: flex; align-items: center; gap: 5px;">
-                <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981; display: inline-block;"></span>
-                Trực tuyến
-              </span>
+              <span>👤 ${escapeHTML(u.name)}</span>
+              ${statusHtml}
             </div>
           `;
         }).join('');
