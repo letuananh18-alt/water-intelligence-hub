@@ -1,6 +1,6 @@
 // ==========================================================================
 // UNSTOPPABLE HYBRID REALTIME PRESENCE & CHAT NOTIFICATION ENGINE
-// Real-time Chat Sync, 8s Quad-Channel Presence Heartbeat & Realtime Custom Channels
+// Real-time Chat Sync, 8s Quad-Channel Presence Heartbeat & Channel Management
 // ==========================================================================
 
 const INITIAL_CHANNELS = [
@@ -161,8 +161,8 @@ class ChatService {
       const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
       const cleanEmail = currentUser && currentUser.email ? currentUser.email.toLowerCase().trim() : 'guest_user';
 
-      // Broadcast Channel for Instant Message Syncing & Realtime Presence Pings & Channel Creation
-      this.realtimeChannel = window.supabaseClient.channel('thuduc_realtime_chat_v8', {
+      // Broadcast Channel for Instant Message Syncing & Realtime Presence Pings & Channel Management
+      this.realtimeChannel = window.supabaseClient.channel('thuduc_realtime_chat_v9', {
         config: { broadcast: { self: true } }
       });
 
@@ -227,15 +227,42 @@ class ChatService {
               this.saveLocal();
               this.notify();
               if (window.appController) {
-                window.appController.renderTeamChatSidebar();
+                window.appController.renderTeamChat();
               }
             }
+          }
+        })
+        .on('broadcast', { event: 'update_channel' }, (payload) => {
+          if (payload && payload.payload) {
+            const { channelId, name, desc } = payload.payload;
+            const chan = this.channels.find(c => c.id === channelId);
+            if (chan) {
+              if (name) chan.name = name;
+              if (desc) chan.desc = desc;
+              this.saveLocal();
+              this.notify();
+              if (window.appController) window.appController.renderTeamChat();
+            }
+          }
+        })
+        .on('broadcast', { event: 'delete_channel' }, (payload) => {
+          if (payload && payload.payload) {
+            const { channelId } = payload.payload;
+            this.channels = this.channels.filter(c => c.id !== channelId);
+            delete this.messages[channelId];
+            delete this.unreadCounts[channelId];
+            if (this.activeTargetId === channelId) {
+              this.activeTargetId = 'chan_general';
+            }
+            this.saveLocal();
+            this.notify();
+            if (window.appController) window.appController.renderTeamChat();
           }
         })
         .subscribe();
 
       // Presence Channel for Tracking Real Online Accounts
-      this.presenceChannel = window.supabaseClient.channel('thuduc_presence_v8', {
+      this.presenceChannel = window.supabaseClient.channel('thuduc_presence_v9', {
         config: { presence: { key: cleanEmail } }
       });
 
@@ -438,6 +465,72 @@ class ChatService {
 
     this.setActiveTarget(channelId);
     return newChan;
+  }
+
+  async renameChannel(channelId, newName, newDesc) {
+    const chan = this.channels.find(c => c.id === channelId);
+    if (!chan) return;
+
+    let cleanName = newName.trim();
+    if (!cleanName.startsWith('👥 # ') && !cleanName.startsWith('💬 # ') && !cleanName.startsWith('📝 # ') && !cleanName.startsWith('⚠️ # ') && !cleanName.startsWith('💰 # ')) {
+      cleanName = `👥 # ${cleanName}`;
+    }
+
+    chan.name = cleanName;
+    chan.desc = newDesc.trim() || chan.desc;
+
+    this.saveLocal();
+
+    if (this.realtimeChannel) {
+      try {
+        this.realtimeChannel.send({
+          type: 'broadcast',
+          event: 'update_channel',
+          payload: { channelId, name: chan.name, desc: chan.desc }
+        });
+      } catch (e) {}
+    }
+
+    if (window.supabaseClient) {
+      try {
+        await window.supabaseClient.from('custom_channels').update({
+          name: chan.name,
+          desc: chan.desc
+        }).eq('id', channelId);
+      } catch (e) {}
+    }
+
+    this.notify();
+  }
+
+  async deleteChannel(channelId) {
+    this.channels = this.channels.filter(c => c.id !== channelId);
+    delete this.messages[channelId];
+    delete this.unreadCounts[channelId];
+
+    this.saveLocal();
+
+    if (this.activeTargetId === channelId) {
+      this.activeTargetId = 'chan_general';
+    }
+
+    if (this.realtimeChannel) {
+      try {
+        this.realtimeChannel.send({
+          type: 'broadcast',
+          event: 'delete_channel',
+          payload: { channelId }
+        });
+      } catch (e) {}
+    }
+
+    if (window.supabaseClient) {
+      try {
+        await window.supabaseClient.from('custom_channels').delete().eq('id', channelId);
+      } catch (e) {}
+    }
+
+    this.notify();
   }
 
   getChannels() {

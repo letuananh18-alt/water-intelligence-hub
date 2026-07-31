@@ -1356,6 +1356,70 @@ class AppController {
       aiMsgList?.scrollTo({ top: aiMsgList.scrollHeight, behavior: 'smooth' });
       if (aiScrollBtn) aiScrollBtn.style.display = 'none';
     });
+
+    // Event delegation for Admin Channel Options ⋮ Button
+    document.addEventListener('click', (e) => {
+      const optBtn = e.target.closest('.channel-opt-btn');
+      if (optBtn) {
+        e.stopPropagation();
+        const chanId = optBtn.getAttribute('data-channel-id');
+        const chan = window.chatService ? window.chatService.getChannels().find(c => c.id === chanId) : null;
+        if (chan) {
+          this.selectedManageChanId = chanId;
+          const modal = document.getElementById('channelActionModal');
+          const titleEl = document.getElementById('chanModalHeaderTitle');
+          const infoBox = document.getElementById('chanModalInfoBox');
+          const nameInput = document.getElementById('editChanNameInput');
+          const descInput = document.getElementById('editChanDescInput');
+
+          if (titleEl) titleEl.textContent = `⚙️ Quản Lý Kênh: ${chan.name}`;
+          if (nameInput) nameInput.value = chan.name.replace(/^[👥💬📝⚠️💰]\s*#\s*/, '');
+          if (descInput) descInput.value = chan.desc || '';
+
+          const msgsCount = (window.chatService.messages[chanId] || []).length;
+          const membersListText = (chan.members && chan.members.length > 0) ? chan.members.join(', ') : 'Tất cả cán bộ phòng';
+
+          if (infoBox) {
+            infoBox.innerHTML = `
+              📌 <strong>Tên kênh gốc:</strong> ${escapeHTML(chan.name)}<br>
+              💬 <strong>Tổng tin nhắn:</strong> ${msgsCount} lượt thảo luận<br>
+              👥 <strong>Thành viên tham gia:</strong> ${escapeHTML(membersListText)}
+            `;
+          }
+
+          if (modal) modal.style.display = 'flex';
+        }
+      }
+    });
+
+    document.getElementById('closeChanActionModalBtn')?.addEventListener('click', () => {
+      this.closeModal('channelActionModal');
+    });
+    document.getElementById('btnCancelChanModal')?.addEventListener('click', () => {
+      this.closeModal('channelActionModal');
+    });
+
+    document.getElementById('btnSaveChanModal')?.addEventListener('click', async () => {
+      if (this.selectedManageChanId) {
+        const nameInput = document.getElementById('editChanNameInput');
+        const descInput = document.getElementById('editChanDescInput');
+        if (nameInput && nameInput.value.trim()) {
+          await window.chatService.renameChannel(this.selectedManageChanId, nameInput.value, descInput ? descInput.value : '');
+          this.closeModal('channelActionModal');
+          this.renderTeamChat();
+          alert("✅ Đã cập nhật Tên & Mô tả Kênh nhóm thành công!");
+        }
+      }
+    });
+
+    document.getElementById('btnDeleteChannelModal')?.addEventListener('click', async () => {
+      if (this.selectedManageChanId && confirm("⚠️ XÁC NHẬN XÓA: Bạn có chắc chắn muốn XÓA VĨNH VIỄN Kênh nhóm này khỏi hệ thống không?")) {
+        await window.chatService.deleteChannel(this.selectedManageChanId);
+        this.closeModal('channelActionModal');
+        this.renderTeamChat();
+        alert("🗑️ Đã xóa Kênh nhóm thành công!");
+      }
+    });
   }
 
   renderTeamChatSidebar() {
@@ -1370,17 +1434,26 @@ class AppController {
       btnCreateChan.style.display = isAdmin ? 'inline-block' : 'none';
     }
 
-    // 1. Render channels (system + custom) with Unread Badges
+    // 1. Render channels (system + custom) with Unread Badges & Admin ⋮ Options
     const channels = window.chatService.getChannels();
     if (chansContainer) {
       chansContainer.innerHTML = channels.map(c => {
         const unread = window.chatService.getUnreadCount(c.id);
         const unreadBadgeHtml = unread > 0 ? `<span class="unread-pill">${unread}</span>` : '';
+        const isCustom = c.type === 'custom_channel' || c.id.startsWith('chan_custom_');
+        const optBtnHtml = (isAdmin && isCustom) ? `
+          <button class="channel-opt-btn" data-channel-id="${escapeHTML(c.id)}" title="Quản lý kênh" style="padding: 0 4px; font-size: 14px; font-weight: 800; color: var(--slate-400); background: transparent; border: none; cursor: pointer; border-radius: 4px;">⋮</button>
+        ` : '';
 
         return `
-          <div class="thread-item ${window.chatService.activeTargetId === c.id ? 'active' : ''}" data-target="${escapeHTML(c.id)}">
-            ${unreadBadgeHtml}
-            <span>${escapeHTML(c.name)}</span>
+          <div class="thread-item ${window.chatService.activeTargetId === c.id ? 'active' : ''}" data-target="${escapeHTML(c.id)}" style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <span>${escapeHTML(c.name)}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+              ${unreadBadgeHtml}
+              ${optBtnHtml}
+            </div>
           </div>
         `;
       }).join('');

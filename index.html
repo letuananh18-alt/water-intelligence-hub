@@ -892,6 +892,49 @@
     </div>
   </div>
 
+  <!-- MODAL: ADMIN CHANNEL MANAGEMENT (VIEW INFO, RENAME, DELETE) -->
+  <div id="channelActionModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="chanModalHeaderTitle">⚙️ Quản Lý Kênh Nhóm</h3>
+        <button id="closeChanActionModalBtn" style="background: transparent; border: none; font-size: 20px; color: var(--slate-500); cursor: pointer; padding: 4px 8px; font-weight: 700;">✖</button>
+      </div>
+      <div style="padding: 10px 0;">
+        
+        <!-- View Info Section -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; font-size: 13px; color: var(--slate-700);">
+          <div style="font-weight: 800; color: #0f172a; margin-bottom: 6px; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">ℹ️ Thông tin chi tiết kênh</div>
+          <div id="chanModalInfoBox" style="line-height: 1.6;">
+            <!-- Dynamic info -->
+          </div>
+        </div>
+
+        <!-- Edit Name & Desc Section -->
+        <div style="margin-bottom: 14px;">
+          <label class="form-label">Tên kênh làm việc nhóm:</label>
+          <input type="text" id="editChanNameInput" class="form-input" placeholder="Nhập tên mới..." style="padding: 10px 14px;">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label class="form-label">Mô tả / Mục tiêu của kênh:</label>
+          <input type="text" id="editChanDescInput" class="form-input" placeholder="Nhập mô tả mới..." style="padding: 10px 14px;">
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 14px;">
+          <button id="btnDeleteChannelModal" class="table-btn table-btn-delete" style="padding: 9px 14px; font-size: 12.5px; width: auto; font-weight: 700;">
+            🗑️ Xóa Kênh Nhóm này
+          </button>
+          <div style="display: flex; gap: 8px;">
+            <button id="btnCancelChanModal" class="table-btn" style="padding: 9px 14px; width: auto; background: white; border: 1px solid var(--slate-300); color: var(--slate-700); font-weight: 600;">Hủy</button>
+            <button id="btnSaveChanModal" class="btn-primary" style="padding: 9px 16px; width: auto; font-size: 12.5px;">💾 Lưu Thay Đổi</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
   <!-- ENHANCED REAL DOCUMENT VIEWER MODAL WITH AI 1-CLICK SUMMARY -->
   <div id="filePreviewModal" class="modal-backdrop" style="display: none;">
     <div class="modal-content preview-modal-content">
@@ -1038,13 +1081,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Application Logic with Supabase Backend -->
-  <script src="js/supabase-config.js?v=20260731_v87"></script>
-  <script src="js/tech-bg.js?v=20260731_v87"></script>
-  <script src="js/auth.js?v=20260731_v87"></script>
-  <script src="js/storage-service.js?v=20260731_v87"></script>
-  <script src="js/chat-service.js?v=20260731_v87"></script>
-  <script src="js/ai-assistant.js?v=20260731_v87"></script>
-  <script src="js/ai-analyzer-module.js?v=20260731_v87"></script>
-  <script src="js/app.js?v=20260731_v87"></script>
+  <script src="js/supabase-config.js?v=20260731_v88"></script>
+  <script src="js/tech-bg.js?v=20260731_v88"></script>
+  <script src="js/auth.js?v=20260731_v88"></script>
+  <script src="js/storage-service.js?v=20260731_v88"></script>
+  <script src="js/chat-service.js?v=20260731_v88"></script>
+  <script src="js/ai-assistant.js?v=20260731_v88"></script>
+  <script src="js/ai-analyzer-module.js?v=20260731_v88"></script>
+  <script src="js/app.js?v=20260731_v88"></script>
 </body>
 </html>
