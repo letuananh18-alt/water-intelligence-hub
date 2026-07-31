@@ -37,6 +37,18 @@ class AiAssistant {
     ];
   }
 
+  setApiKey(key) {
+    if (key && key.trim()) {
+      localStorage.setItem('gemini_api_key', key.trim());
+    } else {
+      localStorage.removeItem('gemini_api_key');
+    }
+  }
+
+  getApiKey() {
+    return localStorage.getItem('gemini_api_key') || '';
+  }
+
   getActiveMessages() {
     return this.messages;
   }
