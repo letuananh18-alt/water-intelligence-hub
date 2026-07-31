@@ -68,8 +68,8 @@ class ChatService {
 
     try {
       // Broadcast Channel for Instant Message Syncing between devices
-      this.realtimeChannel = window.supabaseClient.channel('thuduc_realtime_chat_v2', {
-        config: { broadcast: { self: false } }
+      this.realtimeChannel = window.supabaseClient.channel('thuduc_realtime_chat_v3', {
+        config: { broadcast: { self: true } }
       });
 
       this.realtimeChannel
@@ -90,7 +90,7 @@ class ChatService {
         .subscribe();
 
       // Presence Channel for Tracking Real Online Accounts
-      this.presenceChannel = window.supabaseClient.channel('thuduc_presence_v2');
+      this.presenceChannel = window.supabaseClient.channel('thuduc_presence_v3');
 
       this.presenceChannel
         .on('presence', { event: 'sync' }, () => {
@@ -111,15 +111,7 @@ class ChatService {
         })
         .subscribe(async (status) => {
           if (status === 'SUBSCRIBED') {
-            const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
-            if (currentUser && currentUser.email) {
-              await this.presenceChannel.track({
-                uid: currentUser.uid,
-                email: currentUser.email.toLowerCase().trim(),
-                name: currentUser.name,
-                online_at: new Date().toISOString()
-              });
-            }
+            this.updateUserPresence();
           }
         });
 
@@ -133,12 +125,14 @@ class ChatService {
     const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
     if (this.presenceChannel && currentUser && currentUser.email) {
       try {
+        const cleanEmail = currentUser.email.toLowerCase().trim();
         this.presenceChannel.track({
           uid: currentUser.uid,
-          email: currentUser.email.toLowerCase().trim(),
-          name: currentUser.name,
+          email: cleanEmail,
+          name: currentUser.name || cleanEmail,
           online_at: new Date().toISOString()
         });
+        this.onlineUserEmails.add(cleanEmail);
       } catch (e) {}
     }
   }
@@ -149,50 +143,52 @@ class ChatService {
     localStorage.setItem('thuduc_water_custom_channels', JSON.stringify(customChans));
   }
 
-  // DYNAMICALLY FETCH REAL REGISTERED USERS WITH REAL-TIME ONLINE STATUS
+  // CANONICAL SHARED 1:1 DIRECT CHAT ROOM ID BETWEEN 2 EMAILS
+  getCanonicalDmId(email1, email2) {
+    const sorted = [email1.toLowerCase().trim(), email2.toLowerCase().trim()].sort();
+    return `dm_${sorted[0].replace(/[@.]/g, '_')}__${sorted[1].replace(/[@.]/g, '_')}`;
+  }
+
+  // DYNAMICALLY FETCH REAL REGISTERED USERS (EXCLUDING CURRENT LOGGED IN USER)
   getRealDirectUsers() {
     const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
-    const allUsers = window.authManager ? window.authManager.getUsersList() : [];
-
     const currentEmail = currentUser ? (currentUser.email || '').toLowerCase().trim() : '';
-    const otherUsers = allUsers.filter(u => u && u.email && u.email.toLowerCase().trim() !== currentEmail);
 
-    if (otherUsers.length === 0) {
-      // Default fallback real accounts if only 1 user exists in local session
-      return [
-        { 
-          id: "dm_admin_letuananh", 
-          name: "Lê Tuấn Anh", 
-          email: "letuananh18@gmail.com", 
-          role: "Admin / Quản trị hệ thống", 
-          status: this.onlineUserEmails.has("letuananh18@gmail.com") ? "🟢 Trực tuyến" : "⚪ Ngoại tuyến", 
-          isOnline: this.onlineUserEmails.has("letuananh18@gmail.com"),
-          desc: "Trò chuyện riêng 1:1 với Lê Tuấn Anh" 
-        },
-        { 
-          id: "dm_admin_waterain8n", 
-          name: "Tuấn Anh (Water Admin)", 
-          email: "waterain8n@gmail.com", 
-          role: "Admin Ban Quản Trị", 
-          status: this.onlineUserEmails.has("waterain8n@gmail.com") ? "🟢 Trực tuyến" : "⚪ Ngoại tuyến", 
-          isOnline: this.onlineUserEmails.has("waterain8n@gmail.com"),
-          desc: "Trò chuyện riêng 1:1 với Water Admin" 
-        }
-      ];
-    }
+    // Default registered system accounts
+    const knownAccounts = [
+      { name: "Lê Tuấn Anh", email: "letuananh18@gmail.com", role: "Admin / Quản trị hệ thống" },
+      { name: "Tuấn Anh (Water Admin)", email: "waterain8n@gmail.com", role: "Admin Ban Quản Trị" }
+    ];
+
+    // Combine with dynamically registered users from authManager
+    const registeredUsers = window.authManager ? window.authManager.getUsersList() : [];
+    registeredUsers.forEach(u => {
+      if (u && u.email && !knownAccounts.some(k => k.email.toLowerCase() === u.email.toLowerCase())) {
+        knownAccounts.push({
+          name: u.name || u.email.split('@')[0],
+          email: u.email.toLowerCase().trim(),
+          role: u.role || "Cán bộ P.KDDVKH"
+        });
+      }
+    });
+
+    // STRICTLY FILTER OUT THE CURRENT LOGGED-IN USER (NEVER DISPLAY ONESELF IN DM LIST)
+    const otherUsers = knownAccounts.filter(acc => acc.email.toLowerCase() !== currentEmail);
 
     return otherUsers.map(u => {
-      const emailClean = (u.email || '').toLowerCase().trim();
+      const emailClean = u.email.toLowerCase().trim();
       const isOnline = this.onlineUserEmails.has(emailClean);
-      
+      const dmRoomId = currentEmail ? this.getCanonicalDmId(currentEmail, emailClean) : `dm_guest_${emailClean.replace(/[@.]/g, '_')}`;
+
       return {
-        id: "dm_user_" + (u.uid || emailClean.replace(/[@.]/g, '_')),
-        name: u.name || emailClean.split('@')[0],
+        id: dmRoomId,
+        targetEmail: emailClean,
+        name: u.name,
         email: emailClean,
-        role: u.role || "Cán bộ P.KDDVKH",
+        role: u.role,
         status: isOnline ? "🟢 Trực tuyến" : "⚪ Ngoại tuyến",
         isOnline: isOnline,
-        desc: `Trò chuyện riêng 1:1 với ${u.name || emailClean}`
+        desc: `Trò chuyện riêng 1:1 với ${u.name} (${emailClean})`
       };
     });
   }
@@ -259,7 +255,7 @@ class ChatService {
     if (!text.trim() && !attachment) return;
 
     const newMsg = {
-      id: "msg_" + Date.now(),
+      id: "msg_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
       senderName: senderName,
       senderRole: senderRole,
       senderUid: senderUid,
@@ -272,10 +268,12 @@ class ChatService {
       this.messages[this.activeTargetId] = [];
     }
 
-    this.messages[this.activeTargetId].push(newMsg);
-    this.saveLocal();
+    if (!this.messages[this.activeTargetId].some(m => m.id === newMsg.id)) {
+      this.messages[this.activeTargetId].push(newMsg);
+      this.saveLocal();
+    }
 
-    // Broadcast message over Supabase Realtime Channel to all other connected logged in users
+    // Broadcast message over Supabase Realtime Channel to all connected logged-in users
     if (this.realtimeChannel) {
       try {
         this.realtimeChannel.send({
