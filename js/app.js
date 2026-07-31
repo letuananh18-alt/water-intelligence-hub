@@ -26,6 +26,7 @@ class AppController {
     this.currentView = 'dashboard';
     this.selectedFolderId = null;
     this.currentDeptFolderId = null;
+    this.currentPersonalFolderId = null;
     this.pendingUploadFiles = null;
     this.pendingUploadCategory = 'personal';
     this.currentPreviewFileId = null;
@@ -42,6 +43,7 @@ class AppController {
         this.bindFileUploadEvents();
         this.bindTableActions();
         this.bindFolderEvents();
+        this.bindPersonalFolderEvents();
         this.bindDeptFilterEvents();
         this.bindGlobalModalEvents();
         this.bindChatEvents();
@@ -193,9 +195,16 @@ class AppController {
       const isAdmin = window.authManager && window.authManager.isAdmin();
       const adminUploadDeptBtn = document.getElementById('adminUploadDeptBtn');
       const btnCreateNewFolder = document.getElementById('btnCreateNewFolder');
+      const navItemUsers = document.getElementById('navItemUsers');
 
       if (adminUploadDeptBtn) adminUploadDeptBtn.style.display = isAdmin ? 'flex' : 'none';
       if (btnCreateNewFolder) btnCreateNewFolder.style.display = isAdmin ? 'flex' : 'none';
+      if (navItemUsers) navItemUsers.style.display = isAdmin ? 'flex' : 'none';
+
+      if (!isAdmin && this.currentView === 'users') {
+        this.switchView('dashboard');
+        return;
+      }
 
       // Update Supabase Realtime Online Presence & Custom Channels Sync for chat
       if (window.chatService) {
@@ -226,6 +235,12 @@ class AppController {
   }
 
   switchView(viewName) {
+    const isAdmin = window.authManager && window.authManager.isAdmin();
+    if (viewName === 'users' && !isAdmin) {
+      alert("⛔ QUYỀN HẠN TỪ CHỐI: Chỉ Ban Quản trị Admin mới có quyền xem và sử dụng mục Người dùng & Giám sát!");
+      viewName = 'dashboard';
+    }
+
     this.currentView = viewName;
     const views = document.querySelectorAll('.view-panel');
     views.forEach(v => v.style.display = 'none');
@@ -255,7 +270,7 @@ class AppController {
     this.renderDashboardStats();
     this.renderDashboardTable();
     this.renderRecentActivity();
-    this.renderPersonalTable();
+    this.renderPersonalDocs();
     this.renderDeptTable();
     this.renderDeptFolders();
     this.renderReports();
@@ -385,17 +400,146 @@ class AppController {
     `).join('');
   }
 
+  bindPersonalFolderEvents() {
+    document.getElementById('btnCreatePersonalFolder')?.addEventListener('click', async () => {
+      const folderName = prompt("Vui lòng nhập tên Thư mục cá nhân mới:");
+      if (folderName && folderName.trim()) {
+        if (window.storageService) {
+          await window.storageService.createFolder(folderName.trim(), 'personal', this.currentPersonalFolderId);
+          this.renderPersonalDocs();
+        }
+      }
+    });
+
+    document.getElementById('btnBackPersonalRootFolder')?.addEventListener('click', () => {
+      this.currentPersonalFolderId = null;
+      this.renderPersonalDocs();
+    });
+
+    document.getElementById('btnUploadPersonalDocBtn')?.addEventListener('click', () => {
+      this.pendingUploadCategory = 'personal';
+      const fileInput = this.getOrCreateFileInput();
+      fileInput.value = '';
+      fileInput.setAttribute('data-target-cat', 'personal');
+      fileInput.click();
+    });
+
+    document.getElementById('personalTypeFilter')?.addEventListener('change', () => {
+      this.renderPersonalDocs();
+    });
+  }
+
+  renderPersonalFolders() {
+    const grid = document.getElementById('personalFoldersGrid');
+    const foldersSection = document.getElementById('personalFoldersSection');
+    const breadcrumbFolderPart = document.getElementById('personalBreadcrumbFolderPart');
+    const btnBackPersonalRootFolder = document.getElementById('btnBackPersonalRootFolder');
+
+    if (!grid || !window.storageService) return;
+
+    const folders = window.storageService.getFolders('personal');
+
+    if (this.currentPersonalFolderId) {
+      const activeFold = folders.find(f => f.id === this.currentPersonalFolderId);
+      if (foldersSection) foldersSection.style.display = 'none';
+      if (btnBackPersonalRootFolder) btnBackPersonalRootFolder.style.display = 'flex';
+      if (breadcrumbFolderPart && activeFold) {
+        breadcrumbFolderPart.innerHTML = ` &gt; <span style="color: var(--slate-800);">${escapeHTML(activeFold.name)}</span>`;
+      }
+    } else {
+      if (foldersSection) foldersSection.style.display = folders.length > 0 ? 'block' : 'none';
+      if (btnBackPersonalRootFolder) btnBackPersonalRootFolder.style.display = 'none';
+      if (breadcrumbFolderPart) breadcrumbFolderPart.innerHTML = '';
+
+      if (folders.length === 0) {
+        grid.innerHTML = `<div style="font-size: 13px; color: var(--slate-400); padding: 10px;">Chưa có thư mục cá nhân nào. Hãy bấm "+ Tạo thư mục mới" ở trên để phân loại tệp riêng của bạn!</div>`;
+      } else {
+        grid.innerHTML = folders.map(f => {
+          const filesInFold = window.storageService.getFiles('personal', '', 'all', f.id);
+          return `
+            <div class="folder-card-compact personal-folder-card" data-id="${escapeHTML(f.id)}">
+              <div class="folder-icon-compact">
+                <i data-lucide="folder"></i>
+              </div>
+              <div class="folder-info-compact" style="flex: 1;">
+                <div class="folder-name-compact">${escapeHTML(f.name)}</div>
+                <div class="folder-meta-compact">${filesInFold.length} tệp cá nhân</div>
+              </div>
+              <div style="display: flex; gap: 4px;" onclick="event.stopPropagation();">
+                <button class="icon-btn btn-rename-personal-folder" data-id="${escapeHTML(f.id)}" title="Đổi tên thư mục" style="width: 28px; height: 28px;">
+                  <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i>
+                </button>
+                <button class="icon-btn btn-delete-personal-folder" data-id="${escapeHTML(f.id)}" title="Xóa thư mục" style="width: 28px; height: 28px; color: #ef4444;">
+                  <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        this.bindPersonalFolderGridEvents();
+      }
+    }
+  }
+
+  bindPersonalFolderGridEvents() {
+    const cards = document.querySelectorAll('.personal-folder-card');
+    cards.forEach(card => {
+      card.addEventListener('click', () => {
+        const foldId = card.getAttribute('data-id');
+        if (foldId) {
+          this.currentPersonalFolderId = foldId;
+          this.renderPersonalDocs();
+        }
+      });
+    });
+
+    const renameBtns = document.querySelectorAll('.btn-rename-personal-folder');
+    renameBtns.forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const foldId = btn.getAttribute('data-id');
+        const folders = window.storageService ? window.storageService.getFolders('personal') : [];
+        const fold = folders.find(f => f.id === foldId);
+        if (fold) {
+          const newName = prompt("Vui lòng nhập tên mới cho Thư mục cá nhân:", fold.name.replace(/^📁\s*/, ''));
+          if (newName && newName.trim()) {
+            await window.storageService.renameFolder(foldId, newName.trim());
+            this.renderPersonalDocs();
+          }
+        }
+      });
+    });
+
+    const deleteBtns = document.querySelectorAll('.btn-delete-personal-folder');
+    deleteBtns.forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const foldId = btn.getAttribute('data-id');
+        if (confirm("⚠️ Bạn có chắc chắn muốn xóa Thư mục cá nhân này không?")) {
+          await window.storageService.deleteFolder(foldId);
+          if (this.currentPersonalFolderId === foldId) {
+            this.currentPersonalFolderId = null;
+          }
+          this.renderPersonalDocs();
+        }
+      });
+    });
+  }
+
   // STRICT PRIVACY: PERSONAL FILES SHOWN STRICTLY ONLY TO THEIR UPLOADER OWNER!
   renderPersonalTable() {
     const tbody = document.getElementById('personalFilesTableBody');
     if (!tbody || !window.storageService) return;
 
-    const files = window.storageService.getFiles('personal', this.searchQuery);
+    const fileTypeVal = document.getElementById('personalTypeFilter')?.value || 'all';
+    const files = window.storageService.getFiles('personal', this.searchQuery, fileTypeVal, this.currentPersonalFolderId);
+
     if (files.length === 0) {
       tbody.innerHTML = `
         <tr>
           <td colspan="6" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
-            🔒 Chưa có tài liệu cá nhân nào. Bấm "Tải lên" để lưu tệp riêng của bạn (Chỉ duy nhất bạn mới nhìn thấy tệp này)!
+            🔒 Chưa có tài liệu cá nhân nào trong thư mục này. Bấm "Tải tệp cá nhân" để lưu tệp riêng của bạn!
           </td>
         </tr>
       `;
@@ -419,11 +563,18 @@ class AppController {
         <td style="text-align: right;">
           <div class="table-actions" style="justify-content: flex-end;">
             <button class="table-btn preview-btn" data-id="${escapeHTML(file.id)}">Xem & Tải về</button>
+            <button class="table-btn ai-analyze-btn" data-id="${escapeHTML(file.id)}" style="background: #f0f9ff; color: #0284c7; border: 1px solid #bae6fd;">🤖 Phân tích AI</button>
             <button class="table-btn table-btn-delete delete-btn" data-id="${escapeHTML(file.id)}">Xóa</button>
           </div>
         </td>
       </tr>
     `}).join('');
+  }
+
+  renderPersonalDocs() {
+    this.renderPersonalFolders();
+    this.renderPersonalTable();
+    this.refreshLucideIcons();
   }
 
   renderDeptTable() {

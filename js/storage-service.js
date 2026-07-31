@@ -1,6 +1,6 @@
 // ==========================================================================
 // UNSTOPPABLE CLOUD HYBRID STORAGE SERVICE ENGINE
-// Supabase Database Cloud Storage & Complete User Data Purge
+// Supabase Database Cloud Storage, Custom User Folders & Complete User Data Purge
 // ==========================================================================
 
 const INITIAL_DEPARTMENT_DOCS = [
@@ -82,7 +82,7 @@ class StorageService {
 
     try {
       window.supabaseClient
-        .channel('schema-files-changes-v2')
+        .channel('schema-files-changes-v3')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'files' }, () => {
           this.syncFilesFromSupabase();
         })
@@ -101,7 +101,11 @@ class StorageService {
       const { data, error } = await window.supabaseClient.from('folders').select('*');
       if (!error && data && data.length > 0) {
         const cloudFolders = data.map(f => this.normalizeFolderFromDb(f));
-        this.folders = cloudFolders;
+        cloudFolders.forEach(f => {
+          if (!this.folders.some(x => x.id === f.id)) {
+            this.folders.push(f);
+          }
+        });
         this.saveLocal();
         this.notify();
       }
@@ -126,6 +130,8 @@ class StorageService {
       id: f.id,
       name: f.name,
       category: f.category || 'department',
+      uploaderEmail: f.uploader_email || f.uploaderEmail || '',
+      uploaderUid: f.uploader_uid || f.uploaderUid || '',
       parentFolderId: f.parent_folder_id || f.parentFolderId || null,
       fileCount: f.file_count || 0,
       createdAt: f.created_at || f.createdAt || new Date().toISOString().split('T')[0]
@@ -162,7 +168,8 @@ class StorageService {
 
     if (category === 'personal') {
       if (!user || !user.uid) return [];
-      list = list.filter(f => f.category === 'personal' && f.uploaderUid && f.uploaderUid === user.uid);
+      const userEmail = (user.email || '').toLowerCase().trim();
+      list = list.filter(f => f.category === 'personal' && (f.uploaderUid === user.uid || (f.uploaderEmail || '').toLowerCase().trim() === userEmail));
       if (folderId) {
         list = list.filter(f => f.folderId === folderId);
       }
@@ -194,7 +201,15 @@ class StorageService {
   }
 
   getFolders(category = 'department', parentFolderId = null) {
-    return this.folders.filter(f => f.category === category);
+    const user = window.authManager ? window.authManager.getCurrentUser() : null;
+    const uUid = user ? user.uid : null;
+    const uEmail = user ? (user.email || '').toLowerCase().trim() : '';
+
+    if (category === 'personal') {
+      if (!user) return [];
+      return this.folders.filter(f => f.category === 'personal' && (f.uploaderUid === uUid || (f.uploaderEmail || '').toLowerCase().trim() === uEmail));
+    }
+    return this.folders.filter(f => f.category === category || !f.category);
   }
 
   getStorageStats() {
@@ -332,10 +347,19 @@ class StorageService {
   }
 
   async createFolder(name, category = 'department', parentFolderId = null) {
+    const user = window.authManager ? window.authManager.getCurrentUser() : null;
+    const uploaderEmail = user ? (user.email || '').toLowerCase().trim() : '';
+    const uploaderUid = user ? user.uid : 'user_guest';
+
+    let cleanName = name.trim();
+    if (!cleanName.startsWith('📁')) cleanName = `📁 ${cleanName}`;
+
     const newFolder = {
-      id: "fold_" + Date.now(),
-      name: `📁 ${name.trim()}`,
+      id: "fold_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
+      name: cleanName,
       category: category,
+      uploaderEmail: uploaderEmail,
+      uploaderUid: uploaderUid,
       parentFolderId: parentFolderId || null,
       fileCount: 0,
       createdAt: new Date().toISOString().split('T')[0]
@@ -350,6 +374,8 @@ class StorageService {
           id: newFolder.id,
           name: newFolder.name,
           category: newFolder.category,
+          uploader_email: uploaderEmail,
+          uploader_uid: uploaderUid,
           parent_folder_id: newFolder.parentFolderId,
           file_count: 0,
           created_at: newFolder.createdAt
@@ -359,6 +385,25 @@ class StorageService {
 
     this.notify();
     return newFolder;
+  }
+
+  async renameFolder(folderId, newName) {
+    const f = this.folders.find(x => x.id === folderId);
+    if (!f) return;
+
+    let cleanName = newName.trim();
+    if (!cleanName.startsWith('📁')) cleanName = `📁 ${cleanName}`;
+
+    f.name = cleanName;
+    this.saveLocal();
+
+    if (window.supabaseClient) {
+      try {
+        await window.supabaseClient.from('folders').update({ name: cleanName }).eq('id', folderId);
+      } catch (e) {}
+    }
+
+    this.notify();
   }
 
   async deleteFolder(folderId) {

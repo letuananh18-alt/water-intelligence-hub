@@ -167,7 +167,7 @@
           <i data-lucide="clock"></i>
           <span>Hoạt động</span>
         </div>
-        <div class="nav-item" data-view="users">
+        <div class="nav-item" id="navItemUsers" data-view="users" style="display: none;">
           <i data-lucide="users"></i>
           <span>Người dùng & Giám sát</span>
         </div>
@@ -372,9 +372,36 @@
         <section id="viewPersonalDocs" class="view-panel" style="display: none;">
           <div class="page-header">
             <div>
+              <div id="personalBreadcrumbs" style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--accent-blue); margin-bottom: 6px;">
+                <span>Tài liệu cá nhân</span>
+                <span id="personalBreadcrumbFolderPart"></span>
+              </div>
               <h2 class="welcome-title">Tài liệu cá nhân</h2>
               <p class="welcome-sub">Quản lý và lưu trữ các tệp làm việc riêng của bạn (Bảo mật 100%, chỉ bạn mới có quyền xem)</p>
             </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <button class="btn-primary" id="btnBackPersonalRootFolder" style="display: none; background: var(--slate-100); color: var(--slate-800); border: 1px solid var(--slate-300); width: auto;">
+                <i data-lucide="arrow-left"></i>
+                <span>← Thư mục gốc</span>
+              </button>
+              <button class="btn-primary" id="btnCreatePersonalFolder" style="background: white; color: var(--accent-blue); border: 1px solid var(--slate-200); box-shadow: var(--shadow-sm); width: auto;">
+                <i data-lucide="folder-plus"></i>
+                <span>+ Tạo thư mục mới</span>
+              </button>
+              <button class="btn-primary" id="btnUploadPersonalDocBtn" style="padding: 8px 16px; font-size: 13px; width: auto;">
+                <i data-lucide="upload"></i>
+                <span>Tải tệp cá nhân</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Personal Folders Grid -->
+          <div id="personalFoldersSection" style="margin-bottom: 20px;">
+            <div class="card-title" style="margin-bottom: 12px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: space-between;">
+              <span>📁 Thư mục cá nhân của bạn</span>
+              <span style="font-size: 12px; font-weight: 500; color: var(--slate-400);">Bảo mật riêng tư 100%</span>
+            </div>
+            <div id="personalFoldersGrid" class="folder-grid-compact"></div>
           </div>
 
           <div class="table-card">
@@ -404,7 +431,7 @@
                 <tbody id="personalFilesTableBody">
                   <tr>
                     <td colspan="6" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
-                      📄 Chưa có tài liệu cá nhân nào. Hãy bấm "Tải lên" để lưu tệp riêng của bạn!
+                      📄 Chưa có tài liệu cá nhân nào. Hãy bấm "Tải tệp cá nhân" để lưu tệp riêng của bạn!
                     </td>
                   </tr>
                 </tbody>
@@ -1125,13 +1152,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Application Logic with Supabase Backend -->
-  <script src="js/supabase-config.js?v=20260731_v99"></script>
-  <script src="js/tech-bg.js?v=20260731_v99"></script>
-  <script src="js/auth.js?v=20260731_v99"></script>
-  <script src="js/storage-service.js?v=20260731_v99"></script>
-  <script src="js/chat-service.js?v=20260731_v99"></script>
-  <script src="js/ai-assistant.js?v=20260731_v99"></script>
-  <script src="js/ai-analyzer-module.js?v=20260731_v99"></script>
-  <script src="js/app.js?v=20260731_v99"></script>
+  <script src="js/supabase-config.js?v=20260731_v100"></script>
+  <script src="js/tech-bg.js?v=20260731_v100"></script>
+  <script src="js/auth.js?v=20260731_v100"></script>
+  <script src="js/storage-service.js?v=20260731_v100"></script>
+  <script src="js/chat-service.js?v=20260731_v100"></script>
+  <script src="js/ai-assistant.js?v=20260731_v100"></script>
+  <script src="js/ai-analyzer-module.js?v=20260731_v100"></script>
+  <script src="js/app.js?v=20260731_v100"></script>
 </body>
 </html>
