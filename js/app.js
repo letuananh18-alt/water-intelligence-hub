@@ -733,7 +733,7 @@ class AppController {
         const lastTime = u.lastLogin || u.last_login || 'Vừa truy cập';
         const isOnline = window.chatService ? window.chatService.isUserOnline(u.email) : false;
         const uStatus = u.status || 'approved';
-        const isAdminUser = u.email === 'waterain8n@gmail.com' || u.email === 'letuananh18@gmail.com';
+        const isMasterAdmin = u.email.toLowerCase().trim() === 'letuananh18@gmail.com';
 
         const statusBadge = isOnline ? `
           <span style="display: inline-flex; align-items: center; gap: 5px; background: #dcfce7; color: #15803d; border: 1px solid #86efac; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">
@@ -754,8 +754,8 @@ class AppController {
           approvalBadge = `<span class="badge-tag" style="background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd;">✅ Đã Phê Duyệt</span>`;
         }
 
-        let adminActionsHtml = '<span style="color: var(--slate-400); font-size: 12px; font-style: italic;">Ban Quản Trị</span>';
-        if (isAdmin && !isAdminUser) {
+        let adminActionsHtml = '<span style="color: var(--slate-400); font-size: 12px; font-style: italic;">Master Admin</span>';
+        if (isAdmin && !isMasterAdmin) {
           const approveBtn = uStatus === 'pending' ? `<button class="table-btn btn-approve-user" data-email="${escapeHTML(u.email)}" style="padding: 4px 8px; font-size: 11px; background: #10b981; color: white; border: none; font-weight: 700;">✅ Duyệt</button>` : '';
           const toggleBlockBtn = uStatus === 'blocked' ? `<button class="table-btn btn-unblock-user" data-email="${escapeHTML(u.email)}" style="padding: 4px 8px; font-size: 11px; background: #0284c7; color: white; border: none;">🔓 Mở Khóa</button>` : `<button class="table-btn btn-block-user" data-email="${escapeHTML(u.email)}" style="padding: 4px 8px; font-size: 11px; background: #f59e0b; color: white; border: none;">⛔ Khóa</button>`;
           const deleteBtn = `<button class="table-btn table-btn-delete btn-delete-user" data-email="${escapeHTML(u.email)}" style="padding: 4px 8px; font-size: 11px;">🗑️ Xóa</button>`;
@@ -776,7 +776,7 @@ class AppController {
             <td>${escapeHTML(u.department || 'Phòng Kinh doanh & Dịch vụ Khách hàng')}</td>
             <td>
               <div style="display: flex; gap: 4px; align-items: center;">
-                <span class="badge-tag ${isAdminUser ? 'type-pdf' : 'type-docx'}">${isAdminUser ? 'ADMIN' : 'CLIENT'}</span>
+                <span class="badge-tag ${isMasterAdmin ? 'type-pdf' : 'type-docx'}">${isMasterAdmin ? 'ADMIN' : 'CLIENT'}</span>
                 ${approvalBadge}
               </div>
             </td>
