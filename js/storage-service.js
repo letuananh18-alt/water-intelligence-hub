@@ -1,7 +1,7 @@
 // ==========================================================================
 // THU DUC WATER FILE STORAGE & CLOUD PERSISTENCE ENGINE
 // Supabase Database Sync & Realtime Storage Engine
-// Realtime Folder Sync & Department Folder Multi-Broadcast Engine
+// Realtime File & Folder Multi-User Sync & Live Broadcast Engine
 // ==========================================================================
 
 const INITIAL_FILES = [
@@ -15,9 +15,9 @@ const INITIAL_FILES = [
     folderId: "fold_kddvkh_1",
     size: 2457600,
     sizeFormatted: "2.4 MB",
-    uploadedBy: "Lê Tuấn Anh (Admin)",
-    uploaderEmail: "waterain8n@gmail.com",
-    uploaderUid: "user_admin_001",
+    uploadedBy: "Lê Tuấn Anh (Master Admin)",
+    uploaderEmail: "letuananh18@gmail.com",
+    uploaderUid: "user_admin_master_001",
     uploadDate: "29/07/2026 14:20",
     url: "#"
   },
@@ -47,9 +47,9 @@ const INITIAL_FILES = [
     folderId: "fold_kddvkh_1",
     size: 4194304,
     sizeFormatted: "4.2 MB",
-    uploadedBy: "Lê Tuấn Anh (Admin)",
-    uploaderEmail: "waterain8n@gmail.com",
-    uploaderUid: "user_admin_001",
+    uploadedBy: "Lê Tuấn Anh (Master Admin)",
+    uploaderEmail: "letuananh18@gmail.com",
+    uploaderUid: "user_admin_master_001",
     uploadDate: "27/07/2026 16:45",
     url: "#"
   }
@@ -60,8 +60,8 @@ const INITIAL_FOLDERS = [
     id: "fold_kddvkh_1",
     name: "📁 Quy trình CSKH & Giá Nước P.KDDVKH",
     category: "department",
-    uploaderEmail: "waterain8n@gmail.com",
-    uploaderUid: "user_admin_001",
+    uploaderEmail: "letuananh18@gmail.com",
+    uploaderUid: "user_admin_master_001",
     parentFolderId: null,
     fileCount: 3,
     createdAt: "2026-07-25"
@@ -70,8 +70,8 @@ const INITIAL_FOLDERS = [
     id: "fold_kddvkh_2",
     name: "📁 Hợp đồng & Hồ sơ Cấp nước Dự án 2026",
     category: "department",
-    uploaderEmail: "waterain8n@gmail.com",
-    uploaderUid: "user_admin_001",
+    uploaderEmail: "letuananh18@gmail.com",
+    uploaderUid: "user_admin_master_001",
     parentFolderId: null,
     fileCount: 0,
     createdAt: "2026-07-26"
@@ -80,8 +80,8 @@ const INITIAL_FOLDERS = [
     id: "fold_kddvkh_3",
     name: "📁 Báo cáo Thống kê & Công văn Đi - Đến",
     category: "department",
-    uploaderEmail: "waterain8n@gmail.com",
-    uploaderUid: "user_admin_001",
+    uploaderEmail: "letuananh18@gmail.com",
+    uploaderUid: "user_admin_master_001",
     parentFolderId: null,
     fileCount: 0,
     createdAt: "2026-07-27"
@@ -102,19 +102,17 @@ class StorageService {
     const savedFiles = localStorage.getItem('thuduc_water_files');
     if (savedFiles) {
       try {
-        this.files = JSON.parse(savedFiles);
-      } catch (e) {
-        this.files = [...INITIAL_FILES];
-      }
+        const arr = JSON.parse(savedFiles);
+        if (Array.isArray(arr) && arr.length > 0) this.files = arr;
+      } catch (e) {}
     }
 
     const savedFolders = localStorage.getItem('thuduc_water_folders');
     if (savedFolders) {
       try {
-        this.folders = JSON.parse(savedFolders);
-      } catch (e) {
-        this.folders = [...INITIAL_FOLDERS];
-      }
+        const arr = JSON.parse(savedFolders);
+        if (Array.isArray(arr) && arr.length > 0) this.folders = arr;
+      } catch (e) {}
     }
 
     if (window.supabaseClient) {
@@ -128,7 +126,7 @@ class StorageService {
     if (!window.supabaseClient) return;
 
     try {
-      this.realtimeStorageChannel = window.supabaseClient.channel('thuduc_realtime_storage_v4', {
+      this.realtimeStorageChannel = window.supabaseClient.channel('thuduc_realtime_storage_v5', {
         config: { broadcast: { self: true } }
       });
 
@@ -138,6 +136,27 @@ class StorageService {
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'folders' }, () => {
           this.syncFoldersFromSupabase();
+        })
+        .on('broadcast', { event: 'file_uploaded' }, (payload) => {
+          if (payload && payload.payload) {
+            const newF = payload.payload;
+            const idx = this.files.findIndex(x => x.id === newF.id);
+            if (idx >= 0) {
+              this.files[idx] = newF;
+            } else {
+              this.files.unshift(newF);
+            }
+            this.saveLocal();
+            this.notify();
+          }
+        })
+        .on('broadcast', { event: 'file_deleted' }, (payload) => {
+          if (payload && payload.payload) {
+            const { id } = payload.payload;
+            this.files = this.files.filter(x => x.id !== id);
+            this.saveLocal();
+            this.notify();
+          }
         })
         .on('broadcast', { event: 'folder_created' }, (payload) => {
           if (payload && payload.payload) {
@@ -178,27 +197,19 @@ class StorageService {
     if (!window.supabaseClient) return;
     try {
       const { data, error } = await window.supabaseClient.from('folders').select('*');
-      if (!error && data) {
+      if (!error && data && data.length > 0) {
         const cloudFolders = data.map(f => this.normalizeFolderFromDb(f));
-        let changed = false;
-
-        cloudFolders.forEach(f => {
-          const idx = this.folders.findIndex(x => x.id === f.id);
+        // Merge cloud folders with local initial folders seamlessly
+        cloudFolders.forEach(cf => {
+          const idx = this.folders.findIndex(x => x.id === cf.id);
           if (idx >= 0) {
-            if (this.folders[idx].name !== f.name) {
-              this.folders[idx] = f;
-              changed = true;
-            }
+            this.folders[idx] = cf;
           } else {
-            this.folders.push(f);
-            changed = true;
+            this.folders.push(cf);
           }
         });
-
-        if (changed) {
-          this.saveLocal();
-          this.notify();
-        }
+        this.saveLocal();
+        this.notify();
       }
     } catch (e) {}
   }
@@ -207,15 +218,18 @@ class StorageService {
     if (!window.supabaseClient) return;
     try {
       const { data, error } = await window.supabaseClient.from('files').select('*');
-      if (!error && data) {
+      if (!error && data && data.length > 0) {
         const cloudFiles = data.map(f => this.normalizeFileFromDb(f));
-        const cloudIds = cloudFiles.map(f => f.id).join(',');
-        const localIds = this.files.map(f => f.id).join(',');
-        if (cloudIds !== localIds || cloudFiles.length !== this.files.length) {
-          this.files = cloudFiles;
-          this.saveLocal();
-          this.notify();
-        }
+        cloudFiles.forEach(cf => {
+          const idx = this.files.findIndex(x => x.id === cf.id);
+          if (idx >= 0) {
+            this.files[idx] = cf;
+          } else {
+            this.files.unshift(cf);
+          }
+        });
+        this.saveLocal();
+        this.notify();
       }
     } catch (e) {}
   }
@@ -385,6 +399,14 @@ class StorageService {
           upload_date: newFile.uploadDate,
           url: '#'
         }, { onConflict: 'id' });
+
+        if (this.realtimeStorageChannel) {
+          this.realtimeStorageChannel.send({
+            type: 'broadcast',
+            event: 'file_uploaded',
+            payload: newFile
+          });
+        }
       } catch (e) {
         console.warn("Supabase file upload insert notice:", e);
       }
@@ -410,6 +432,13 @@ class StorageService {
     if (window.supabaseClient) {
       try {
         await window.supabaseClient.from('files').delete().eq('id', fileId);
+        if (this.realtimeStorageChannel) {
+          this.realtimeStorageChannel.send({
+            type: 'broadcast',
+            event: 'file_deleted',
+            payload: { id: fileId }
+          });
+        }
       } catch (e) {}
     }
 
@@ -425,6 +454,15 @@ class StorageService {
     if (window.supabaseClient) {
       try {
         await window.supabaseClient.from('files').delete().in('id', fileIds);
+        fileIds.forEach(id => {
+          if (this.realtimeStorageChannel) {
+            this.realtimeStorageChannel.send({
+              type: 'broadcast',
+              event: 'file_deleted',
+              payload: { id: id }
+            });
+          }
+        });
       } catch (e) {}
     }
 
