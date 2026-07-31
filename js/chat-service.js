@@ -1,6 +1,6 @@
 // ==========================================================================
-// REAL-TIME TEAM CHAT & CUSTOM GROUP CHANNELS WITH MEMBER SELECTION
-// Dynamically Syncs Real Registered Users & Supports Private Group Channels
+// SUPABASE REALTIME TEAM CHAT & ONLINE PRESENCE MONITORING ENGINE
+// Cross-Device Real-time Chat Sync & Real Online Status Tracking via Supabase
 // ==========================================================================
 
 const INITIAL_CHANNELS = [
@@ -17,7 +17,7 @@ const INITIAL_MESSAGES = {
       senderName: "Hệ thống Water Hub",
       senderRole: "System",
       senderUid: "system",
-      text: "Chào mừng bạn đến với Kênh Trò chuyện Nội bộ P.KDDVKH. Bạn có thể bấm nút '+ Tạo kênh nhóm' để tạo các nhóm làm việc chuyên đề và add riêng các cán bộ vào nhóm!",
+      text: "Chào mừng bạn đến với Kênh Trò chuyện Nội bộ P.KDDVKH. Đã kích hoạt Supabase Realtime Broadcast & Presence Tracking!",
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       attachment: null
     }
@@ -29,11 +29,15 @@ class ChatService {
     this.channels = [...INITIAL_CHANNELS];
     this.messages = INITIAL_MESSAGES;
     this.activeTargetId = "chan_general";
+    this.onlineUserEmails = new Set();
     this.listeners = [];
+    this.realtimeChannel = null;
+    this.presenceChannel = null;
     this.init();
   }
 
   init() {
+    // 1. Load Local Storage Cache
     const savedMsg = localStorage.getItem('thuduc_water_team_chats');
     if (savedMsg) {
       try {
@@ -54,6 +58,89 @@ class ChatService {
         });
       } catch (e) {}
     }
+
+    // 2. Connect Supabase Realtime Chat Broadcast & Presence Tracking
+    this.setupSupabaseRealtime();
+  }
+
+  setupSupabaseRealtime() {
+    if (!window.supabaseClient) return;
+
+    try {
+      // Broadcast Channel for Instant Message Syncing between devices
+      this.realtimeChannel = window.supabaseClient.channel('thuduc_realtime_chat_v2', {
+        config: { broadcast: { self: false } }
+      });
+
+      this.realtimeChannel
+        .on('broadcast', { event: 'new_message' }, (payload) => {
+          if (payload && payload.payload) {
+            const { targetId, message } = payload.payload;
+            if (targetId && message) {
+              if (!this.messages[targetId]) this.messages[targetId] = [];
+              // Prevent duplicate messages
+              if (!this.messages[targetId].some(m => m.id === message.id)) {
+                this.messages[targetId].push(message);
+                this.saveLocal();
+                this.notify();
+              }
+            }
+          }
+        })
+        .subscribe();
+
+      // Presence Channel for Tracking Real Online Accounts
+      this.presenceChannel = window.supabaseClient.channel('thuduc_presence_v2');
+
+      this.presenceChannel
+        .on('presence', { event: 'sync' }, () => {
+          const state = this.presenceChannel.presenceState();
+          const activeEmails = new Set();
+          
+          Object.keys(state).forEach(key => {
+            const presences = state[key];
+            presences.forEach(p => {
+              if (p && p.email) {
+                activeEmails.add(p.email.toLowerCase().trim());
+              }
+            });
+          });
+
+          this.onlineUserEmails = activeEmails;
+          this.notify();
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
+            if (currentUser && currentUser.email) {
+              await this.presenceChannel.track({
+                uid: currentUser.uid,
+                email: currentUser.email.toLowerCase().trim(),
+                name: currentUser.name,
+                online_at: new Date().toISOString()
+              });
+            }
+          }
+        });
+
+    } catch (err) {
+      console.warn("Supabase Realtime chat setup notice:", err);
+    }
+  }
+
+  // Re-track presence when user logs in or switches account
+  updateUserPresence() {
+    const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
+    if (this.presenceChannel && currentUser && currentUser.email) {
+      try {
+        this.presenceChannel.track({
+          uid: currentUser.uid,
+          email: currentUser.email.toLowerCase().trim(),
+          name: currentUser.name,
+          online_at: new Date().toISOString()
+        });
+      } catch (e) {}
+    }
   }
 
   saveLocal() {
@@ -62,29 +149,52 @@ class ChatService {
     localStorage.setItem('thuduc_water_custom_channels', JSON.stringify(customChans));
   }
 
-  // DYNAMICALLY FETCH REAL REGISTERED USERS FROM AUTH MANAGER / SUPABASE
+  // DYNAMICALLY FETCH REAL REGISTERED USERS WITH REAL-TIME ONLINE STATUS
   getRealDirectUsers() {
     const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
     const allUsers = window.authManager ? window.authManager.getUsersList() : [];
 
-    const currentEmail = currentUser ? (currentUser.email || '').toLowerCase() : '';
-    const otherUsers = allUsers.filter(u => u && u.email && u.email.toLowerCase() !== currentEmail);
+    const currentEmail = currentUser ? (currentUser.email || '').toLowerCase().trim() : '';
+    const otherUsers = allUsers.filter(u => u && u.email && u.email.toLowerCase().trim() !== currentEmail);
 
     if (otherUsers.length === 0) {
+      // Default fallback real accounts if only 1 user exists in local session
       return [
-        { id: "dm_admin_letuananh", name: "Lê Tuấn Anh", email: "letuananh18@gmail.com", role: "Admin / Quản trị hệ thống", status: "🟢 Trực tuyến", desc: "Trò chuyện riêng 1:1 với Lê Tuấn Anh" },
-        { id: "dm_cskh_officer", name: "Cán bộ CSKH P.KDDVKH", email: "cskh@capnuocthuduc.vn", role: "Chuyên viên Khách hàng", status: "🟢 Trực tuyến", desc: "Trò chuyện riêng 1:1 với Cán bộ CSKH" }
+        { 
+          id: "dm_admin_letuananh", 
+          name: "Lê Tuấn Anh", 
+          email: "letuananh18@gmail.com", 
+          role: "Admin / Quản trị hệ thống", 
+          status: this.onlineUserEmails.has("letuananh18@gmail.com") ? "🟢 Trực tuyến" : "⚪ Ngoại tuyến", 
+          isOnline: this.onlineUserEmails.has("letuananh18@gmail.com"),
+          desc: "Trò chuyện riêng 1:1 với Lê Tuấn Anh" 
+        },
+        { 
+          id: "dm_admin_waterain8n", 
+          name: "Tuấn Anh (Water Admin)", 
+          email: "waterain8n@gmail.com", 
+          role: "Admin Ban Quản Trị", 
+          status: this.onlineUserEmails.has("waterain8n@gmail.com") ? "🟢 Trực tuyến" : "⚪ Ngoại tuyến", 
+          isOnline: this.onlineUserEmails.has("waterain8n@gmail.com"),
+          desc: "Trò chuyện riêng 1:1 với Water Admin" 
+        }
       ];
     }
 
-    return otherUsers.map(u => ({
-      id: "dm_user_" + (u.uid || u.email.replace(/[@.]/g, '_')),
-      name: u.name || u.email.split('@')[0],
-      email: u.email,
-      role: u.role || "Cán bộ P.KDDVKH",
-      status: "🟢 Trực tuyến",
-      desc: `Trò chuyện riêng 1:1 với ${u.name || u.email}`
-    }));
+    return otherUsers.map(u => {
+      const emailClean = (u.email || '').toLowerCase().trim();
+      const isOnline = this.onlineUserEmails.has(emailClean);
+      
+      return {
+        id: "dm_user_" + (u.uid || emailClean.replace(/[@.]/g, '_')),
+        name: u.name || emailClean.split('@')[0],
+        email: emailClean,
+        role: u.role || "Cán bộ P.KDDVKH",
+        status: isOnline ? "🟢 Trực tuyến" : "⚪ Ngoại tuyến",
+        isOnline: isOnline,
+        desc: `Trò chuyện riêng 1:1 với ${u.name || emailClean}`
+      };
+    });
   }
 
   // CREATE CUSTOM GROUP CHANNEL WITH SELECTED MEMBERS
@@ -164,6 +274,21 @@ class ChatService {
 
     this.messages[this.activeTargetId].push(newMsg);
     this.saveLocal();
+
+    // Broadcast message over Supabase Realtime Channel to all other connected logged in users
+    if (this.realtimeChannel) {
+      try {
+        this.realtimeChannel.send({
+          type: 'broadcast',
+          event: 'new_message',
+          payload: {
+            targetId: this.activeTargetId,
+            message: newMsg
+          }
+        });
+      } catch (e) {}
+    }
+
     this.notify();
   }
 

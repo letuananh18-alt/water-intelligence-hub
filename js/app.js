@@ -196,6 +196,9 @@ class AppController {
       if (adminUploadDeptBtn) adminUploadDeptBtn.style.display = isAdmin ? 'flex' : 'none';
       if (btnCreateNewFolder) btnCreateNewFolder.style.display = isAdmin ? 'flex' : 'none';
 
+      // Update Supabase Realtime Online Presence tracking for chat
+      if (window.chatService) window.chatService.updateUserPresence();
+
       this.renderCurrentView();
     }
   }
@@ -1308,14 +1311,20 @@ class AppController {
       `).join('');
     }
 
-    // Render direct 1:1 user accounts
+    // Render direct 1:1 user accounts with Real-time Online Presence Badges
     const realUsers = window.chatService.getRealDirectUsers();
     if (dmContainer) {
-      dmContainer.innerHTML = realUsers.map(u => `
-        <div class="thread-item ${window.chatService.activeTargetId === u.id ? 'active' : ''}" data-target="${escapeHTML(u.id)}">
-          👤 ${escapeHTML(u.name)} <span style="font-size: 10px; color: #10b981; float: right;">● ${escapeHTML(u.status || 'Trực tuyến')}</span>
-        </div>
-      `).join('');
+      dmContainer.innerHTML = realUsers.map(u => {
+        const isOnline = u.isOnline;
+        const statusColor = isOnline ? '#10b981' : '#94a3b8';
+        const statusLabel = isOnline ? '● Trực tuyến' : '○ Ngoại tuyến';
+
+        return `
+          <div class="thread-item ${window.chatService.activeTargetId === u.id ? 'active' : ''}" data-target="${escapeHTML(u.id)}">
+            👤 ${escapeHTML(u.name)} <span style="font-size: 10px; color: ${statusColor}; float: right; font-weight: 700;">${statusLabel}</span>
+          </div>
+        `;
+      }).join('');
     }
 
     // Rebind click events for all targets
