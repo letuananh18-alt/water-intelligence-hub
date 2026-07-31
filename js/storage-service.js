@@ -1,53 +1,100 @@
 // ==========================================================================
-// UNSTOPPABLE CLOUD HYBRID STORAGE SERVICE ENGINE
-// Supabase Database Cloud Storage, Custom User Folders & Complete User Data Purge
+// THU DUC WATER FILE STORAGE & CLOUD PERSISTENCE ENGINE
+// Supabase Database Sync & Realtime Storage Engine
+// Realtime Folder Sync & Department Folder Multi-Broadcast Engine
 // ==========================================================================
 
-const INITIAL_DEPARTMENT_DOCS = [
+const INITIAL_FILES = [
   {
-    id: "doc_init_001",
-    name: "01_Quy-che-Vien-thong-va-Cap-nuoc-P-KDDVKH-2026.pdf",
+    id: "doc_kddvkh_001",
+    name: "Quy_Trinh_Giai_Quyet_Khieu_Nai_Hoa_Don_T7_2026.pdf",
     type: "PDF",
-    docType: "Văn bản chỉ đạo",
+    docType: "Quy trình CSKH",
     statusTag: "🟢 Đã ban hành",
     category: "department",
-    size: 2450000,
+    folderId: "fold_kddvkh_1",
+    size: 2457600,
     sizeFormatted: "2.4 MB",
     uploadedBy: "Lê Tuấn Anh (Admin)",
     uploaderEmail: "waterain8n@gmail.com",
     uploaderUid: "user_admin_001",
-    uploadDate: "30/07/2026 14:00",
-    url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+    uploadDate: "29/07/2026 14:20",
+    url: "#"
   },
   {
-    id: "doc_init_002",
-    name: "02_Huong-dan-Xu-ly-Khieu-nai-Thuy-ke-Thu-Duc.docx",
+    id: "doc_kddvkh_002",
+    name: "Biểu_Giá_Dịch_Vụ_Cấp_Nước_Đô_Thị_Thủ_Đức_2026.docx",
     type: "DOCX",
-    docType: "Quy trình nội bộ",
+    docType: "Biểu giá dịch vụ",
+    statusTag: "🟡 Đang trình ký",
+    category: "department",
+    folderId: "fold_kddvkh_1",
+    size: 1572864,
+    sizeFormatted: "1.5 MB",
+    uploadedBy: "Nguyễn Văn Hùng",
+    uploaderEmail: "hung.nguyen@thuducwater.com.vn",
+    uploaderUid: "user_hung_002",
+    uploadDate: "28/07/2026 09:15",
+    url: "#"
+  },
+  {
+    id: "doc_kddvkh_003",
+    name: "Hop_Dong_Cap_Nuoc_Khu_Do_Thi_Truong_Tho_2026.pdf",
+    type: "PDF",
+    docType: "Hợp đồng cấp nước",
     statusTag: "🟢 Đã ban hành",
     category: "department",
-    size: 1180000,
-    sizeFormatted: "1.2 MB",
+    folderId: "fold_kddvkh_1",
+    size: 4194304,
+    sizeFormatted: "4.2 MB",
     uploadedBy: "Lê Tuấn Anh (Admin)",
-    uploaderEmail: "letuananh18@gmail.com",
-    uploaderUid: "user_admin_002",
-    uploadDate: "30/07/2026 15:30",
+    uploaderEmail: "waterain8n@gmail.com",
+    uploaderUid: "user_admin_001",
+    uploadDate: "27/07/2026 16:45",
     url: "#"
   }
 ];
 
 const INITIAL_FOLDERS = [
-  { id: "fold_cv_den", name: "📁 Công văn Đến (P.KDDVKH)", category: "department", fileCount: 0, createdAt: "2026-07-30" },
-  { id: "fold_cv_di", name: "📁 Công văn Đi & Báo cáo", category: "department", fileCount: 0, createdAt: "2026-07-30" },
-  { id: "fold_hop_dong", name: "📁 Hồ sơ Hợp đồng Khách hàng", category: "department", fileCount: 0, createdAt: "2026-07-30" }
+  {
+    id: "fold_kddvkh_1",
+    name: "📁 Quy trình CSKH & Giá Nước P.KDDVKH",
+    category: "department",
+    uploaderEmail: "waterain8n@gmail.com",
+    uploaderUid: "user_admin_001",
+    parentFolderId: null,
+    fileCount: 3,
+    createdAt: "2026-07-25"
+  },
+  {
+    id: "fold_kddvkh_2",
+    name: "📁 Hợp đồng & Hồ sơ Cấp nước Dự án 2026",
+    category: "department",
+    uploaderEmail: "waterain8n@gmail.com",
+    uploaderUid: "user_admin_001",
+    parentFolderId: null,
+    fileCount: 0,
+    createdAt: "2026-07-26"
+  },
+  {
+    id: "fold_kddvkh_3",
+    name: "📁 Báo cáo Thống kê & Công văn Đi - Đến",
+    category: "department",
+    uploaderEmail: "waterain8n@gmail.com",
+    uploaderUid: "user_admin_001",
+    parentFolderId: null,
+    fileCount: 0,
+    createdAt: "2026-07-27"
+  }
 ];
 
 class StorageService {
   constructor() {
-    this.files = [...INITIAL_DEPARTMENT_DOCS];
+    this.files = [...INITIAL_FILES];
     this.folders = [...INITIAL_FOLDERS];
-    this.rawFileObjects = {};
     this.listeners = [];
+    this.rawFileObjects = {};
+    this.realtimeStorageChannel = null;
     this.init();
   }
 
@@ -57,7 +104,7 @@ class StorageService {
       try {
         this.files = JSON.parse(savedFiles);
       } catch (e) {
-        this.files = [...INITIAL_DEPARTMENT_DOCS];
+        this.files = [...INITIAL_FILES];
       }
     }
 
@@ -81,13 +128,45 @@ class StorageService {
     if (!window.supabaseClient) return;
 
     try {
-      window.supabaseClient
-        .channel('schema-files-changes-v3')
+      this.realtimeStorageChannel = window.supabaseClient.channel('thuduc_realtime_storage_v4', {
+        config: { broadcast: { self: true } }
+      });
+
+      this.realtimeStorageChannel
         .on('postgres_changes', { event: '*', schema: 'public', table: 'files' }, () => {
           this.syncFilesFromSupabase();
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'folders' }, () => {
           this.syncFoldersFromSupabase();
+        })
+        .on('broadcast', { event: 'folder_created' }, (payload) => {
+          if (payload && payload.payload) {
+            const f = payload.payload;
+            if (!this.folders.some(x => x.id === f.id)) {
+              this.folders.push(f);
+              this.saveLocal();
+              this.notify();
+            }
+          }
+        })
+        .on('broadcast', { event: 'folder_renamed' }, (payload) => {
+          if (payload && payload.payload) {
+            const { id, name } = payload.payload;
+            const fold = this.folders.find(x => x.id === id);
+            if (fold) {
+              fold.name = name;
+              this.saveLocal();
+              this.notify();
+            }
+          }
+        })
+        .on('broadcast', { event: 'folder_deleted' }, (payload) => {
+          if (payload && payload.payload) {
+            const { id } = payload.payload;
+            this.folders = this.folders.filter(x => x.id !== id);
+            this.saveLocal();
+            this.notify();
+          }
         })
         .subscribe();
     } catch (e) {
@@ -99,15 +178,27 @@ class StorageService {
     if (!window.supabaseClient) return;
     try {
       const { data, error } = await window.supabaseClient.from('folders').select('*');
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const cloudFolders = data.map(f => this.normalizeFolderFromDb(f));
+        let changed = false;
+
         cloudFolders.forEach(f => {
-          if (!this.folders.some(x => x.id === f.id)) {
+          const idx = this.folders.findIndex(x => x.id === f.id);
+          if (idx >= 0) {
+            if (this.folders[idx].name !== f.name) {
+              this.folders[idx] = f;
+              changed = true;
+            }
+          } else {
             this.folders.push(f);
+            changed = true;
           }
         });
-        this.saveLocal();
-        this.notify();
+
+        if (changed) {
+          this.saveLocal();
+          this.notify();
+        }
       }
     } catch (e) {}
   }
@@ -116,11 +207,15 @@ class StorageService {
     if (!window.supabaseClient) return;
     try {
       const { data, error } = await window.supabaseClient.from('files').select('*');
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const cloudFiles = data.map(f => this.normalizeFileFromDb(f));
-        this.files = cloudFiles;
-        this.saveLocal();
-        this.notify();
+        const cloudIds = cloudFiles.map(f => f.id).join(',');
+        const localIds = this.files.map(f => f.id).join(',');
+        if (cloudIds !== localIds || cloudFiles.length !== this.files.length) {
+          this.files = cloudFiles;
+          this.saveLocal();
+          this.notify();
+        }
       }
     } catch (e) {}
   }
@@ -209,7 +304,7 @@ class StorageService {
       if (!user) return [];
       return this.folders.filter(f => f.category === 'personal' && (f.uploaderUid === uUid || (f.uploaderEmail || '').toLowerCase().trim() === uEmail));
     }
-    return this.folders.filter(f => f.category === category || !f.category);
+    return this.folders.filter(f => f.category === 'department' || !f.category);
   }
 
   getStorageStats() {
@@ -265,7 +360,7 @@ class StorageService {
       uploaderEmail: uploaderEmail,
       uploaderUid: uploaderUid,
       uploadDate: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
-      url: URL.createObjectURL(fileObj)
+      url: "#"
     };
 
     this.files.unshift(newFile);
@@ -274,7 +369,7 @@ class StorageService {
 
     if (window.supabaseClient) {
       try {
-        await window.supabaseClient.from('files').insert({
+        await window.supabaseClient.from('files').upsert({
           id: newFile.id,
           name: newFile.name,
           type: newFile.type,
@@ -289,7 +384,7 @@ class StorageService {
           uploader_uid: uploaderUid,
           upload_date: newFile.uploadDate,
           url: '#'
-        });
+        }, { onConflict: 'id' });
       } catch (e) {
         console.warn("Supabase file upload insert notice:", e);
       }
@@ -383,7 +478,7 @@ class StorageService {
 
     if (window.supabaseClient) {
       try {
-        await window.supabaseClient.from('folders').insert({
+        await window.supabaseClient.from('folders').upsert({
           id: newFolder.id,
           name: newFolder.name,
           category: newFolder.category,
@@ -392,7 +487,15 @@ class StorageService {
           parent_folder_id: newFolder.parentFolderId,
           file_count: 0,
           created_at: newFolder.createdAt
-        });
+        }, { onConflict: 'id' });
+
+        if (this.realtimeStorageChannel) {
+          this.realtimeStorageChannel.send({
+            type: 'broadcast',
+            event: 'folder_created',
+            payload: newFolder
+          });
+        }
       } catch (e) {}
     }
 
@@ -413,6 +516,13 @@ class StorageService {
     if (window.supabaseClient) {
       try {
         await window.supabaseClient.from('folders').update({ name: cleanName }).eq('id', folderId);
+        if (this.realtimeStorageChannel) {
+          this.realtimeStorageChannel.send({
+            type: 'broadcast',
+            event: 'folder_renamed',
+            payload: { id: folderId, name: cleanName }
+          });
+        }
       } catch (e) {}
     }
 
@@ -426,6 +536,13 @@ class StorageService {
     if (window.supabaseClient) {
       try {
         await window.supabaseClient.from('folders').delete().eq('id', folderId);
+        if (this.realtimeStorageChannel) {
+          this.realtimeStorageChannel.send({
+            type: 'broadcast',
+            event: 'folder_deleted',
+            payload: { id: folderId }
+          });
+        }
       } catch (e) {}
     }
 
