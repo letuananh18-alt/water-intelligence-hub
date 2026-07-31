@@ -138,7 +138,7 @@ class AuthManager {
 
             const existingIdx = this.usersList.findIndex(x => x.email.toLowerCase().trim() === clean);
             const isMaster = clean === MASTER_ADMIN_EMAIL;
-            const status = isMaster ? 'approved' : (this.approvedEmails.has(clean) ? 'approved' : (this.blockedEmails.has(clean) ? 'blocked' : (uData.status || 'pending')));
+            const status = isMaster ? 'approved' : (this.blockedEmails.has(clean) ? 'blocked' : 'approved');
 
             const formattedUser = {
               uid: uData.uid || 'user_' + Date.now(),
@@ -209,25 +209,8 @@ class AuthManager {
         const isMaster = cleanEmail === MASTER_ADMIN_EMAIL;
         const name = u.user_metadata?.full_name || u.user_metadata?.name || cleanEmail.split('@')[0];
 
-        let userStatus = 'pending';
-        if (isMaster || this.approvedEmails.has(cleanEmail)) {
-          userStatus = 'approved';
-        } else if (this.blockedEmails.has(cleanEmail)) {
-          userStatus = 'blocked';
-        } else {
-          try {
-            const { data: dbUser } = await window.supabaseClient.from('users').select('status').eq('email', cleanEmail).maybeSingle();
-            if (dbUser && dbUser.status) {
-              userStatus = dbUser.status;
-              if (userStatus === 'approved') this.approvedEmails.add(cleanEmail);
-            }
-          } catch (e) {}
-        }
-
-        if (isMaster) {
-          userStatus = 'approved';
-          this.approvedEmails.add(cleanEmail);
-        }
+        let userStatus = this.blockedEmails.has(cleanEmail) ? 'blocked' : 'approved';
+        this.approvedEmails.add(cleanEmail);
 
         const userObj = {
           uid: u.id,
@@ -242,9 +225,8 @@ class AuthManager {
 
         this.broadcastUserLogin(userObj);
 
-        if (userStatus === 'pending' && !isMaster) {
-          await this.syncUserToCloud(userObj);
-          alert(`⏳ ĐANG CHỜ PHÊ DUYỆT: Tài khoản Gmail (${cleanEmail}) của bạn đã được ghi nhận vào hệ thống và đang CHỜ PHÊ DUYỆT!\n\nVui lòng báo Admin (letuananh18@gmail.com) bấm [✅ Duyệt] ở mục "Người dùng & Giám sát".`);
+        if (userStatus === 'blocked' && !isMaster) {
+          alert(`⛔ TỪ CHỐI TRUY CẬP: Tài khoản Gmail (${cleanEmail}) đã bị Khóa quyền truy cập vào hệ thống!`);
           return;
         }
 
@@ -406,12 +388,8 @@ class AuthManager {
     this.deletedEmails.delete(cleanEmail);
     this.saveLocalCaches();
 
-    let userStatus = 'pending';
-    if (isMaster || this.approvedEmails.has(cleanEmail)) {
-      userStatus = 'approved';
-    } else if (this.blockedEmails.has(cleanEmail)) {
-      userStatus = 'blocked';
-    }
+    let userStatus = this.blockedEmails.has(cleanEmail) ? 'blocked' : 'approved';
+    this.approvedEmails.add(cleanEmail);
 
     const userObj = {
       uid: "user_" + Date.now(),
@@ -428,12 +406,6 @@ class AuthManager {
 
     if (userStatus === 'blocked' && !isMaster) {
       alert("⛔ TỪ CHỐI TRUY CẬP: Tài khoản của bạn đã bị Khóa quyền truy cập vào hệ thống!");
-      return null;
-    }
-
-    if (userStatus === 'pending' && !isMaster) {
-      await this.syncUserToCloud(userObj);
-      alert(`⏳ ĐANG CHỜ PHÊ DUYỆT: Tài khoản (${cleanEmail}) của bạn đã được ghi nhận trên hệ thống và đang CHỜ PHÊ DUYỆT!\n\nVui lòng báo Admin (letuananh18@gmail.com) bấm [✅ Duyệt] ở mục "Người dùng & Giám sát".`);
       return null;
     }
 
