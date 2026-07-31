@@ -1,6 +1,6 @@
 // ==========================================================================
 // UNSTOPPABLE HYBRID REALTIME PRESENCE & CHAT NOTIFICATION ENGINE
-// Real-time Chat Sync, 8s Quad-Channel Presence Heartbeat & Dual-Cloud Custom Channels Sync
+// Real-time Chat Sync, 8s Quad-Channel Presence Heartbeat & Admin Channels Fix
 // ==========================================================================
 
 const INITIAL_CHANNELS = [
@@ -97,7 +97,8 @@ class ChatService {
               name: cData.name,
               type: cData.type || 'custom_channel',
               desc: cData.desc,
-              members: cData.members || ['all']
+              members: cData.members || ['all'],
+              creatorEmail: cData.creator_email || cData.creatorEmail
             });
             added = true;
           }
@@ -227,7 +228,7 @@ class ChatService {
       const cleanEmail = currentUser && currentUser.email ? currentUser.email.toLowerCase().trim() : 'guest_user';
 
       // Broadcast Channel for Instant Message Syncing & Realtime Presence Pings & Channel Management
-      this.realtimeChannel = window.supabaseClient.channel('thuduc_realtime_chat_v10', {
+      this.realtimeChannel = window.supabaseClient.channel('thuduc_realtime_chat_v11', {
         config: { broadcast: { self: true } }
       });
 
@@ -356,7 +357,7 @@ class ChatService {
         .subscribe();
 
       // Presence Channel for Tracking Real Online Accounts
-      this.presenceChannel = window.supabaseClient.channel('thuduc_presence_v10', {
+      this.presenceChannel = window.supabaseClient.channel('thuduc_presence_v11', {
         config: { presence: { key: cleanEmail } }
       });
 
@@ -506,13 +507,23 @@ class ChatService {
   }
 
   async createCustomChannel(name, desc, memberEmails = []) {
+    const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
+    const creatorEmail = currentUser ? (currentUser.email || '').toLowerCase().trim() : '';
+
+    // ALWAYS include creator in member list so creator never loses access to their created channel!
+    const allMembers = [...memberEmails];
+    if (creatorEmail && !allMembers.includes(creatorEmail)) {
+      allMembers.push(creatorEmail);
+    }
+
     const channelId = "chan_custom_" + Date.now();
     const newChan = {
       id: channelId,
       name: `👥 # ${name.trim()}`,
       type: "custom_channel",
       desc: desc.trim() || `Kênh nhóm chuyên đề: ${name.trim()}`,
-      members: memberEmails.length > 0 ? memberEmails : ["all"]
+      members: allMembers,
+      creatorEmail: creatorEmail
     };
 
     const initMsg = {
@@ -605,11 +616,21 @@ class ChatService {
   getChannels() {
     const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
     const currentEmail = currentUser ? (currentUser.email || '').toLowerCase().trim() : '';
+    const isAdmin = window.authManager && window.authManager.isAdmin();
 
-    // Return all channels for current user! Show default system channels + custom channels if open or if user is included
+    // Filter channels visible to current user
     return this.channels.filter(c => {
+      // 1. Default system channels: Always show
       if (c.id === 'chan_general' || c.id === 'chan_contracts' || c.id === 'chan_complaints' || c.id === 'chan_rates') return true;
+
+      // 2. Admins ALWAYS see all custom channels!
+      if (isAdmin) return true;
+
+      // 3. Open channels (members includes 'all' or empty): Show
       if (!c.members || c.members.length === 0 || c.members.includes('all')) return true;
+
+      // 4. Creator of channel or included member: Show
+      if (c.creatorEmail && c.creatorEmail.toLowerCase().trim() === currentEmail) return true;
       return c.members.some(m => (m || '').toLowerCase().trim() === currentEmail || (m || '').toLowerCase().trim().replace(/[@.]/g, '_') === currentEmail.replace(/[@.]/g, '_'));
     });
   }
