@@ -696,9 +696,6 @@ class AppController {
   bindFileUploadEvents() {
     const hiddenInput = document.getElementById('hiddenFileInput');
     const selectBtn = document.getElementById('dropzoneSelectBtn');
-    const topUploadBtn = document.getElementById('topUploadBtn');
-    const dropzone = document.getElementById('dashboardDropzone');
-    const adminUploadDeptBtn = document.getElementById('adminUploadDeptBtn');
     const uploadMetaModal = document.getElementById('uploadMetaModal');
     const btnConfirmUploadMeta = document.getElementById('btnConfirmUploadMeta');
 
@@ -707,33 +704,40 @@ class AppController {
       return 'personal';
     };
 
-    selectBtn?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (hiddenInput) hiddenInput.setAttribute('data-target-cat', getActiveCategory());
-      hiddenInput?.click();
-    });
-
-    topUploadBtn?.addEventListener('click', () => {
-      if (hiddenInput) hiddenInput.setAttribute('data-target-cat', getActiveCategory());
-      hiddenInput?.click();
-    });
-
-    adminUploadDeptBtn?.addEventListener('click', () => {
-      if (!window.authManager || !window.authManager.isAdmin()) {
-        alert("⛔ Bị từ chối: Chỉ Ban Quản trị Admin (waterain8n@gmail.com & letuananh18@gmail.com) mới có quyền tải lên Kho nội bộ phòng ban!");
+    document.addEventListener('click', (e) => {
+      const adminBtn = e.target.closest('#adminUploadDeptBtn');
+      if (adminBtn) {
+        if (!window.authManager || !window.authManager.isAdmin()) {
+          alert("⛔ Bị từ chối: Chỉ Ban Quản trị Admin (waterain8n@gmail.com & letuananh18@gmail.com) mới có quyền tải lên Kho nội bộ phòng ban!");
+          return;
+        }
+        if (hiddenInput) {
+          hiddenInput.value = '';
+          hiddenInput.setAttribute('data-target-cat', 'department');
+          hiddenInput.click();
+        }
         return;
       }
-      const deptFolders = window.storageService ? window.storageService.getFolders('department') : [];
-      if (!this.currentDeptFolderId && deptFolders.length > 0) {
-        this.currentDeptFolderId = deptFolders[0].id;
-      }
-      if (hiddenInput) hiddenInput.setAttribute('data-target-cat', 'department');
-      hiddenInput?.click();
-    });
 
-    dropzone?.addEventListener('click', () => {
-      if (hiddenInput) hiddenInput.setAttribute('data-target-cat', getActiveCategory());
-      hiddenInput?.click();
+      const topBtn = e.target.closest('#topUploadBtn');
+      if (topBtn) {
+        if (hiddenInput) {
+          hiddenInput.value = '';
+          hiddenInput.setAttribute('data-target-cat', getActiveCategory());
+          hiddenInput.click();
+        }
+        return;
+      }
+
+      const dropBtn = e.target.closest('#dropzoneSelectBtn') || e.target.closest('#dashboardDropzone');
+      if (dropBtn) {
+        if (hiddenInput) {
+          hiddenInput.value = '';
+          hiddenInput.setAttribute('data-target-cat', getActiveCategory());
+          hiddenInput.click();
+        }
+        return;
+      }
     });
 
     hiddenInput?.addEventListener('change', async (e) => {
