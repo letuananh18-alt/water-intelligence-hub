@@ -32,3 +32,12 @@ window.SUPABASE_URL = SUPABASE_URL;
 window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
 window.supabaseClient = supabaseClient;
 window.isSupabaseLive = isSupabaseLive;
+
+window.handleSupabaseError = function(error, context = '') {
+  if (!error) return;
+  if (error.code === '42501' || (error.message && error.message.toLowerCase().includes('row-level security'))) {
+    console.warn(`ℹ️ Supabase RLS Notice (${context}): Row Level Security is active. Run DISABLE RLS SQL script to unlock.`);
+  } else {
+    console.warn(`⚠️ Supabase Notice (${context}):`, error.message || error);
+  }
+};

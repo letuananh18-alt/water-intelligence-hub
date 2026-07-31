@@ -197,9 +197,12 @@ class StorageService {
     if (!window.supabaseClient) return;
     try {
       const { data, error } = await window.supabaseClient.from('folders').select('*');
-      if (!error && data && data.length > 0) {
+      if (error) {
+        window.handleSupabaseError?.(error, 'syncFolders');
+        return;
+      }
+      if (data && data.length > 0) {
         const cloudFolders = data.map(f => this.normalizeFolderFromDb(f));
-        // Merge cloud folders with local initial folders seamlessly
         cloudFolders.forEach(cf => {
           const idx = this.folders.findIndex(x => x.id === cf.id);
           if (idx >= 0) {
@@ -218,7 +221,11 @@ class StorageService {
     if (!window.supabaseClient) return;
     try {
       const { data, error } = await window.supabaseClient.from('files').select('*');
-      if (!error && data && data.length > 0) {
+      if (error) {
+        window.handleSupabaseError?.(error, 'syncFiles');
+        return;
+      }
+      if (data && data.length > 0) {
         const cloudFiles = data.map(f => this.normalizeFileFromDb(f));
         cloudFiles.forEach(cf => {
           const idx = this.files.findIndex(x => x.id === cf.id);
