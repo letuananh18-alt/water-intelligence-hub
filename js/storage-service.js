@@ -383,7 +383,7 @@ class StorageService {
 
     if (window.supabaseClient) {
       try {
-        await window.supabaseClient.from('files').upsert({
+        const fullPayload = {
           id: newFile.id,
           name: newFile.name,
           type: newFile.type,
@@ -398,7 +398,20 @@ class StorageService {
           uploader_uid: uploaderUid,
           upload_date: newFile.uploadDate,
           url: '#'
-        }, { onConflict: 'id' });
+        };
+
+        const { error: upsertErr } = await window.supabaseClient.from('files').upsert(fullPayload, { onConflict: 'id' });
+        if (upsertErr) {
+          console.warn("⚠️ Supabase full files upsert notice, trying minimal payload:", upsertErr.message);
+          await window.supabaseClient.from('files').upsert({
+            id: newFile.id,
+            name: newFile.name,
+            type: newFile.type,
+            category: newFile.category,
+            size: newFile.size,
+            url: '#'
+          }, { onConflict: 'id' });
+        }
 
         if (this.realtimeStorageChannel) {
           this.realtimeStorageChannel.send({
@@ -520,7 +533,7 @@ class StorageService {
 
     if (window.supabaseClient) {
       try {
-        await window.supabaseClient.from('folders').upsert({
+        const fullPayload = {
           id: newFolder.id,
           name: newFolder.name,
           category: newFolder.category,
@@ -529,7 +542,17 @@ class StorageService {
           parent_folder_id: newFolder.parentFolderId,
           file_count: 0,
           created_at: newFolder.createdAt
-        }, { onConflict: 'id' });
+        };
+
+        const { error: foldErr } = await window.supabaseClient.from('folders').upsert(fullPayload, { onConflict: 'id' });
+        if (foldErr) {
+          console.warn("⚠️ Supabase full folder upsert notice, trying minimal payload:", foldErr.message);
+          await window.supabaseClient.from('folders').upsert({
+            id: newFolder.id,
+            name: newFolder.name,
+            category: newFolder.category
+          }, { onConflict: 'id' });
+        }
 
         if (this.realtimeStorageChannel) {
           this.realtimeStorageChannel.send({

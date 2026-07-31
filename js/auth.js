@@ -322,7 +322,7 @@ class AuthManager {
     if (!window.supabaseClient || !userObj) return;
 
     try {
-      await window.supabaseClient.from('users').upsert({
+      const fullPayload = {
         uid: userObj.uid,
         name: userObj.name,
         email: userObj.email.toLowerCase().trim(),
@@ -331,7 +331,18 @@ class AuthManager {
         department: userObj.department,
         last_login: userObj.lastLogin,
         avatar: userObj.avatar
-      }, { onConflict: 'email' });
+      };
+
+      const { error: userErr } = await window.supabaseClient.from('users').upsert(fullPayload, { onConflict: 'email' });
+      if (userErr) {
+        console.warn("⚠️ Supabase full user upsert notice, trying minimal payload:", userErr.message);
+        await window.supabaseClient.from('users').upsert({
+          uid: userObj.uid,
+          name: userObj.name,
+          email: userObj.email.toLowerCase().trim(),
+          status: userObj.status
+        }, { onConflict: 'email' });
+      }
     } catch (e) {}
   }
 
