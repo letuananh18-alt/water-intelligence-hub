@@ -30,6 +30,7 @@ class AppController {
     this.pendingUploadCategory = 'personal';
     this.currentPreviewFileId = null;
     this.searchQuery = '';
+    window.appController = this;
     this.init();
   }
 
@@ -1301,17 +1302,23 @@ class AppController {
     const dmContainer = document.getElementById('teamChatDirectUsersList');
     if (!window.chatService) return;
 
-    // Render channels (system + custom)
+    // 1. Render channels (system + custom) with Unread Badges
     const channels = window.chatService.getChannels();
     if (chansContainer) {
-      chansContainer.innerHTML = channels.map(c => `
-        <div class="thread-item ${window.chatService.activeTargetId === c.id ? 'active' : ''}" data-target="${escapeHTML(c.id)}">
-          ${escapeHTML(c.name)}
-        </div>
-      `).join('');
+      chansContainer.innerHTML = channels.map(c => {
+        const unread = window.chatService.getUnreadCount(c.id);
+        const unreadBadgeHtml = unread > 0 ? `<span class="unread-pill">${unread}</span>` : '';
+
+        return `
+          <div class="thread-item ${window.chatService.activeTargetId === c.id ? 'active' : ''}" data-target="${escapeHTML(c.id)}">
+            ${unreadBadgeHtml}
+            <span>${escapeHTML(c.name)}</span>
+          </div>
+        `;
+      }).join('');
     }
 
-    // Render direct 1:1 user accounts (ONLY ONLINE ACCOUNTS ARE SHOWN WITH GLOWING GREEN STATUS)
+    // 2. Render direct 1:1 user accounts with Unread Badges & Glowing Green Status
     const realUsers = window.chatService.getRealDirectUsers();
     if (dmContainer) {
       if (realUsers.length === 0) {
@@ -1321,16 +1328,30 @@ class AppController {
           </div>
         `;
       } else {
-        dmContainer.innerHTML = realUsers.map(u => `
-          <div class="thread-item ${window.chatService.activeTargetId === u.id ? 'active' : ''}" data-target="${escapeHTML(u.id)}">
-            👤 ${escapeHTML(u.name)} 
-            <span style="font-size: 10px; color: #10b981; float: right; font-weight: 700; display: flex; align-items: center; gap: 5px;">
-              <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981; display: inline-block;"></span>
-              Trực tuyến
-            </span>
-          </div>
-        `).join('');
+        dmContainer.innerHTML = realUsers.map(u => {
+          const unread = window.chatService.getUnreadCount(u.id);
+          const unreadBadgeHtml = unread > 0 ? `<span class="unread-pill">${unread}</span>` : '';
+
+          return `
+            <div class="thread-item ${window.chatService.activeTargetId === u.id ? 'active' : ''}" data-target="${escapeHTML(u.id)}">
+              ${unreadBadgeHtml}
+              👤 ${escapeHTML(u.name)} 
+              <span style="font-size: 10px; color: #10b981; float: right; font-weight: 700; display: flex; align-items: center; gap: 5px;">
+                <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981; display: inline-block;"></span>
+                Trực tuyến
+              </span>
+            </div>
+          `;
+        }).join('');
       }
+    }
+
+    // 3. Update Nav Sidebar Unread Badge
+    const totalUnread = window.chatService.getTotalUnreadCount();
+    const navBadgeEl = document.querySelector('.nav-item[data-view="team-chat"] .nav-badge');
+    if (navBadgeEl) {
+      navBadgeEl.textContent = totalUnread.toString();
+      navBadgeEl.style.display = totalUnread > 0 ? 'inline-block' : 'none';
     }
 
     // Rebind click events for all targets
@@ -1627,6 +1648,112 @@ class AppController {
       link.click();
       document.body.removeChild(link);
     });
+  }
+
+  playNotificationChime() {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(523.25, ctx.currentTime);
+      gain1.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start();
+      osc1.stop(ctx.currentTime + 0.3);
+
+      setTimeout(() => {
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(659.25, ctx.currentTime);
+        gain2.gain.setValueAtTime(0.18, ctx.currentTime);
+        gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start();
+        osc2.stop(ctx.currentTime + 0.4);
+      }, 100);
+    } catch (e) {}
+  }
+
+  handleIncomingMessageNotif(message, targetId) {
+    // 1. Play Audio Chime Sound
+    this.playNotificationChime();
+
+    // 2. Request & trigger Native Browser Notification
+    if ('Notification' in window) {
+      if (Notification.permission === 'default') {
+        Notification.requestPermission();
+      } else if (Notification.permission === 'granted') {
+        try {
+          new Notification(`💬 Tin nhắn mới từ ${message.senderName}`, {
+            body: message.text || 'Đã gửi một tệp đính kèm',
+            icon: 'assets/logo.png'
+          });
+        } catch (e) {}
+      }
+    }
+
+    // 3. Create Floating Glass Toast Notification at top-right
+    const toast = document.createElement('div');
+    toast.className = 'chat-notif-toast';
+    toast.style.cssText = `
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 99999;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: white;
+      padding: 14px 20px;
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.15);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      max-width: 380px;
+    `;
+
+    toast.innerHTML = `
+      <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(2,132,199,0.3);">
+        💬
+      </div>
+      <div style="flex: 1; min-width: 0;">
+        <div style="font-size: 13px; font-weight: 800; color: #38bdf8; display: flex; justify-content: space-between; align-items: center;">
+          <span>${escapeHTML(message.senderName)}</span>
+          <span style="font-size: 10.5px; color: #94a3b8; font-weight: 500;">${message.timestamp || ''}</span>
+        </div>
+        <div style="font-size: 12.5px; color: #e2e8f0; margin-top: 2px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+          ${escapeHTML(message.text || 'Đã gửi một tệp đính kèm')}
+        </div>
+      </div>
+      <div style="font-size: 10px; font-weight: 800; background: #ef4444; color: white; padding: 3px 8px; border-radius: 10px; flex-shrink: 0; box-shadow: 0 0 8px rgba(239,68,68,0.5);">
+        MỚI
+      </div>
+    `;
+
+    toast.addEventListener('click', () => {
+      this.switchView('team-chat');
+      if (window.chatService) window.chatService.setActiveTarget(targetId);
+      toast.remove();
+    });
+
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      if (document.body.contains(toast)) {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.4s ease';
+        setTimeout(() => toast.remove(), 400);
+      }
+    }, 5000);
   }
 }
 

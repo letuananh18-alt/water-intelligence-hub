@@ -1,6 +1,6 @@
 // ==========================================================================
-// SUPABASE REALTIME TEAM CHAT & ONLINE PRESENCE MONITORING ENGINE
-// Cross-Device Real-time Chat Sync & Real Online Status Tracking via Supabase
+// SUPABASE REALTIME TEAM CHAT & UNREAD NOTIFICATION ENGINE
+// Real-time Chat Sync, Presence Tracking & Instant Unread Message Badges
 // ==========================================================================
 
 const INITIAL_CHANNELS = [
@@ -17,7 +17,7 @@ const INITIAL_MESSAGES = {
       senderName: "Hệ thống Water Hub",
       senderRole: "System",
       senderUid: "system",
-      text: "Chào mừng bạn đến với Kênh Trò chuyện Nội bộ P.KDDVKH. Đã kích hoạt Supabase Realtime Broadcast & Presence Tracking!",
+      text: "Chào mừng bạn đến với Kênh Trò chuyện Nội bộ P.KDDVKH. Đã kết nối Hệ thống Thông báo Realtime!",
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       attachment: null
     }
@@ -28,6 +28,7 @@ class ChatService {
   constructor() {
     this.channels = [...INITIAL_CHANNELS];
     this.messages = INITIAL_MESSAGES;
+    this.unreadCounts = {};
     this.activeTargetId = "chan_general";
     this.onlineUserEmails = new Set();
     this.listeners = [];
@@ -45,6 +46,13 @@ class ChatService {
       } catch (e) {
         this.messages = INITIAL_MESSAGES;
       }
+    }
+
+    const savedUnread = localStorage.getItem('thuduc_water_unread_counts');
+    if (savedUnread) {
+      try {
+        this.unreadCounts = JSON.parse(savedUnread);
+      } catch (e) {}
     }
 
     const savedCustomChans = localStorage.getItem('thuduc_water_custom_channels');
@@ -68,7 +76,7 @@ class ChatService {
 
     try {
       // Broadcast Channel for Instant Message Syncing between devices
-      this.realtimeChannel = window.supabaseClient.channel('thuduc_realtime_chat_v3', {
+      this.realtimeChannel = window.supabaseClient.channel('thuduc_realtime_chat_v4', {
         config: { broadcast: { self: true } }
       });
 
@@ -78,9 +86,20 @@ class ChatService {
             const { targetId, message } = payload.payload;
             if (targetId && message) {
               if (!this.messages[targetId]) this.messages[targetId] = [];
+              
               // Prevent duplicate messages
               if (!this.messages[targetId].some(m => m.id === message.id)) {
                 this.messages[targetId].push(message);
+
+                const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
+                const currentUid = currentUser ? currentUser.uid : '';
+
+                // Increment unread count if message came from another user AND target is not active
+                if (message.senderUid !== currentUid) {
+                  this.unreadCounts[targetId] = (this.unreadCounts[targetId] || 0) + 1;
+                  this.notifyNotification(message, targetId);
+                }
+
                 this.saveLocal();
                 this.notify();
               }
@@ -90,7 +109,7 @@ class ChatService {
         .subscribe();
 
       // Presence Channel for Tracking Real Online Accounts
-      this.presenceChannel = window.supabaseClient.channel('thuduc_presence_v3');
+      this.presenceChannel = window.supabaseClient.channel('thuduc_presence_v4');
 
       this.presenceChannel
         .on('presence', { event: 'sync' }, () => {
@@ -120,7 +139,6 @@ class ChatService {
     }
   }
 
-  // Re-track presence when user logs in or switches account
   updateUserPresence() {
     const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
     if (this.presenceChannel && currentUser && currentUser.email) {
@@ -139,28 +157,45 @@ class ChatService {
 
   saveLocal() {
     localStorage.setItem('thuduc_water_team_chats', JSON.stringify(this.messages));
+    localStorage.setItem('thuduc_water_unread_counts', JSON.stringify(this.unreadCounts));
     const customChans = this.channels.filter(c => c.id.startsWith('chan_custom_'));
     localStorage.setItem('thuduc_water_custom_channels', JSON.stringify(customChans));
   }
 
-  // CANONICAL SHARED 1:1 DIRECT CHAT ROOM ID BETWEEN 2 EMAILS
   getCanonicalDmId(email1, email2) {
     const sorted = [email1.toLowerCase().trim(), email2.toLowerCase().trim()].sort();
     return `dm_${sorted[0].replace(/[@.]/g, '_')}__${sorted[1].replace(/[@.]/g, '_')}`;
   }
 
-  // DYNAMICALLY FETCH REAL REGISTERED USERS (EXCLUDING CURRENT LOGGED IN USER)
+  getUnreadCount(targetId) {
+    return this.unreadCounts[targetId] || 0;
+  }
+
+  getTotalUnreadCount() {
+    let total = 0;
+    Object.keys(this.unreadCounts).forEach(k => {
+      total += (this.unreadCounts[k] || 0);
+    });
+    return total;
+  }
+
+  clearUnreadCount(targetId) {
+    if (this.unreadCounts[targetId]) {
+      this.unreadCounts[targetId] = 0;
+      this.saveLocal();
+      this.notify();
+    }
+  }
+
   getRealDirectUsers() {
     const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
     const currentEmail = currentUser ? (currentUser.email || '').toLowerCase().trim() : '';
 
-    // Default registered system accounts
     const knownAccounts = [
       { name: "Lê Tuấn Anh", email: "letuananh18@gmail.com", role: "Admin / Quản trị hệ thống" },
       { name: "Tuấn Anh (Water Admin)", email: "waterain8n@gmail.com", role: "Admin Ban Quản Trị" }
     ];
 
-    // Combine with dynamically registered users from authManager
     const registeredUsers = window.authManager ? window.authManager.getUsersList() : [];
     registeredUsers.forEach(u => {
       if (u && u.email && !knownAccounts.some(k => k.email.toLowerCase() === u.email.toLowerCase())) {
@@ -172,10 +207,7 @@ class ChatService {
       }
     });
 
-    // STRICTLY FILTER OUT THE CURRENT LOGGED-IN USER (NEVER DISPLAY ONESELF IN DM LIST)
     const otherUsers = knownAccounts.filter(acc => acc.email.toLowerCase() !== currentEmail);
-
-    // STRICTLY FILTER OUT OFFLINE ACCOUNTS (ONLY DISPLAY CURRENTLY ONLINE ACCOUNTS)
     const onlineUsersOnly = otherUsers.filter(acc => this.onlineUserEmails.has(acc.email.toLowerCase().trim()));
 
     return onlineUsersOnly.map(u => {
@@ -195,7 +227,6 @@ class ChatService {
     });
   }
 
-  // CREATE CUSTOM GROUP CHANNEL WITH SELECTED MEMBERS
   createCustomChannel(name, desc, memberEmails = []) {
     const channelId = "chan_custom_" + Date.now();
     const newChan = {
@@ -245,6 +276,7 @@ class ChatService {
 
   setActiveTarget(targetId) {
     this.activeTargetId = targetId;
+    this.clearUnreadCount(targetId);
     this.notify();
   }
 
@@ -275,7 +307,6 @@ class ChatService {
       this.saveLocal();
     }
 
-    // Broadcast message over Supabase Realtime Channel to all connected logged-in users
     if (this.realtimeChannel) {
       try {
         this.realtimeChannel.send({
@@ -294,6 +325,7 @@ class ChatService {
 
   clearChannelMessages() {
     this.messages[this.activeTargetId] = [];
+    this.unreadCounts[this.activeTargetId] = 0;
     this.saveLocal();
     this.notify();
   }
@@ -304,6 +336,12 @@ class ChatService {
 
   notify() {
     this.listeners.forEach(cb => cb(this.getActiveMessages()));
+  }
+
+  notifyNotification(message, targetId) {
+    if (window.appController && typeof window.appController.handleIncomingMessageNotif === 'function') {
+      window.appController.handleIncomingMessageNotif(message, targetId);
+    }
   }
 }
 
