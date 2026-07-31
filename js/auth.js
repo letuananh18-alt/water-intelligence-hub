@@ -310,41 +310,34 @@ class AuthManager {
       name: userObj.name || cleanEmail.split('@')[0],
       email: cleanEmail,
       role: userObj.role || 'Cán bộ P.KDDVKH',
-      status: userObj.status || 'approved',
       department: userObj.department || 'Phòng Kinh doanh & Dịch vụ Khách hàng',
       last_login: userObj.lastLogin || new Date().toLocaleString('vi-VN'),
       avatar: userObj.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanEmail.split('@')[0])}&background=0284c7&color=fff&bold=true`
     };
 
     try {
-      // Strategy 1: Upsert with email constraint
       const { error: err1 } = await window.supabaseClient.from('users').upsert(fullPayload, { onConflict: 'email' });
       
       if (err1) {
         console.warn("⚠️ User upsert email strategy notice:", err1.message);
-
-        // Strategy 2: Update existing record by email
         const { data: updated, error: err2 } = await window.supabaseClient
           .from('users')
           .update({
             name: fullPayload.name,
             role: fullPayload.role,
-            status: fullPayload.status,
+            department: fullPayload.department,
             last_login: fullPayload.last_login
           })
           .eq('email', cleanEmail)
           .select();
 
-        // Strategy 3: Direct insert if no record updated
         if (err2 || !updated || updated.length === 0) {
           const { error: err3 } = await window.supabaseClient.from('users').insert([fullPayload]);
           if (err3) {
             console.warn("⚠️ User direct insert notice, trying minimal payload:", err3.message);
-            // Strategy 4: Minimal core fields insert
             await window.supabaseClient.from('users').insert([{
               name: fullPayload.name,
-              email: cleanEmail,
-              status: fullPayload.status
+              email: cleanEmail
             }]);
           }
         }
