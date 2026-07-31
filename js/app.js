@@ -142,6 +142,18 @@ class AppController {
       }
     });
 
+    document.getElementById('btnQuickLoginAdmin')?.addEventListener('click', async () => {
+      if (window.authManager) {
+        await window.authManager.login('letuananh18@gmail.com', '123456');
+      }
+    });
+
+    document.getElementById('btnQuickLoginStaff')?.addEventListener('click', async () => {
+      if (window.authManager) {
+        await window.authManager.login('waterain8n@gmail.com', '123456');
+      }
+    });
+
     logoutBtn?.addEventListener('click', async () => {
       if (window.authManager) {
         await window.authManager.logout();

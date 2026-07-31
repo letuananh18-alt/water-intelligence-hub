@@ -49,13 +49,14 @@ class AuthManager {
         const parsed = JSON.parse(savedSession);
         if (parsed && parsed.email) {
           this.currentUser = parsed;
+        } else {
+          this.currentUser = null;
         }
-      } catch (e) {}
-    }
-
-    if (!this.currentUser) {
-      this.currentUser = DEMO_USERS.ADMIN_MASTER;
-      this.saveUserSession(this.currentUser);
+      } catch (e) {
+        this.currentUser = null;
+      }
+    } else {
+      this.currentUser = null;
     }
 
     const savedKnownUsers = localStorage.getItem('thuduc_all_known_users');
