@@ -978,7 +978,7 @@ class AppController {
           } else {
             let successCount = 0;
             for (const f of Array.from(files)) {
-              const res = await window.storageService.addFile(f, 'personal', null);
+              const res = await window.storageService.uploadFile(f, 'personal', this.currentPersonalFolderId);
               if (res) successCount++;
             }
             if (successCount > 0) {
@@ -1006,12 +1006,10 @@ class AppController {
         const targetFolderId = this.currentDeptFolderId || (deptFolders[0] ? deptFolders[0].id : null);
         const filesToUpload = [...this.pendingUploadFiles];
 
-        // Ensure currentDeptFolderId is set so table is ALWAYS displayed
         if (!this.currentDeptFolderId && targetFolderId) {
           this.currentDeptFolderId = targetFolderId;
         }
 
-        // Close modal immediately so UI is 100% responsive and never looks stuck
         this.closeModal('uploadMetaModal');
         this.pendingUploadFiles = null;
 
@@ -1022,13 +1020,13 @@ class AppController {
 
         let successCount = 0;
         for (const f of filesToUpload) {
-          const res = await window.storageService.addFile(f, 'department', targetFolderId, docType, statusTag);
+          const res = await window.storageService.uploadFile(f, 'department', targetFolderId, docType, statusTag);
           if (res) successCount++;
         }
 
         this.renderCurrentView();
         if (successCount > 0) {
-          alert(`✅ Đã tải lên ${successCount} tệp PDF/Văn bản thành công vào Kho KDDVKH!`);
+          alert(`✅ Đã tải lên ${successCount} tệp PDF/Văn bản thành công vào Thư mục!`);
         }
       }
     });

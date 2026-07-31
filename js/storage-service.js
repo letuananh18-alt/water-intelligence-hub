@@ -394,6 +394,10 @@ class StorageService {
     return newFile;
   }
 
+  async addFile(fileObj, category = 'personal', folderId = null, docType = 'Văn bản chung', statusTag = '🟢 Đã ban hành') {
+    return this.uploadFile(fileObj, category, folderId, docType, statusTag);
+  }
+
   getRawFile(fileId) {
     return this.rawFileObjects[fileId] || null;
   }
