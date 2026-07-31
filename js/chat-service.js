@@ -175,9 +175,11 @@ class ChatService {
     // STRICTLY FILTER OUT THE CURRENT LOGGED-IN USER (NEVER DISPLAY ONESELF IN DM LIST)
     const otherUsers = knownAccounts.filter(acc => acc.email.toLowerCase() !== currentEmail);
 
-    return otherUsers.map(u => {
+    // STRICTLY FILTER OUT OFFLINE ACCOUNTS (ONLY DISPLAY CURRENTLY ONLINE ACCOUNTS)
+    const onlineUsersOnly = otherUsers.filter(acc => this.onlineUserEmails.has(acc.email.toLowerCase().trim()));
+
+    return onlineUsersOnly.map(u => {
       const emailClean = u.email.toLowerCase().trim();
-      const isOnline = this.onlineUserEmails.has(emailClean);
       const dmRoomId = currentEmail ? this.getCanonicalDmId(currentEmail, emailClean) : `dm_guest_${emailClean.replace(/[@.]/g, '_')}`;
 
       return {
@@ -186,8 +188,8 @@ class ChatService {
         name: u.name,
         email: emailClean,
         role: u.role,
-        status: isOnline ? "🟢 Trực tuyến" : "⚪ Ngoại tuyến",
-        isOnline: isOnline,
+        status: "🟢 Trực tuyến",
+        isOnline: true,
         desc: `Trò chuyện riêng 1:1 với ${u.name} (${emailClean})`
       };
     });

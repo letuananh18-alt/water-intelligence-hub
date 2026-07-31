@@ -1311,20 +1311,26 @@ class AppController {
       `).join('');
     }
 
-    // Render direct 1:1 user accounts with Real-time Online Presence Badges
+    // Render direct 1:1 user accounts (ONLY ONLINE ACCOUNTS ARE SHOWN WITH GLOWING GREEN STATUS)
     const realUsers = window.chatService.getRealDirectUsers();
     if (dmContainer) {
-      dmContainer.innerHTML = realUsers.map(u => {
-        const isOnline = u.isOnline;
-        const statusColor = isOnline ? '#10b981' : '#94a3b8';
-        const statusLabel = isOnline ? '● Trực tuyến' : '○ Ngoại tuyến';
-
-        return `
-          <div class="thread-item ${window.chatService.activeTargetId === u.id ? 'active' : ''}" data-target="${escapeHTML(u.id)}">
-            👤 ${escapeHTML(u.name)} <span style="font-size: 10px; color: ${statusColor}; float: right; font-weight: 700;">${statusLabel}</span>
+      if (realUsers.length === 0) {
+        dmContainer.innerHTML = `
+          <div style="font-size: 11.5px; color: var(--slate-400); padding: 8px 10px; text-align: center; font-style: italic;">
+            ⚪ Chưa có cán bộ nào khác đang trực tuyến
           </div>
         `;
-      }).join('');
+      } else {
+        dmContainer.innerHTML = realUsers.map(u => `
+          <div class="thread-item ${window.chatService.activeTargetId === u.id ? 'active' : ''}" data-target="${escapeHTML(u.id)}">
+            👤 ${escapeHTML(u.name)} 
+            <span style="font-size: 10px; color: #10b981; float: right; font-weight: 700; display: flex; align-items: center; gap: 5px;">
+              <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981; display: inline-block;"></span>
+              Trực tuyến
+            </span>
+          </div>
+        `).join('');
+      }
     }
 
     // Rebind click events for all targets
