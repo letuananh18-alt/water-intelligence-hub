@@ -1207,6 +1207,10 @@ class AppController {
     const membersListEl = document.getElementById('newChannelMembersList');
 
     btnCreateChan?.addEventListener('click', () => {
+      if (!window.authManager || !window.authManager.isAdmin()) {
+        alert("⛔ Bị từ chối: Chỉ Ban Quản trị Admin (waterain8n@gmail.com & letuananh18@gmail.com) mới có quyền khởi tạo Kênh nhóm làm việc mới!");
+        return;
+      }
       if (!createModal) return;
       
       // Populate member checkboxes
@@ -1357,7 +1361,14 @@ class AppController {
   renderTeamChatSidebar() {
     const chansContainer = document.getElementById('teamChatChannelsList');
     const dmContainer = document.getElementById('teamChatDirectUsersList');
+    const btnCreateChan = document.getElementById('btnCreateNewChannel');
     if (!window.chatService) return;
+
+    // Show + Tạo Kênh button ONLY to Admin users
+    const isAdmin = window.authManager && window.authManager.isAdmin();
+    if (btnCreateChan) {
+      btnCreateChan.style.display = isAdmin ? 'inline-block' : 'none';
+    }
 
     // 1. Render channels (system + custom) with Unread Badges
     const channels = window.chatService.getChannels();

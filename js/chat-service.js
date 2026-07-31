@@ -1,6 +1,6 @@
 // ==========================================================================
 // UNSTOPPABLE HYBRID REALTIME PRESENCE & CHAT NOTIFICATION ENGINE
-// Real-time Chat Sync, 8s Quad-Channel Presence Heartbeat & Glowing Online LEDs
+// Real-time Chat Sync, 8s Quad-Channel Presence Heartbeat & Realtime Custom Channels
 // ==========================================================================
 
 const INITIAL_CHANNELS = [
@@ -72,11 +72,39 @@ class ChatService {
     // 2. Connect Supabase Realtime Chat Broadcast & Quad-Presence Tracking
     this.setupSupabaseRealtime();
 
-    // 3. Periodic Presence Heartbeat Ping (every 8s) for 100% bulletproof glowing online LEDs
+    // 3. Sync Cloud Custom Channels
+    this.syncCustomChannelsWithCloud();
+
+    // 4. Periodic Presence Heartbeat Ping (every 8s) for 100% bulletproof glowing online LEDs
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     this.heartbeatTimer = setInterval(() => {
       this.updateUserPresence();
     }, 8000);
+  }
+
+  async syncCustomChannelsWithCloud() {
+    if (window.supabaseClient) {
+      try {
+        const { data, error } = await window.supabaseClient.from('custom_channels').select('*');
+        if (!error && data && data.length > 0) {
+          data.forEach(cData => {
+            if (cData && cData.id && !this.channels.some(x => x.id === cData.id)) {
+              this.channels.push({
+                id: cData.id,
+                name: cData.name,
+                type: cData.type || 'custom_channel',
+                desc: cData.desc,
+                members: cData.members || ['all']
+              });
+            }
+          });
+          this.saveLocal();
+          this.notify();
+        }
+      } catch (e) {
+        console.warn("Custom channels sync notice:", e);
+      }
+    }
   }
 
   // Check if incoming room targetId is targeted for the current logged-in user
@@ -133,8 +161,8 @@ class ChatService {
       const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
       const cleanEmail = currentUser && currentUser.email ? currentUser.email.toLowerCase().trim() : 'guest_user';
 
-      // Broadcast Channel for Instant Message Syncing & Realtime Presence Pings
-      this.realtimeChannel = window.supabaseClient.channel('thuduc_realtime_chat_v7', {
+      // Broadcast Channel for Instant Message Syncing & Realtime Presence Pings & Channel Creation
+      this.realtimeChannel = window.supabaseClient.channel('thuduc_realtime_chat_v8', {
         config: { broadcast: { self: true } }
       });
 
@@ -186,10 +214,28 @@ class ChatService {
             this.notify();
           }
         })
+        .on('broadcast', { event: 'new_channel' }, (payload) => {
+          if (payload && payload.payload && payload.payload.channel) {
+            const newChan = payload.payload.channel;
+            const initMsg = payload.payload.initialMessage;
+
+            if (!this.channels.some(c => c.id === newChan.id)) {
+              this.channels.push(newChan);
+              if (initMsg) {
+                this.messages[newChan.id] = [initMsg];
+              }
+              this.saveLocal();
+              this.notify();
+              if (window.appController) {
+                window.appController.renderTeamChatSidebar();
+              }
+            }
+          }
+        })
         .subscribe();
 
       // Presence Channel for Tracking Real Online Accounts
-      this.presenceChannel = window.supabaseClient.channel('thuduc_presence_v7', {
+      this.presenceChannel = window.supabaseClient.channel('thuduc_presence_v8', {
         config: { presence: { key: cleanEmail } }
       });
 
@@ -338,7 +384,7 @@ class ChatService {
     });
   }
 
-  createCustomChannel(name, desc, memberEmails = []) {
+  async createCustomChannel(name, desc, memberEmails = []) {
     const channelId = "chan_custom_" + Date.now();
     const newChan = {
       id: channelId,
@@ -348,26 +394,64 @@ class ChatService {
       members: memberEmails
     };
 
+    const initMsg = {
+      id: "msg_init_c_" + Date.now(),
+      senderName: "Hệ thống Water Hub",
+      senderRole: "System",
+      senderUid: "system",
+      text: `🎉 Kênh nhóm "${name.trim()}" đã được khởi tạo với ${memberEmails.length} thành viên tham gia!`,
+      timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      attachment: null
+    };
+
     this.channels.push(newChan);
-    this.messages[channelId] = [
-      {
-        id: "msg_init_c_" + Date.now(),
-        senderName: "Hệ thống Water Hub",
-        senderRole: "System",
-        senderUid: "system",
-        text: `🎉 Kênh nhóm "${name.trim()}" đã được khởi tạo với ${memberEmails.length} thành viên tham gia!`,
-        timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-        attachment: null
-      }
-    ];
+    this.messages[channelId] = [initMsg];
 
     this.saveLocal();
+
+    // Broadcast new channel to ALL connected users in Realtime
+    if (this.realtimeChannel) {
+      try {
+        this.realtimeChannel.send({
+          type: 'broadcast',
+          event: 'new_channel',
+          payload: {
+            channel: newChan,
+            initialMessage: initMsg
+          }
+        });
+      } catch (e) {}
+    }
+
+    // Persist to Supabase Database
+    if (window.supabaseClient) {
+      try {
+        await window.supabaseClient.from('custom_channels').upsert({
+          id: channelId,
+          name: newChan.name,
+          type: newChan.type,
+          desc: newChan.desc,
+          members: memberEmails
+        });
+      } catch (e) {}
+    }
+
     this.setActiveTarget(channelId);
     return newChan;
   }
 
   getChannels() {
-    return this.channels;
+    const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
+    const currentEmail = currentUser ? (currentUser.email || '').toLowerCase().trim() : '';
+    const isAdmin = window.authManager && window.authManager.isAdmin();
+
+    // Filter channels visible to current user
+    return this.channels.filter(c => {
+      if (c.id === 'chan_general' || c.id === 'chan_contracts' || c.id === 'chan_complaints' || c.id === 'chan_rates') return true;
+      if (isAdmin) return true;
+      if (!c.members || c.members.includes('all')) return true;
+      return c.members.some(m => (m || '').toLowerCase().trim() === currentEmail);
+    });
   }
 
   getActiveMessages() {
