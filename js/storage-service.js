@@ -263,7 +263,7 @@ class StorageService {
       statusTag: f.status_tag || f.statusTag || '🟢 Đã ban hành',
       category: f.category || 'department',
       folderId: f.folder_id || f.folderId || null,
-      size: f.size || 1024,
+      size: f.size_bytes || f.size || 1024,
       sizeFormatted: f.size_formatted || f.sizeFormatted || '1.0 MB',
       uploadedBy: f.uploaded_by || f.uploadedBy || 'Cán bộ P.KDDVKH',
       uploaderEmail: f.uploader_email || f.uploaderEmail || '',
@@ -417,16 +417,16 @@ class StorageService {
           id: newFile.id,
           name: newFile.name,
           type: newFile.type,
-          doc_type: newFile.docType,
-          status_tag: newFile.statusTag,
-          category: newFile.category,
-          folder_id: newFile.folderId,
-          size: newFile.size,
+          mime_type: newFile.type === 'PDF' ? 'application/pdf' : 'application/octet-stream',
+          size_bytes: newFile.size,
           size_formatted: newFile.sizeFormatted,
           uploaded_by: newFile.uploadedBy,
-          uploader_email: uploaderEmail,
           uploader_uid: uploaderUid,
           upload_date: newFile.uploadDate,
+          category: newFile.category,
+          folder_id: newFile.folderId,
+          doc_type: newFile.docType,
+          status_tag: newFile.statusTag,
           url: publicUrl
         };
 
@@ -438,7 +438,7 @@ class StorageService {
             name: newFile.name,
             type: newFile.type,
             category: newFile.category,
-            size: newFile.size,
+            size_bytes: newFile.size,
             url: publicUrl
           }, { onConflict: 'id' });
         }
