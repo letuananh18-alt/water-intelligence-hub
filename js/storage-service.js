@@ -639,21 +639,16 @@ class StorageService {
           id: newFolder.id,
           name: newFolder.name,
           category: newFolder.category,
-          uploader_email: uploaderEmail,
-          uploader_uid: uploaderUid,
-          parent_folder_id: newFolder.parentFolderId,
-          file_count: 0,
-          created_at: newFolder.createdAt
+          department: 'Phòng Kinh doanh & DVKH',
+          created_by: user ? (user.name || uploaderEmail.split('@')[0]) : 'Master Admin',
+          owner_uid: uploaderUid,
+          date: new Date().toLocaleDateString('vi-VN'),
+          files_count: 0
         };
 
         const { error: foldErr } = await window.supabaseClient.from('folders').upsert(fullPayload, { onConflict: 'id' });
         if (foldErr) {
-          console.warn("⚠️ Supabase full folder upsert notice, trying minimal payload:", foldErr.message);
-          await window.supabaseClient.from('folders').upsert({
-            id: newFolder.id,
-            name: newFolder.name,
-            category: newFolder.category
-          }, { onConflict: 'id' });
+          console.warn("⚠️ Supabase folder upsert notice:", foldErr.message);
         }
 
         if (this.realtimeStorageChannel) {
