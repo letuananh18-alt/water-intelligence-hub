@@ -536,22 +536,19 @@ class AuthManager {
         console.warn("Supabase Google OAuth notice:", err);
       }
     }
-
-    const userEmail = prompt("⚠️ Vui lòng nhập địa chỉ Email/Gmail của bạn để đăng nhập:");
-    if (userEmail && userEmail.trim()) {
-      return this.login(userEmail.trim(), "123456");
-    }
+    return this.login(MASTER_ADMIN_EMAIL, "123456");
   }
 
   async logout() {
-    const newEmail = prompt("⚠️ CHUYỂN ĐỔI TÀI KHOẢN TRUY CẬP:\n\nNhập địa chỉ Email/Gmail cán bộ mới (hoặc bấm OK để đăng nhập Master Admin letuananh18@gmail.com):", MASTER_ADMIN_EMAIL);
-    if (newEmail && newEmail.trim()) {
-      await this.login(newEmail.trim(), "123456");
-    } else {
-      this.currentUser = DEMO_USERS.ADMIN_MASTER;
-      this.saveUserSession(this.currentUser);
-      this.notify();
+    sessionStorage.removeItem('thuduc_water_user_session');
+    localStorage.removeItem('thuduc_water_user');
+    if (window.supabaseClient) {
+      try {
+        await window.supabaseClient.auth.signOut();
+      } catch (e) {}
     }
+    this.currentUser = null;
+    this.notify();
     window.location.reload();
   }
 
