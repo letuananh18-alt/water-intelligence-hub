@@ -67,10 +67,21 @@ class AuthManager {
       try {
         const { data, error } = await window.supabaseClient.from('users').select('*');
         if (!error && data && data.length > 0) {
-          const list = [DEMO_USERS.ADMIN];
+          const list = [];
           data.forEach(uData => {
-            if (uData && uData.email && !list.some(x => x.email === uData.email)) {
-              list.push(uData);
+            if (uData && uData.email) {
+              const formattedUser = {
+                uid: uData.uid || uData.id,
+                name: uData.name || uData.email.split('@')[0],
+                email: uData.email,
+                role: uData.role || ((uData.email === 'waterain8n@gmail.com' || uData.email === 'letuananh18@gmail.com') ? 'Admin / Quản trị hệ thống' : 'Nhân viên / Client'),
+                department: uData.department || 'Phòng Kinh doanh & Dịch vụ Khách hàng',
+                lastLogin: uData.last_login || uData.lastLogin || uData.last_seen || new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
+                avatar: uData.avatar || DEMO_USERS.ADMIN.avatar
+              };
+              if (!list.some(x => x.email === formattedUser.email)) {
+                list.push(formattedUser);
+              }
             }
           });
           this.usersList = list;
@@ -82,10 +93,21 @@ class AuthManager {
           .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, async () => {
             const { data: updatedUsers } = await window.supabaseClient.from('users').select('*');
             if (updatedUsers) {
-              const list = [DEMO_USERS.ADMIN];
+              const list = [];
               updatedUsers.forEach(uData => {
-                if (uData && uData.email && !list.some(x => x.email === uData.email)) {
-                  list.push(uData);
+                if (uData && uData.email) {
+                  const formattedUser = {
+                    uid: uData.uid || uData.id,
+                    name: uData.name || uData.email.split('@')[0],
+                    email: uData.email,
+                    role: uData.role || ((uData.email === 'waterain8n@gmail.com' || uData.email === 'letuananh18@gmail.com') ? 'Admin / Quản trị hệ thống' : 'Nhân viên / Client'),
+                    department: uData.department || 'Phòng Kinh doanh & Dịch vụ Khách hàng',
+                    lastLogin: uData.last_login || uData.lastLogin || uData.last_seen || new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
+                    avatar: uData.avatar || DEMO_USERS.ADMIN.avatar
+                  };
+                  if (!list.some(x => x.email === formattedUser.email)) {
+                    list.push(formattedUser);
+                  }
                 }
               });
               this.usersList = list;

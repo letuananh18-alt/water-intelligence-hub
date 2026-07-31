@@ -566,15 +566,35 @@ class AppController {
     const users = window.authManager.getUsersList();
 
     if (tbody) {
-      tbody.innerHTML = users.map(u => `
-        <tr>
-          <td><strong>${escapeHTML(u.name)}</strong></td>
-          <td>${escapeHTML(u.email)}</td>
-          <td>${escapeHTML(u.department || 'Phòng Kinh doanh & Dịch vụ Khách hàng')}</td>
-          <td><span class="badge-tag ${(u.email === 'waterain8n@gmail.com' || u.email === 'letuananh18@gmail.com') ? 'type-pdf' : 'type-docx'}">${(u.email === 'waterain8n@gmail.com' || u.email === 'letuananh18@gmail.com') ? 'ADMIN' : 'CLIENT'}</span></td>
-          <td><span style="font-weight: 600; color: var(--slate-700);">⏱️ ${escapeHTML(u.lastLogin || 'Mới đăng nhập')}</span></td>
-        </tr>
-      `).join('');
+      tbody.innerHTML = users.map(u => {
+        const lastTime = u.lastLogin || u.last_login || 'Vừa truy cập';
+        const isOnline = window.chatService ? window.chatService.isUserOnline(u.email) : false;
+
+        const statusBadge = isOnline ? `
+          <span style="display: inline-flex; align-items: center; gap: 5px; background: #dcfce7; color: #15803d; border: 1px solid #86efac; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">
+            <span style="width: 6px; height: 6px; border-radius: 50%; background: #10b981; box-shadow: 0 0 6px #10b981;"></span> Trực tuyến
+          </span>
+        ` : `
+          <span style="display: inline-flex; align-items: center; gap: 5px; background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">
+            ⚪ Ngoại tuyến
+          </span>
+        `;
+
+        return `
+          <tr>
+            <td><strong>${escapeHTML(u.name)}</strong></td>
+            <td>${escapeHTML(u.email)}</td>
+            <td>${escapeHTML(u.department || 'Phòng Kinh doanh & Dịch vụ Khách hàng')}</td>
+            <td><span class="badge-tag ${(u.email === 'waterain8n@gmail.com' || u.email === 'letuananh18@gmail.com') ? 'type-pdf' : 'type-docx'}">${(u.email === 'waterain8n@gmail.com' || u.email === 'letuananh18@gmail.com') ? 'ADMIN' : 'CLIENT'}</span></td>
+            <td>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <span style="font-weight: 600; color: var(--slate-700); font-size: 12.5px;">⏱️ ${escapeHTML(lastTime)}</span>
+                ${statusBadge}
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
 
     if (auditTbody && window.storageService) {
