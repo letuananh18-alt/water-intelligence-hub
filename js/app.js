@@ -1310,6 +1310,48 @@ class AppController {
         if (window.chatService) window.chatService.clearChannelMessages();
       }
     });
+
+    // Mobile Back Buttons
+    document.getElementById('btnMobileBackToChannels')?.addEventListener('click', () => {
+      document.querySelector('.team-chat-container')?.classList.remove('mobile-show-chat');
+    });
+
+    document.getElementById('btnMobileBackToAiThreads')?.addEventListener('click', () => {
+      document.querySelector('.ai-assistant-container')?.classList.remove('mobile-show-chat');
+    });
+
+    // Floating Scroll-to-Bottom Button Handlers
+    const teamMsgList = document.getElementById('teamChatMessageList');
+    const teamScrollBtn = document.getElementById('btnScrollToBottomTeam');
+    teamMsgList?.addEventListener('scroll', () => {
+      const distFromBottom = teamMsgList.scrollHeight - teamMsgList.scrollTop - teamMsgList.clientHeight;
+      if (distFromBottom > 120) {
+        if (teamScrollBtn) teamScrollBtn.style.display = 'flex';
+      } else {
+        if (teamScrollBtn) teamScrollBtn.style.display = 'none';
+      }
+    });
+
+    teamScrollBtn?.addEventListener('click', () => {
+      teamMsgList?.scrollTo({ top: teamMsgList.scrollHeight, behavior: 'smooth' });
+      if (teamScrollBtn) teamScrollBtn.style.display = 'none';
+    });
+
+    const aiMsgList = document.getElementById('aiChatArea');
+    const aiScrollBtn = document.getElementById('btnScrollToBottomAi');
+    aiMsgList?.addEventListener('scroll', () => {
+      const distFromBottom = aiMsgList.scrollHeight - aiMsgList.scrollTop - aiMsgList.clientHeight;
+      if (distFromBottom > 120) {
+        if (aiScrollBtn) aiScrollBtn.style.display = 'flex';
+      } else {
+        if (aiScrollBtn) aiScrollBtn.style.display = 'none';
+      }
+    });
+
+    aiScrollBtn?.addEventListener('click', () => {
+      aiMsgList?.scrollTo({ top: aiMsgList.scrollHeight, behavior: 'smooth' });
+      if (aiScrollBtn) aiScrollBtn.style.display = 'none';
+    });
   }
 
   renderTeamChatSidebar() {
@@ -1376,12 +1418,16 @@ class AppController {
       navBadgeEl.style.display = totalUnread > 0 ? 'inline-block' : 'none';
     }
 
-    // Rebind click events for all targets
+    // Rebind click events for all targets (with mobile chat window toggle)
     document.querySelectorAll('[data-target]').forEach(item => {
       item.addEventListener('click', () => {
         const targetId = item.getAttribute('data-target');
         document.querySelectorAll('[data-target]').forEach(i => i.classList.remove('active'));
         item.classList.add('active');
+        
+        // Show chat window on mobile when a room is selected
+        document.querySelector('.team-chat-container')?.classList.add('mobile-show-chat');
+
         if (window.chatService) window.chatService.setActiveTarget(targetId);
       });
     });

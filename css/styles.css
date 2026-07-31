@@ -1620,3 +1620,132 @@ mark.search-highlight {
   100% { transform: scale(1); }
 }
 
+/* ==========================================================================
+   MOBILE UX CHAT OPTIMIZATION & SMOOTH TOUCH SCROLLBAR
+   ========================================================================== */
+
+.chat-messages-area {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  position: relative;
+}
+
+.chat-messages-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages-area::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 0.5);
+  border-radius: 10px;
+}
+
+.chat-messages-area::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.5);
+  border-radius: 10px;
+}
+
+.chat-messages-area::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.8);
+}
+
+.scroll-bottom-pill {
+  position: absolute;
+  bottom: 72px;
+  right: 18px;
+  z-index: 50;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(8px);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: fadeInPill 0.3s ease;
+}
+
+.scroll-bottom-pill:hover {
+  transform: translateY(-2px);
+  background: #0284c7;
+  border-color: #38bdf8;
+  box-shadow: 0 8px 20px rgba(2, 132, 199, 0.4);
+}
+
+@keyframes fadeInPill {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ai-chat-window {
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  .team-chat-container, .ai-assistant-container {
+    height: calc(100vh - 120px) !important;
+    min-height: 480px;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+  }
+
+  .team-chat-container .ai-sidebar,
+  .ai-assistant-container .ai-sidebar {
+    width: 100%;
+    height: 100%;
+    border-right: none;
+    display: block;
+    overflow-y: auto;
+  }
+
+  .team-chat-container .ai-chat-window,
+  .ai-assistant-container .ai-chat-window {
+    width: 100%;
+    height: 100%;
+    display: none;
+    flex-direction: column;
+  }
+
+  .team-chat-container.mobile-show-chat .ai-sidebar,
+  .ai-assistant-container.mobile-show-chat .ai-sidebar {
+    display: none;
+  }
+
+  .team-chat-container.mobile-show-chat .ai-chat-window,
+  .ai-assistant-container.mobile-show-chat .ai-chat-window {
+    display: flex;
+  }
+
+  .mobile-only-btn {
+    display: inline-flex !important;
+  }
+
+  .chat-bubble {
+    max-width: 88%;
+    font-size: 13px;
+    padding: 10px 14px;
+  }
+
+  .chat-input {
+    font-size: 14px;
+    padding: 10px 12px;
+  }
+
+  .scroll-bottom-pill {
+    bottom: 68px;
+    right: 12px;
+    padding: 7px 12px;
+    font-size: 11px;
+  }
+}
+
