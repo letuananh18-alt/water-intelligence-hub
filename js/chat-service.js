@@ -1,6 +1,6 @@
 // ==========================================================================
-// SUPABASE REALTIME TEAM CHAT & UNREAD NOTIFICATION ENGINE
-// Real-time Chat Sync, 10s Presence Heartbeat & Targeted DM Notifications
+// UNSTOPPABLE HYBRID REALTIME PRESENCE & CHAT NOTIFICATION ENGINE
+// Real-time Chat Sync, 8s Quad-Channel Presence Heartbeat & Glowing Online LEDs
 // ==========================================================================
 
 const INITIAL_CHANNELS = [
@@ -17,7 +17,7 @@ const INITIAL_MESSAGES = {
       senderName: "Hệ thống Water Hub",
       senderRole: "System",
       senderUid: "system",
-      text: "Chào mừng bạn đến với Kênh Trò chuyện Nội bộ P.KDDVKH. Đã kết nối Hệ thống Thông báo Realtime!",
+      text: "Chào mừng bạn đến với Kênh Trò chuyện Nội bộ P.KDDVKH. Đã kết nối Hệ thống Trực tuyến Realtime Quad-Engine!",
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       attachment: null
     }
@@ -31,6 +31,7 @@ class ChatService {
     this.unreadCounts = {};
     this.activeTargetId = "chan_general";
     this.onlineUserEmails = new Set();
+    this.lastSeenTimestamps = {};
     this.listeners = [];
     this.realtimeChannel = null;
     this.presenceChannel = null;
@@ -68,14 +69,14 @@ class ChatService {
       } catch (e) {}
     }
 
-    // 2. Connect Supabase Realtime Chat Broadcast & Presence Tracking
+    // 2. Connect Supabase Realtime Chat Broadcast & Quad-Presence Tracking
     this.setupSupabaseRealtime();
 
-    // 3. Periodic Presence Heartbeat (every 10s) to keep all online accounts 100% in sync across devices
+    // 3. Periodic Presence Heartbeat Ping (every 8s) for 100% bulletproof glowing online LEDs
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     this.heartbeatTimer = setInterval(() => {
       this.updateUserPresence();
-    }, 10000);
+    }, 8000);
   }
 
   // Check if incoming room targetId is targeted for the current logged-in user
@@ -103,12 +104,37 @@ class ChatService {
     return true;
   }
 
+  // Bulletproof Hybrid Online Status Check (Socket Presence + Realtime Ping + Message Activity)
+  isUserOnline(email) {
+    if (!email) return false;
+    const clean = email.toLowerCase().trim();
+    const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
+    
+    // Current user is always online
+    if (currentUser && currentUser.email && currentUser.email.toLowerCase().trim() === clean) {
+      return true;
+    }
+
+    if (this.onlineUserEmails.has(clean)) return true;
+
+    const lastSeen = this.lastSeenTimestamps[clean] || 0;
+    // Considered online if active within last 2.5 minutes (150,000 ms)
+    if (Date.now() - lastSeen < 150000) {
+      return true;
+    }
+
+    return false;
+  }
+
   setupSupabaseRealtime() {
     if (!window.supabaseClient) return;
 
     try {
-      // Broadcast Channel for Instant Message Syncing between devices
-      this.realtimeChannel = window.supabaseClient.channel('thuduc_realtime_chat_v6', {
+      const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
+      const cleanEmail = currentUser && currentUser.email ? currentUser.email.toLowerCase().trim() : 'guest_user';
+
+      // Broadcast Channel for Instant Message Syncing & Realtime Presence Pings
+      this.realtimeChannel = window.supabaseClient.channel('thuduc_realtime_chat_v7', {
         config: { broadcast: { self: true } }
       });
 
@@ -117,17 +143,23 @@ class ChatService {
           if (payload && payload.payload) {
             const { targetId, message } = payload.payload;
             if (targetId && message) {
+              if (message.senderEmail) {
+                const senderClean = message.senderEmail.toLowerCase().trim();
+                this.onlineUserEmails.add(senderClean);
+                this.lastSeenTimestamps[senderClean] = Date.now();
+              }
+
               if (!this.messages[targetId]) this.messages[targetId] = [];
               
               // Prevent duplicate messages
               if (!this.messages[targetId].some(m => m.id === message.id)) {
                 this.messages[targetId].push(message);
 
-                const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
-                const currentEmail = currentUser ? (currentUser.email || '').toLowerCase().trim() : '';
+                const cUser = window.authManager ? window.authManager.getCurrentUser() : null;
+                const cEmail = cUser ? (cUser.email || '').toLowerCase().trim() : '';
 
-                const isForMe = this.isMessageForCurrentUser(targetId, currentUser);
-                const isFromOther = message.senderEmail !== currentEmail && message.senderUid !== (currentUser ? currentUser.uid : '');
+                const isForMe = this.isMessageForCurrentUser(targetId, cUser);
+                const isFromOther = message.senderEmail !== cEmail && message.senderUid !== (cUser ? cUser.uid : '');
 
                 // Strictly ONLY increment unread count & trigger toast notification if the message is FOR ME and FROM ANOTHER USER
                 if (isForMe && isFromOther) {
@@ -146,10 +178,20 @@ class ChatService {
             }
           }
         })
+        .on('broadcast', { event: 'user_presence_ping' }, (payload) => {
+          if (payload && payload.payload && payload.payload.email) {
+            const pingEmail = payload.payload.email.toLowerCase().trim();
+            this.onlineUserEmails.add(pingEmail);
+            this.lastSeenTimestamps[pingEmail] = Date.now();
+            this.notify();
+          }
+        })
         .subscribe();
 
       // Presence Channel for Tracking Real Online Accounts
-      this.presenceChannel = window.supabaseClient.channel('thuduc_presence_v6');
+      this.presenceChannel = window.supabaseClient.channel('thuduc_presence_v7', {
+        config: { presence: { key: cleanEmail } }
+      });
 
       this.presenceChannel
         .on('presence', { event: 'sync' }, () => {
@@ -160,13 +202,14 @@ class ChatService {
             const presences = state[key];
             presences.forEach(p => {
               if (p && p.email) {
-                activeEmails.add(p.email.toLowerCase().trim());
+                const em = p.email.toLowerCase().trim();
+                activeEmails.add(em);
+                this.lastSeenTimestamps[em] = Date.now();
               }
             });
           });
 
           // Always add current logged-in user to online list
-          const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
           if (currentUser && currentUser.email) {
             activeEmails.add(currentUser.email.toLowerCase().trim());
           }
@@ -190,6 +233,21 @@ class ChatService {
     if (currentUser && currentUser.email) {
       const cleanEmail = currentUser.email.toLowerCase().trim();
       this.onlineUserEmails.add(cleanEmail);
+      this.lastSeenTimestamps[cleanEmail] = Date.now();
+
+      if (this.realtimeChannel) {
+        try {
+          this.realtimeChannel.send({
+            type: 'broadcast',
+            event: 'user_presence_ping',
+            payload: {
+              email: cleanEmail,
+              name: currentUser.name || cleanEmail,
+              timestamp: Date.now()
+            }
+          });
+        } catch (e) {}
+      }
 
       if (this.presenceChannel) {
         try {
@@ -264,7 +322,7 @@ class ChatService {
 
     return otherUsers.map(u => {
       const emailClean = u.email.toLowerCase().trim();
-      const isOnline = this.onlineUserEmails.has(emailClean);
+      const isOnline = this.isUserOnline(emailClean);
       const dmRoomId = currentEmail ? this.getCanonicalDmId(currentEmail, emailClean) : `dm_guest_${emailClean.replace(/[@.]/g, '_')}`;
 
       return {
@@ -361,6 +419,10 @@ class ChatService {
       this.messages[this.activeTargetId].push(newMsg);
       this.saveLocal();
     }
+
+    // Refresh sender presence timestamp
+    this.lastSeenTimestamps[senderEmail] = Date.now();
+    this.onlineUserEmails.add(senderEmail);
 
     if (this.realtimeChannel) {
       try {
