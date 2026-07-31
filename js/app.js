@@ -693,9 +693,20 @@ class AppController {
     if (modal) modal.style.display = 'none';
   }
 
+  getOrCreateFileInput() {
+    let input = document.getElementById('hiddenFileInput');
+    if (!input) {
+      input = document.createElement('input');
+      input.type = 'file';
+      input.id = 'hiddenFileInput';
+      input.style.display = 'none';
+      input.multiple = true;
+      document.body.appendChild(input);
+    }
+    return input;
+  }
+
   bindFileUploadEvents() {
-    const hiddenInput = document.getElementById('hiddenFileInput');
-    const selectBtn = document.getElementById('dropzoneSelectBtn');
     const uploadMetaModal = document.getElementById('uploadMetaModal');
     const btnConfirmUploadMeta = document.getElementById('btnConfirmUploadMeta');
 
@@ -711,51 +722,51 @@ class AppController {
           alert("⛔ Bị từ chối: Chỉ Ban Quản trị Admin (waterain8n@gmail.com & letuananh18@gmail.com) mới có quyền tải lên Kho nội bộ phòng ban!");
           return;
         }
-        if (hiddenInput) {
-          hiddenInput.value = '';
-          hiddenInput.setAttribute('data-target-cat', 'department');
-          hiddenInput.click();
-        }
+        const fileInput = this.getOrCreateFileInput();
+        fileInput.value = '';
+        fileInput.setAttribute('data-target-cat', 'department');
+        fileInput.click();
         return;
       }
 
       const topBtn = e.target.closest('#topUploadBtn');
       if (topBtn) {
-        if (hiddenInput) {
-          hiddenInput.value = '';
-          hiddenInput.setAttribute('data-target-cat', getActiveCategory());
-          hiddenInput.click();
-        }
+        const fileInput = this.getOrCreateFileInput();
+        fileInput.value = '';
+        fileInput.setAttribute('data-target-cat', getActiveCategory());
+        fileInput.click();
         return;
       }
 
       const dropBtn = e.target.closest('#dropzoneSelectBtn') || e.target.closest('#dashboardDropzone');
       if (dropBtn) {
-        if (hiddenInput) {
-          hiddenInput.value = '';
-          hiddenInput.setAttribute('data-target-cat', getActiveCategory());
-          hiddenInput.click();
-        }
+        const fileInput = this.getOrCreateFileInput();
+        fileInput.value = '';
+        fileInput.setAttribute('data-target-cat', getActiveCategory());
+        fileInput.click();
         return;
       }
     });
 
-    hiddenInput?.addEventListener('change', async (e) => {
-      const files = e.target.files;
-      const category = hiddenInput.getAttribute('data-target-cat') || getActiveCategory();
-      if (files && files.length > 0) {
-        if (category === 'department') {
-          this.pendingUploadFiles = Array.from(files);
-          this.pendingUploadCategory = 'department';
-          if (uploadMetaModal) uploadMetaModal.style.display = 'flex';
-        } else {
-          let successCount = 0;
-          for (const f of Array.from(files)) {
-            const res = await window.storageService.addFile(f, 'personal', null);
-            if (res) successCount++;
-          }
-          if (successCount > 0) {
-            alert(`✅ Đã tải lên ${successCount} tệp thành công vào Kho cá nhân!`);
+    document.addEventListener('change', async (e) => {
+      if (e.target && e.target.id === 'hiddenFileInput') {
+        const files = e.target.files;
+        const category = e.target.getAttribute('data-target-cat') || getActiveCategory();
+        if (files && files.length > 0) {
+          if (category === 'department') {
+            this.pendingUploadFiles = Array.from(files);
+            this.pendingUploadCategory = 'department';
+            if (uploadMetaModal) uploadMetaModal.style.display = 'flex';
+          } else {
+            let successCount = 0;
+            for (const f of Array.from(files)) {
+              const res = await window.storageService.addFile(f, 'personal', null);
+              if (res) successCount++;
+            }
+            if (successCount > 0) {
+              this.renderCurrentView();
+              alert(`✅ Đã tải lên ${successCount} tệp thành công vào Kho cá nhân!`);
+            }
           }
         }
       }
