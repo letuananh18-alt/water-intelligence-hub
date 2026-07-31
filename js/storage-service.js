@@ -390,6 +390,29 @@ class StorageService {
 
     if (window.supabaseClient) {
       try {
+        let publicUrl = '#';
+        const cleanFileName = fileObj.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
+        const storagePath = `${category}/${Date.now()}_${cleanFileName}`;
+
+        try {
+          const { data: storageData, error: storageErr } = await window.supabaseClient
+            .storage
+            .from('documents')
+            .upload(storagePath, fileObj, { upsert: true });
+
+          if (!storageErr && storageData) {
+            const { data: urlData } = window.supabaseClient.storage.from('documents').getPublicUrl(storagePath);
+            if (urlData && urlData.publicUrl) {
+              publicUrl = urlData.publicUrl;
+              newFile.url = publicUrl;
+            }
+          } else {
+            console.warn("⚠️ Supabase Storage Bucket upload notice:", storageErr?.message);
+          }
+        } catch (stErr) {
+          console.warn("⚠️ Supabase Storage Bucket upload exception notice:", stErr);
+        }
+
         const fullPayload = {
           id: newFile.id,
           name: newFile.name,
@@ -404,7 +427,7 @@ class StorageService {
           uploader_email: uploaderEmail,
           uploader_uid: uploaderUid,
           upload_date: newFile.uploadDate,
-          url: '#'
+          url: publicUrl
         };
 
         const { error: upsertErr } = await window.supabaseClient.from('files').upsert(fullPayload, { onConflict: 'id' });
@@ -416,7 +439,7 @@ class StorageService {
             type: newFile.type,
             category: newFile.category,
             size: newFile.size,
-            url: '#'
+            url: publicUrl
           }, { onConflict: 'id' });
         }
 
