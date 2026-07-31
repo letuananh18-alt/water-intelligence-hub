@@ -1,183 +1,154 @@
 // ==========================================================================
-// CENTRAL STORAGE SERVICE (SUPABASE POSTGRESQL DB 100% SINGLE SOURCE OF TRUTH)
-// Pure 1-to-1 Sync with Supabase Postgres 'files' & 'folders' Tables
-// No seed overrides, no synthetic file generators, no auto-recreating deleted items
+// UNSTOPPABLE CLOUD HYBRID STORAGE SERVICE ENGINE
+// Supabase Database Cloud Storage & Complete User Data Purge
 // ==========================================================================
+
+const INITIAL_DEPARTMENT_DOCS = [
+  {
+    id: "doc_init_001",
+    name: "01_Quy-che-Vien-thong-va-Cap-nuoc-P-KDDVKH-2026.pdf",
+    type: "PDF",
+    docType: "Văn bản chỉ đạo",
+    statusTag: "🟢 Đã ban hành",
+    category: "department",
+    size: 2450000,
+    sizeFormatted: "2.4 MB",
+    uploadedBy: "Lê Tuấn Anh (Admin)",
+    uploaderEmail: "waterain8n@gmail.com",
+    uploaderUid: "user_admin_001",
+    uploadDate: "30/07/2026 14:00",
+    url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+  },
+  {
+    id: "doc_init_002",
+    name: "02_Huong-dan-Xu-ly-Khieu-nai-Thuy-ke-Thu-Duc.docx",
+    type: "DOCX",
+    docType: "Quy trình nội bộ",
+    statusTag: "🟢 Đã ban hành",
+    category: "department",
+    size: 1180000,
+    sizeFormatted: "1.2 MB",
+    uploadedBy: "Lê Tuấn Anh (Admin)",
+    uploaderEmail: "letuananh18@gmail.com",
+    uploaderUid: "user_admin_002",
+    uploadDate: "30/07/2026 15:30",
+    url: "#"
+  }
+];
+
+const INITIAL_FOLDERS = [
+  { id: "fold_cv_den", name: "📁 Công văn Đến (P.KDDVKH)", category: "department", fileCount: 0, createdAt: "2026-07-30" },
+  { id: "fold_cv_di", name: "📁 Công văn Đi & Báo cáo", category: "department", fileCount: 0, createdAt: "2026-07-30" },
+  { id: "fold_hop_dong", name: "📁 Hồ sơ Hợp đồng Khách hàng", category: "department", fileCount: 0, createdAt: "2026-07-30" }
+];
 
 class StorageService {
   constructor() {
-    this.files = [];
-    this.folders = [];
+    this.files = [...INITIAL_DEPARTMENT_DOCS];
+    this.folders = [...INITIAL_FOLDERS];
+    this.rawFileObjects = {};
     this.listeners = [];
-    this.rawFileMap = new Map();
     this.init();
   }
 
-  async init() {
-    // 1. Load local cache (for instant rendering before Supabase fetch completes)
+  init() {
     const savedFiles = localStorage.getItem('thuduc_water_files');
-    const savedFolders = localStorage.getItem('thuduc_water_folders');
-
-    if (savedFiles && savedFolders) {
+    if (savedFiles) {
       try {
         this.files = JSON.parse(savedFiles);
+      } catch (e) {
+        this.files = [...INITIAL_DEPARTMENT_DOCS];
+      }
+    }
+
+    const savedFolders = localStorage.getItem('thuduc_water_folders');
+    if (savedFolders) {
+      try {
         this.folders = JSON.parse(savedFolders);
       } catch (e) {
-        this.files = [];
-        this.folders = [];
+        this.folders = [...INITIAL_FOLDERS];
       }
     }
 
-    // 2. Real-time Supabase Cloud Database Sync
     if (window.supabaseClient) {
-      try {
-        await this.syncFoldersFromSupabase();
-        await this.syncFilesFromSupabase();
-
-        // Subscribe to Supabase Realtime Changes
-        window.supabaseClient
-          .channel('schema-db-changes')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'folders' }, async () => {
-            await this.syncFoldersFromSupabase();
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'files' }, async () => {
-            await this.syncFilesFromSupabase();
-          })
-          .subscribe();
-      } catch (err) {
-        console.warn("Supabase Realtime notice:", err);
-      }
+      this.syncFoldersFromSupabase();
+      this.syncFilesFromSupabase();
+      this.setupSupabaseRealtimeListeners();
     }
   }
 
-  getStorageStats() {
-    const totalFiles = this.files ? this.files.length : 0;
-    let totalBytes = 0;
-    if (this.files) {
-      this.files.forEach(f => {
-        totalBytes += (f.sizeBytes || 0);
-      });
+  setupSupabaseRealtimeListeners() {
+    if (!window.supabaseClient) return;
+
+    try {
+      window.supabaseClient
+        .channel('schema-files-changes-v2')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'files' }, () => {
+          this.syncFilesFromSupabase();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'folders' }, () => {
+          this.syncFoldersFromSupabase();
+        })
+        .subscribe();
+    } catch (e) {
+      console.warn("Supabase realtime storage notice:", e);
     }
-
-    let usedFormatted = (totalBytes / (1024 * 1024)).toFixed(1) + " MB";
-    if (totalBytes < 1024 * 1024) {
-      usedFormatted = Math.round(totalBytes / 1024) + " KB";
-    }
-
-    const maxBytes = 500 * 1024 * 1024 * 1024; // 500 GB
-    const percentage = ((totalBytes / maxBytes) * 100).toFixed(2);
-    const sharedFiles = this.files ? this.files.filter(f => f.category === 'department' || !f.category).length : 0;
-
-    return {
-      totalFiles,
-      totalBytes,
-      usedFormatted,
-      percentage,
-      sharedFiles
-    };
   }
 
-  normalizeFolderFromDb(f) {
-    return {
-      id: f.id,
-      name: f.name || "Thư mục",
-      category: f.category || 'department',
-      department: f.department || 'dept_kddvkh',
-      createdBy: f.createdBy || f.created_by || 'Admin',
-      ownerUid: f.ownerUid || f.owner_uid || '',
-      date: f.date || new Date().toLocaleDateString('vi-VN'),
-      filesCount: typeof f.filesCount !== 'undefined' ? f.filesCount : (typeof f.files_count !== 'undefined' ? f.files_count : 0)
-    };
-  }
-
-  normalizeFolderToDb(f) {
-    return {
-      id: f.id,
-      name: f.name,
-      category: f.category || 'department',
-      department: f.department || 'dept_kddvkh',
-      created_by: f.createdBy || 'Admin',
-      owner_uid: f.ownerUid || '',
-      date: f.date,
-      files_count: f.filesCount || 0
-    };
-  }
-
-  normalizeFileFromDb(f) {
-    const targetFolderId = f.folderId || f.folder_id || null;
-    const category = f.category || 'department';
-
-    return {
-      id: f.id,
-      name: f.name || "Tệp tin",
-      type: f.type || 'PDF',
-      mimeType: f.mimeType || f.mime_type || 'application/pdf',
-      sizeBytes: f.sizeBytes || f.size_bytes || 1024,
-      sizeFormatted: f.sizeFormatted || f.size_formatted || '1 MB',
-      uploadedBy: f.uploadedBy || f.uploaded_by || 'Lê Tuấn Anh',
-      uploaderUid: f.uploaderUid || f.uploader_uid || 'admin_waterain8n',
-      uploadDate: f.uploadDate || f.upload_date || new Date().toLocaleDateString('vi-VN'),
-      category: category,
-      folderId: targetFolderId,
-      docType: f.docType || f.doc_type || 'Hợp đồng cấp nước',
-      statusTag: f.statusTag || f.status_tag || '🟢 Đã ban hành',
-      url: f.url || '#',
-      dataUrl: f.dataUrl || f.data_url || null,
-      tags: f.tags || ["Supabase CSDL"]
-    };
-  }
-
-  normalizeFileToDb(f) {
-    return {
-      id: f.id,
-      name: f.name,
-      type: f.type,
-      mime_type: f.mimeType,
-      size_bytes: f.sizeBytes,
-      size_formatted: f.sizeFormatted,
-      uploaded_by: f.uploadedBy,
-      uploader_uid: f.uploaderUid,
-      upload_date: f.uploadDate,
-      category: f.category,
-      folder_id: f.folderId,
-      doc_type: f.docType,
-      status_tag: f.statusTag,
-      url: f.url,
-      data_url: f.dataUrl,
-      tags: f.tags
-    };
-  }
-
-  // 100% PURE SYNC FROM SUPABASE POSTGRES DB 'folders' TABLE
   async syncFoldersFromSupabase() {
     if (!window.supabaseClient) return;
     try {
       const { data, error } = await window.supabaseClient.from('folders').select('*');
-      if (!error && data) {
+      if (!error && data && data.length > 0) {
         const cloudFolders = data.map(f => this.normalizeFolderFromDb(f));
         this.folders = cloudFolders;
         this.saveLocal();
         this.notify();
       }
-    } catch (e) {
-      console.warn("Folder sync notice:", e);
-    }
+    } catch (e) {}
   }
 
-  // 100% PURE SYNC FROM SUPABASE POSTGRES DB 'files' TABLE
   async syncFilesFromSupabase() {
     if (!window.supabaseClient) return;
     try {
       const { data, error } = await window.supabaseClient.from('files').select('*');
-      if (!error && data) {
+      if (!error && data && data.length > 0) {
         const cloudFiles = data.map(f => this.normalizeFileFromDb(f));
         this.files = cloudFiles;
         this.saveLocal();
         this.notify();
       }
-    } catch (e) {
-      console.warn("Files sync notice:", e);
-    }
+    } catch (e) {}
+  }
+
+  normalizeFolderFromDb(f) {
+    return {
+      id: f.id,
+      name: f.name,
+      category: f.category || 'department',
+      parentFolderId: f.parent_folder_id || f.parentFolderId || null,
+      fileCount: f.file_count || 0,
+      createdAt: f.created_at || f.createdAt || new Date().toISOString().split('T')[0]
+    };
+  }
+
+  normalizeFileFromDb(f) {
+    return {
+      id: f.id,
+      name: f.name,
+      type: f.type || 'FILE',
+      docType: f.doc_type || f.docType || 'Hợp đồng cấp nước',
+      statusTag: f.status_tag || f.statusTag || '🟢 Đã ban hành',
+      category: f.category || 'department',
+      folderId: f.folder_id || f.folderId || null,
+      size: f.size || 1024,
+      sizeFormatted: f.size_formatted || f.sizeFormatted || '1.0 MB',
+      uploadedBy: f.uploaded_by || f.uploadedBy || 'Cán bộ P.KDDVKH',
+      uploaderEmail: f.uploader_email || f.uploaderEmail || '',
+      uploaderUid: f.uploader_uid || f.uploaderUid || 'user_guest',
+      uploadDate: f.upload_date || f.uploadDate || new Date().toLocaleString('vi-VN'),
+      url: f.url || '#'
+    };
   }
 
   saveLocal() {
@@ -210,299 +181,197 @@ class StorageService {
       list = list.filter(f => f.docType === docTypeFilter);
     }
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter(f => f.name.toLowerCase().includes(q) || (f.uploadedBy && f.uploadedBy.toLowerCase().includes(q)));
+    if (searchQuery && searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = list.filter(f =>
+        f.name.toLowerCase().includes(q) ||
+        f.uploadedBy.toLowerCase().includes(q) ||
+        (f.docType && f.docType.toLowerCase().includes(q))
+      );
     }
 
     return list;
   }
 
-  getRawFile(fileId) {
-    return this.rawFileMap.get(fileId) || null;
+  getFolders(category = 'department', parentFolderId = null) {
+    return this.folders.filter(f => f.category === category);
   }
 
-  // UPLOAD FILE: SAVES BINARY TO BUCKET + INSERTS ROW TO SUPABASE DB
-  async addFile(fileObj, category = 'personal', folderId = null, docType = 'Tài liệu cá nhân', statusTag = '🟢 Đã lưu') {
-    const currentUser = (window.authManager && window.authManager.getCurrentUser()) || { name: "Client User", uid: "user_client" };
-    const isAdmin = window.authManager && window.authManager.isAdmin();
+  getStorageStats() {
+    const deptFiles = this.getFiles('department');
+    let totalBytes = 0;
+    deptFiles.forEach(f => {
+      totalBytes += (f.size || 1000000);
+    });
 
-    if (category === 'department' && !isAdmin) {
-      alert("⛔ Bị từ chối: Client không có quyền tải lên Kho nội bộ Phòng Kinh doanh & Dịch vụ Khách hàng!");
-      return null;
-    }
+    const usedMB = (totalBytes / (1024 * 1024)).toFixed(1);
+    return {
+      totalFiles: deptFiles.length,
+      usedMB: usedMB,
+      limitMB: 1000,
+      percentUsed: Math.min(100, Math.round((usedMB / 1000) * 100))
+    };
+  }
 
-    let targetFolderId = folderId;
-
-    let formattedSize = (fileObj.size / (1024 * 1024)).toFixed(1) + " MB";
-    if (fileObj.size < 1024 * 1024) {
-      formattedSize = Math.round(fileObj.size / 1024) + " KB";
-    }
+  async uploadFile(fileObj, category = 'personal', folderId = null, docType = 'Văn bản chung', statusTag = '🟢 Đã ban hành') {
+    const user = window.authManager ? window.authManager.getCurrentUser() : null;
+    const uploaderName = user ? (user.name || user.email.split('@')[0]) : "Cán bộ P.KDDVKH";
+    const uploaderUid = user ? user.uid : "user_guest";
+    const uploaderEmail = user ? (user.email || '').toLowerCase().trim() : '';
 
     const ext = fileObj.name.split('.').pop().toUpperCase();
-    const fileId = "f_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4);
-    
-    let fileUrl = "#";
-    try {
-      fileUrl = URL.createObjectURL(fileObj);
-    } catch (e) {}
-
-    this.rawFileMap.set(fileId, fileObj);
+    const sizeFormatted = (fileObj.size / (1024 * 1024)).toFixed(1) + " MB";
+    const fileId = "doc_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4);
 
     const newFile = {
       id: fileId,
       name: fileObj.name,
-      type: ext || "FILE",
-      mimeType: fileObj.type,
-      sizeBytes: fileObj.size,
-      sizeFormatted: formattedSize,
-      uploadedBy: currentUser.name || currentUser.email,
-      uploaderUid: currentUser.uid,
-      uploadDate: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
-      category: category,
-      folderId: targetFolderId,
+      type: ext,
       docType: docType,
       statusTag: statusTag,
-      url: fileUrl,
-      dataUrl: null,
-      tags: ["Tệp thực tế"]
+      category: category,
+      folderId: folderId || null,
+      size: fileObj.size,
+      sizeFormatted: sizeFormatted,
+      uploadedBy: uploaderName,
+      uploaderEmail: uploaderEmail,
+      uploaderUid: uploaderUid,
+      uploadDate: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
+      url: URL.createObjectURL(fileObj)
     };
 
-    // 1. Upload raw file binary directly to Supabase Storage Bucket 'documents'
-    if (window.supabaseClient && window.supabaseClient.storage) {
-      try {
-        const sanitizeName = fileObj.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const filePath = `${category}/${fileId}_${sanitizeName}`;
-        
-        const { data: uploadData, error: uploadErr } = await window.supabaseClient.storage.from('documents').upload(filePath, fileObj, {
-          cacheControl: '3600',
-          upsert: true
-        });
-
-        if (!uploadErr && uploadData) {
-          const { data: publicUrlData } = window.supabaseClient.storage.from('documents').getPublicUrl(filePath);
-          if (publicUrlData && publicUrlData.publicUrl) {
-            newFile.url = publicUrlData.publicUrl;
-          }
-        }
-      } catch (e) {
-        console.warn("Supabase Storage upload notice:", e);
-      }
-    }
-
-    // 2. Add to local state & sync to Supabase Postgres Table
     this.files.unshift(newFile);
+    this.rawFileObjects[fileId] = fileObj;
     this.saveLocal();
-    this.notify();
 
     if (window.supabaseClient) {
       try {
-        const dbFile = this.normalizeFileToDb(newFile);
-        await window.supabaseClient.from('files').upsert(dbFile);
-
-        await window.supabaseClient.from('client_upload_audits').insert({
-          uploader_name: currentUser.name || currentUser.email,
-          uploader_email: currentUser.email,
-          file_type: ext,
-          size_formatted: formattedSize,
-          category: category,
-          privacy_mode: category === 'personal' ? "🔒 RIÊNG TƯ (Chỉ Client xem được)" : "🌐 PHÒNG BAN (Nội bộ KDDVKH)",
-          timestamp: newFile.uploadDate
+        await window.supabaseClient.from('files').insert({
+          id: newFile.id,
+          name: newFile.name,
+          type: newFile.type,
+          doc_type: newFile.docType,
+          status_tag: newFile.statusTag,
+          category: newFile.category,
+          folder_id: newFile.folderId,
+          size: newFile.size,
+          size_formatted: newFile.sizeFormatted,
+          uploaded_by: newFile.uploadedBy,
+          uploader_email: uploaderEmail,
+          uploader_uid: uploaderUid,
+          upload_date: newFile.uploadDate,
+          url: '#'
         });
       } catch (e) {
-        console.warn("Supabase Postgres insert notice:", e);
+        console.warn("Supabase file upload insert notice:", e);
       }
     }
 
+    this.notify();
     return newFile;
   }
 
-  // DELETE SINGLE FILE: DELETES FROM POSTGRES DB & STORAGE BUCKET
+  getRawFile(fileId) {
+    return this.rawFileObjects[fileId] || null;
+  }
+
   async deleteFile(fileId) {
-    const file = this.files.find(f => f.id === fileId);
     this.files = this.files.filter(f => f.id !== fileId);
+    delete this.rawFileObjects[fileId];
     this.saveLocal();
-    this.notify();
 
     if (window.supabaseClient) {
       try {
-        // 1. Delete record from Supabase Postgres Table
         await window.supabaseClient.from('files').delete().eq('id', fileId);
-
-        // 2. Delete raw binary file from Supabase Storage Bucket 'documents'
-        if (window.supabaseClient.storage) {
-          const categories = ['department', 'personal'];
-          for (const cat of categories) {
-            const { data: bucketFiles } = await window.supabaseClient.storage.from('documents').list(cat);
-            if (bucketFiles && bucketFiles.length > 0) {
-              const pathsToRemove = [];
-              bucketFiles.forEach(item => {
-                if (item.name && (item.name.includes(fileId) || (file && item.name.includes(file.name)))) {
-                  pathsToRemove.push(`${cat}/${item.name}`);
-                }
-              });
-              if (pathsToRemove.length > 0) {
-                await window.supabaseClient.storage.from('documents').remove(pathsToRemove);
-              }
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("Supabase delete notice:", e);
-      }
-    }
-  }
-
-  // DELETE BATCH FILES: DELETES FROM POSTGRES DB & STORAGE BUCKET
-  async deleteFilesBatch(fileIds) {
-    if (!Array.isArray(fileIds) || fileIds.length === 0) return;
-    const targetFiles = this.files.filter(f => fileIds.includes(f.id));
-    this.files = this.files.filter(f => !fileIds.includes(f.id));
-    this.saveLocal();
-    this.notify();
-
-    if (window.supabaseClient) {
-      try {
-        // 1. Delete records from Supabase Postgres Table
-        await window.supabaseClient.from('files').delete().in('id', fileIds);
-
-        // 2. Delete raw binary files from Supabase Storage Bucket 'documents'
-        if (window.supabaseClient.storage) {
-          const categories = ['department', 'personal'];
-          for (const cat of categories) {
-            const { data: bucketFiles } = await window.supabaseClient.storage.from('documents').list(cat);
-            if (bucketFiles && bucketFiles.length > 0) {
-              const pathsToRemove = [];
-              bucketFiles.forEach(item => {
-                const match = fileIds.some(id => item.name.includes(id)) || targetFiles.some(tf => item.name.includes(tf.name));
-                if (item.name && match) {
-                  pathsToRemove.push(`${cat}/${item.name}`);
-                }
-              });
-              if (pathsToRemove.length > 0) {
-                await window.supabaseClient.storage.from('documents').remove(pathsToRemove);
-              }
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("Batch delete notice:", e);
-      }
-    }
-  }
-
-  async updateFilesDocTypeBatch(fileIds, newDocType, newStatusTag) {
-    if (!Array.isArray(fileIds) || fileIds.length === 0) return;
-    this.files.forEach(f => {
-      if (fileIds.includes(f.id)) {
-        if (newDocType) f.docType = newDocType;
-        if (newStatusTag) f.statusTag = newStatusTag;
-      }
-    });
-    this.saveLocal();
-    this.notify();
-
-    if (window.supabaseClient) {
-      try {
-        const updateObj = {};
-        if (newDocType) updateObj.doc_type = newDocType;
-        if (newStatusTag) updateObj.status_tag = newStatusTag;
-        await window.supabaseClient.from('files').update(updateObj).in('id', fileIds);
-      } catch (e) {
-        console.warn("Batch update notice:", e);
-      }
-    }
-  }
-
-  async purgeAllTrash() {
-    this.files = [];
-    this.folders = [];
-    this.saveLocal();
-    this.notify();
-
-    if (window.supabaseClient) {
-      try {
-        await window.supabaseClient.from('folders').delete().neq('id', 'keep_all');
-        await window.supabaseClient.from('files').delete().neq('id', 'keep_all');
-
-        if (window.supabaseClient.storage) {
-          const categories = ['department', 'personal'];
-          for (const cat of categories) {
-            const { data: bucketFiles } = await window.supabaseClient.storage.from('documents').list(cat);
-            if (bucketFiles && bucketFiles.length > 0) {
-              const pathsToRemove = bucketFiles.map(b => `${cat}/${b.name}`);
-              await window.supabaseClient.storage.from('documents').remove(pathsToRemove);
-            }
-          }
-        }
       } catch (e) {}
     }
+
+    this.notify();
   }
 
-  // CREATE FOLDER: INSERTS ROW TO SUPABASE DB
-  async createFolder(name, category = 'department') {
-    const currentUser = (window.authManager && window.authManager.getCurrentUser()) || { name: "Admin", uid: "admin_waterain8n" };
-    const foldId = "fold_" + Date.now();
+  async deleteFilesBatch(fileIds = []) {
+    if (!fileIds || fileIds.length === 0) return;
+    this.files = this.files.filter(f => !fileIds.includes(f.id));
+    fileIds.forEach(id => delete this.rawFileObjects[id]);
+    this.saveLocal();
+
+    if (window.supabaseClient) {
+      try {
+        await window.supabaseClient.from('files').delete().in('id', fileIds);
+      } catch (e) {}
+    }
+
+    this.notify();
+  }
+
+  async purgeFilesByUser(cleanEmail) {
+    if (!cleanEmail) return;
+    const clean = cleanEmail.toLowerCase().trim();
+
+    const filesToDelete = this.files.filter(f => {
+      const by = (f.uploadedBy || '').toLowerCase();
+      const uEmail = (f.uploaderEmail || '').toLowerCase();
+      return uEmail === clean || by.includes(clean) || by.includes(clean.split('@')[0]);
+    });
+
+    const fileIdsToDelete = filesToDelete.map(f => f.id);
+
+    if (fileIdsToDelete.length > 0) {
+      this.files = this.files.filter(f => !fileIdsToDelete.includes(f.id));
+      fileIdsToDelete.forEach(id => delete this.rawFileObjects[id]);
+      this.saveLocal();
+
+      if (window.supabaseClient) {
+        try {
+          await window.supabaseClient.from('files').delete().in('id', fileIdsToDelete);
+        } catch (e) {}
+      }
+
+      this.notify();
+    }
+  }
+
+  async createFolder(name, category = 'department', parentFolderId = null) {
     const newFolder = {
-      id: foldId,
-      name: name,
+      id: "fold_" + Date.now(),
+      name: `📁 ${name.trim()}`,
       category: category,
-      department: "Phòng Kinh doanh & DVKH",
-      createdBy: currentUser.name || currentUser.email,
-      ownerUid: currentUser.uid,
-      date: new Date().toLocaleDateString('vi-VN'),
-      filesCount: 0
+      parentFolderId: parentFolderId || null,
+      fileCount: 0,
+      createdAt: new Date().toISOString().split('T')[0]
     };
 
     this.folders.push(newFolder);
     this.saveLocal();
-    this.notify();
 
     if (window.supabaseClient) {
       try {
-        const dbFold = this.normalizeFolderToDb(newFolder);
-        await window.supabaseClient.from('folders').upsert(dbFold);
-      } catch (e) {
-        console.warn("Create folder notice:", e);
-      }
+        await window.supabaseClient.from('folders').insert({
+          id: newFolder.id,
+          name: newFolder.name,
+          category: newFolder.category,
+          parent_folder_id: newFolder.parentFolderId,
+          file_count: 0,
+          created_at: newFolder.createdAt
+        });
+      } catch (e) {}
     }
 
+    this.notify();
     return newFolder;
   }
 
-  async renameFolder(folderId, newName) {
-    const fold = this.folders.find(f => f.id === folderId);
-    if (fold) {
-      fold.name = newName;
-      this.saveLocal();
-      this.notify();
-
-      if (window.supabaseClient) {
-        try {
-          await window.supabaseClient.from('folders').update({ name: newName }).eq('id', folderId);
-        } catch (e) {}
-      }
-    }
-  }
-
-  // DELETE FOLDER: DELETES ROW FROM SUPABASE DB
   async deleteFolder(folderId) {
     this.folders = this.folders.filter(f => f.id !== folderId);
     this.saveLocal();
-    this.notify();
 
     if (window.supabaseClient) {
       try {
         await window.supabaseClient.from('folders').delete().eq('id', folderId);
-        await window.supabaseClient.from('files').update({ folder_id: null }).eq('folder_id', folderId);
-      } catch (e) {
-        console.warn("Delete folder notice:", e);
-      }
+      } catch (e) {}
     }
-  }
 
-  getFolders(category = 'department') {
-    return this.folders.filter(f => f.category === category);
+    this.notify();
   }
 
   onChange(callback) {

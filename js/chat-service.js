@@ -1,6 +1,6 @@
 // ==========================================================================
 // UNSTOPPABLE HYBRID REALTIME PRESENCE & CHAT NOTIFICATION ENGINE
-// Real-time Chat Sync, 8s Quad-Channel Presence Heartbeat & Admin Channels Fix
+// Real-time Chat Sync, 8s Quad-Channel Presence Heartbeat & User Data Purge
 // ==========================================================================
 
 const INITIAL_CHANNELS = [
@@ -72,7 +72,7 @@ class ChatService {
     // 2. Connect Supabase Realtime Chat Broadcast & Quad-Presence Tracking
     this.setupSupabaseRealtime();
 
-    // 3. Sync Cloud Custom Channels with Dual-Layer Fallback (Supabase Database + Admin User Metadata)
+    // 3. Sync Cloud Custom Channels
     this.syncCustomChannelsWithCloud();
 
     // 4. Periodic Presence Heartbeat Ping (every 8s) for 100% bulletproof glowing online LEDs
@@ -202,6 +202,11 @@ class ChatService {
   isUserOnline(email) {
     if (!email) return false;
     const clean = email.toLowerCase().trim();
+
+    // Check if user is in deleted list
+    const deletedEmails = window.authManager ? window.authManager.deletedEmails : new Set();
+    if (deletedEmails.has(clean)) return false;
+
     const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
     
     // Current user is always online
@@ -228,7 +233,7 @@ class ChatService {
       const cleanEmail = currentUser && currentUser.email ? currentUser.email.toLowerCase().trim() : 'guest_user';
 
       // Broadcast Channel for Instant Message Syncing & Realtime Presence Pings & Channel Management
-      this.realtimeChannel = window.supabaseClient.channel('thuduc_realtime_chat_v11', {
+      this.realtimeChannel = window.supabaseClient.channel('thuduc_realtime_chat_v12', {
         config: { broadcast: { self: true } }
       });
 
@@ -239,8 +244,11 @@ class ChatService {
             if (targetId && message) {
               if (message.senderEmail) {
                 const senderClean = message.senderEmail.toLowerCase().trim();
-                this.onlineUserEmails.add(senderClean);
-                this.lastSeenTimestamps[senderClean] = Date.now();
+                const deletedEmails = window.authManager ? window.authManager.deletedEmails : new Set();
+                if (!deletedEmails.has(senderClean)) {
+                  this.onlineUserEmails.add(senderClean);
+                  this.lastSeenTimestamps[senderClean] = Date.now();
+                }
               }
 
               if (!this.messages[targetId]) this.messages[targetId] = [];
@@ -275,9 +283,12 @@ class ChatService {
         .on('broadcast', { event: 'user_presence_ping' }, (payload) => {
           if (payload && payload.payload && payload.payload.email) {
             const pingEmail = payload.payload.email.toLowerCase().trim();
-            this.onlineUserEmails.add(pingEmail);
-            this.lastSeenTimestamps[pingEmail] = Date.now();
-            this.notify();
+            const deletedEmails = window.authManager ? window.authManager.deletedEmails : new Set();
+            if (!deletedEmails.has(pingEmail)) {
+              this.onlineUserEmails.add(pingEmail);
+              this.lastSeenTimestamps[pingEmail] = Date.now();
+              this.notify();
+            }
           }
         })
         .on('broadcast', { event: 'new_channel' }, (payload) => {
@@ -325,6 +336,11 @@ class ChatService {
             if (window.appController) window.appController.renderTeamChat();
           }
         })
+        .on('broadcast', { event: 'user_purged' }, (payload) => {
+          if (payload && payload.payload && payload.payload.email) {
+            this.purgeUserData(payload.payload.email);
+          }
+        })
         .on('broadcast', { event: 'request_channel_sync' }, () => {
           const isAdmin = window.authManager && window.authManager.isAdmin();
           if (isAdmin && this.realtimeChannel) {
@@ -357,7 +373,7 @@ class ChatService {
         .subscribe();
 
       // Presence Channel for Tracking Real Online Accounts
-      this.presenceChannel = window.supabaseClient.channel('thuduc_presence_v11', {
+      this.presenceChannel = window.supabaseClient.channel('thuduc_presence_v12', {
         config: { presence: { key: cleanEmail } }
       });
 
@@ -365,20 +381,23 @@ class ChatService {
         .on('presence', { event: 'sync' }, () => {
           const state = this.presenceChannel.presenceState();
           const activeEmails = new Set();
+          const deletedEmails = window.authManager ? window.authManager.deletedEmails : new Set();
           
           Object.keys(state).forEach(key => {
             const presences = state[key];
             presences.forEach(p => {
               if (p && p.email) {
                 const em = p.email.toLowerCase().trim();
-                activeEmails.add(em);
-                this.lastSeenTimestamps[em] = Date.now();
+                if (!deletedEmails.has(em)) {
+                  activeEmails.add(em);
+                  this.lastSeenTimestamps[em] = Date.now();
+                }
               }
             });
           });
 
           // Always add current logged-in user to online list
-          if (currentUser && currentUser.email) {
+          if (currentUser && currentUser.email && !deletedEmails.has(currentUser.email.toLowerCase().trim())) {
             activeEmails.add(currentUser.email.toLowerCase().trim());
           }
 
@@ -396,10 +415,62 @@ class ChatService {
     }
   }
 
+  purgeUserData(cleanEmail) {
+    if (!cleanEmail) return;
+    const clean = cleanEmail.toLowerCase().trim();
+    const cleanSlug = clean.replace(/[@.]/g, '_');
+
+    // 1. Remove from online presence & timestamps
+    this.onlineUserEmails.delete(clean);
+    delete this.lastSeenTimestamps[clean];
+
+    // 2. Remove DM rooms involving this email
+    Object.keys(this.messages).forEach(roomId => {
+      if (roomId.startsWith('dm_') && roomId.includes(cleanSlug)) {
+        delete this.messages[roomId];
+        delete this.unreadCounts[roomId];
+        if (this.activeTargetId === roomId) {
+          this.activeTargetId = 'chan_general';
+        }
+      }
+    });
+
+    // 3. Remove user messages from channels
+    Object.keys(this.messages).forEach(roomId => {
+      if (Array.isArray(this.messages[roomId])) {
+        this.messages[roomId] = this.messages[roomId].filter(m => {
+          const sender = (m.senderEmail || '').toLowerCase().trim();
+          return sender !== clean;
+        });
+      }
+    });
+
+    this.saveLocal();
+
+    // 4. Broadcast purge event to all connected users
+    if (this.realtimeChannel) {
+      try {
+        this.realtimeChannel.send({
+          type: 'broadcast',
+          event: 'user_purged',
+          payload: { email: clean }
+        });
+      } catch (e) {}
+    }
+
+    this.notify();
+    if (window.appController) {
+      window.appController.renderTeamChat();
+    }
+  }
+
   updateUserPresence() {
     const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
     if (currentUser && currentUser.email) {
       const cleanEmail = currentUser.email.toLowerCase().trim();
+      const deletedEmails = window.authManager ? window.authManager.deletedEmails : new Set();
+      if (deletedEmails.has(cleanEmail)) return;
+
       this.onlineUserEmails.add(cleanEmail);
       this.lastSeenTimestamps[cleanEmail] = Date.now();
 
@@ -465,12 +536,12 @@ class ChatService {
   getRealDirectUsers() {
     const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
     const currentEmail = currentUser ? (currentUser.email || '').toLowerCase().trim() : '';
+    const deletedEmails = window.authManager ? window.authManager.deletedEmails : new Set();
 
-    // Standard known accounts
+    // Standard known accounts (Admins only)
     const knownAccounts = [
       { name: "Lê Tuấn Anh", email: "letuananh18@gmail.com", role: "Admin / Quản trị hệ thống" },
-      { name: "Tuấn Anh (Water Admin)", email: "waterain8n@gmail.com", role: "Admin Ban Quản Trị" },
-      { name: "Vy Phan", email: "vy.pnt1612@gmail.com", role: "Cán bộ P.KDDVKH" }
+      { name: "Tuấn Anh (Water Admin)", email: "waterain8n@gmail.com", role: "Admin Ban Quản Trị" }
     ];
 
     // Merge with registered accounts from authManager
@@ -485,8 +556,11 @@ class ChatService {
       }
     });
 
-    // Filter out current user's own email from 1:1 DM list
-    const otherUsers = knownAccounts.filter(acc => acc.email.toLowerCase() !== currentEmail);
+    // Filter out current user's own email AND any deleted emails!
+    const otherUsers = knownAccounts.filter(acc => {
+      const e = acc.email.toLowerCase().trim();
+      return e !== currentEmail && !deletedEmails.has(e);
+    });
 
     return otherUsers.map(u => {
       const emailClean = u.email.toLowerCase().trim();
