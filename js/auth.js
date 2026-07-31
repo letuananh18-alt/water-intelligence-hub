@@ -1,6 +1,6 @@
 // ==========================================================================
 // UNSTOPPABLE HYBRID AUTHENTICATION & USER APPROVAL MANAGEMENT ENGINE
-// Dual OAuth Google & Password Auth with Strict Admin Approval Workflow
+// Dual OAuth Google & Password Auth with Dual-Cloud User Approval Sync
 // ==========================================================================
 
 const DEMO_USERS = {
@@ -30,13 +30,16 @@ class AuthManager {
   constructor() {
     this.currentUser = null;
     this.usersList = [DEMO_USERS.ADMIN, DEMO_USERS.ADMIN_ALT];
+    this.approvedEmails = new Set(["waterain8n@gmail.com", "letuananh18@gmail.com", "vy.pnt1612@gmail.com", "mr.saigonchip@gmail.com"]);
+    this.blockedEmails = new Set();
     this.deletedEmails = new Set();
     this.listeners = [];
+    this.realtimeChannel = null;
     this.init();
   }
 
   init() {
-    // 1. Load session & deleted users cache
+    // 1. Load session & caches
     const savedSession = sessionStorage.getItem('thuduc_water_user_session');
     if (savedSession) {
       try {
@@ -44,6 +47,26 @@ class AuthManager {
       } catch (e) {
         this.currentUser = null;
       }
+    }
+
+    const savedApproved = localStorage.getItem('thuduc_approved_users');
+    if (savedApproved) {
+      try {
+        const arr = JSON.parse(savedApproved);
+        if (Array.isArray(arr)) {
+          arr.forEach(x => this.approvedEmails.add(x.toLowerCase().trim()));
+        }
+      } catch (e) {}
+    }
+
+    const savedBlocked = localStorage.getItem('thuduc_blocked_users');
+    if (savedBlocked) {
+      try {
+        const arr = JSON.parse(savedBlocked);
+        if (Array.isArray(arr)) {
+          arr.forEach(x => this.blockedEmails.add(x.toLowerCase().trim()));
+        }
+      } catch (e) {}
     }
 
     const savedDeleted = localStorage.getItem('thuduc_deleted_users');
@@ -57,9 +80,53 @@ class AuthManager {
     }
 
     if (window.supabaseClient) {
+      this.setupSupabaseRealtime();
       this.checkSupabaseAuthSession();
       this.loadUsersFromCloud();
     }
+  }
+
+  setupSupabaseRealtime() {
+    if (!window.supabaseClient) return;
+
+    try {
+      this.realtimeChannel = window.supabaseClient.channel('thuduc_user_approval_v1', {
+        config: { broadcast: { self: true } }
+      });
+
+      this.realtimeChannel
+        .on('broadcast', { event: 'user_approved' }, (payload) => {
+          if (payload && payload.payload && payload.payload.email) {
+            const clean = payload.payload.email.toLowerCase().trim();
+            this.approvedEmails.add(clean);
+            this.blockedEmails.delete(clean);
+            this.saveLocalCaches();
+            const u = this.usersList.find(x => x.email.toLowerCase().trim() === clean);
+            if (u) u.status = 'approved';
+            this.notify();
+            if (window.appController) window.appController.renderUsersTable();
+          }
+        })
+        .on('broadcast', { event: 'user_blocked' }, (payload) => {
+          if (payload && payload.payload && payload.payload.email) {
+            const clean = payload.payload.email.toLowerCase().trim();
+            this.blockedEmails.add(clean);
+            this.approvedEmails.delete(clean);
+            this.saveLocalCaches();
+            const u = this.usersList.find(x => x.email.toLowerCase().trim() === clean);
+            if (u) u.status = 'blocked';
+            this.notify();
+            if (window.appController) window.appController.renderUsersTable();
+          }
+        })
+        .subscribe();
+    } catch (e) {}
+  }
+
+  saveLocalCaches() {
+    localStorage.setItem('thuduc_approved_users', JSON.stringify(Array.from(this.approvedEmails)));
+    localStorage.setItem('thuduc_blocked_users', JSON.stringify(Array.from(this.blockedEmails)));
+    localStorage.setItem('thuduc_deleted_users', JSON.stringify(Array.from(this.deletedEmails)));
   }
 
   async checkSupabaseAuthSession() {
@@ -73,22 +140,31 @@ class AuthManager {
         const isAdminEmail = cleanEmail === 'waterain8n@gmail.com' || cleanEmail === 'letuananh18@gmail.com';
         const name = u.user_metadata?.full_name || u.user_metadata?.name || cleanEmail.split('@')[0];
 
-        // 1. Check existing user status in Supabase Database
-        let userStatus = isAdminEmail ? 'approved' : 'pending';
-        
-        try {
-          const { data: dbUser } = await window.supabaseClient.from('users').select('status').eq('email', cleanEmail).maybeSingle();
-          if (dbUser && dbUser.status) {
-            userStatus = dbUser.status;
-          }
-        } catch (e) {}
+        // Determine approval status cleanly
+        let userStatus = 'pending';
+        if (isAdminEmail || this.approvedEmails.has(cleanEmail)) {
+          userStatus = 'approved';
+        } else if (this.blockedEmails.has(cleanEmail)) {
+          userStatus = 'blocked';
+        } else {
+          // Query database
+          try {
+            const { data: dbUser } = await window.supabaseClient.from('users').select('status').eq('email', cleanEmail).maybeSingle();
+            if (dbUser && dbUser.status) {
+              userStatus = dbUser.status;
+              if (userStatus === 'approved') this.approvedEmails.add(cleanEmail);
+            }
+          } catch (e) {}
+        }
 
         // Admin accounts are ALWAYS approved
-        if (isAdminEmail) userStatus = 'approved';
+        if (isAdminEmail) {
+          userStatus = 'approved';
+          this.approvedEmails.add(cleanEmail);
+        }
 
-        // 2. Enforce Approval Check for Gmail / Google OAuth
+        // Enforce Approval Check for Gmail / Google OAuth
         if (userStatus === 'pending' && !isAdminEmail) {
-          // Register user in DB as pending if new
           await this.syncUserToCloud({
             uid: u.id,
             name: name,
@@ -110,7 +186,7 @@ class AuthManager {
           return;
         }
 
-        // 3. User is approved: Proceed with login
+        // User is approved: Proceed with login
         this.currentUser = {
           uid: u.id,
           name: name,
@@ -146,16 +222,28 @@ class AuthManager {
             if (this.deletedEmails.has(clean)) return; // Exclude deleted accounts
 
             const isAdminEmail = clean === 'waterain8n@gmail.com' || clean === 'letuananh18@gmail.com';
+            
+            let status = uData.status;
+            if (isAdminEmail || this.approvedEmails.has(clean)) {
+              status = 'approved';
+              this.approvedEmails.add(clean);
+            } else if (this.blockedEmails.has(clean)) {
+              status = 'blocked';
+            } else if (!status) {
+              status = 'pending';
+            }
+
             const formattedUser = {
               uid: uData.uid || uData.id,
               name: uData.name || clean.split('@')[0],
               email: clean,
               role: uData.role || (isAdminEmail ? 'Admin / Quản trị hệ thống' : 'Cán bộ P.KDDVKH'),
-              status: uData.status || (isAdminEmail ? 'approved' : 'pending'),
+              status: status,
               department: uData.department || 'Phòng Kinh doanh & Dịch vụ Khách hàng',
               lastLogin: uData.last_login || uData.lastLogin || uData.last_seen || new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
               avatar: uData.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(uData.name || clean.split('@')[0])}&background=0284c7&color=fff&bold=true`
             };
+
             const existingIdx = list.findIndex(x => x.email.toLowerCase().trim() === clean);
             if (existingIdx >= 0) {
               list[existingIdx] = { ...list[existingIdx], ...formattedUser };
@@ -173,18 +261,25 @@ class AuthManager {
           logsData.forEach(log => {
             if (log && log.email) {
               const clean = log.email.toLowerCase().trim();
-              if (this.deletedEmails.has(clean)) return; // Exclude deleted accounts
+              if (this.deletedEmails.has(clean)) return;
 
               const isAdminEmail = clean === 'waterain8n@gmail.com' || clean === 'letuananh18@gmail.com';
+              let status = 'pending';
+              if (isAdminEmail || this.approvedEmails.has(clean)) {
+                status = 'approved';
+              } else if (this.blockedEmails.has(clean)) {
+                status = 'blocked';
+              }
+
               if (!list.some(x => x.email.toLowerCase().trim() === clean)) {
                 list.push({
                   uid: log.uid || 'log_' + Date.now(),
                   name: log.name || clean.split('@')[0],
                   email: clean,
                   role: log.role || (isAdminEmail ? 'Admin / Quản trị hệ thống' : 'Cán bộ P.KDDVKH'),
-                  status: isAdminEmail ? 'approved' : 'pending',
+                  status: status,
                   department: 'Phòng Kinh doanh & Dịch vụ Khách hàng',
-                  lastLogin: log.timestamp || 'Chờ phê duyệt',
+                  lastLogin: log.timestamp || 'Vừa truy cập',
                   avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(log.name || clean.split('@')[0])}&background=0284c7&color=fff&bold=true`
                 });
               }
@@ -193,13 +288,13 @@ class AuthManager {
         }
       } catch (e) {}
 
-      // Filter out any deleted emails again
+      // Filter out deleted emails
       this.usersList = list.filter(u => !this.deletedEmails.has(u.email.toLowerCase().trim()));
       this.notify();
 
-      // Realtime listener on users table for instantaneous Admin table refresh
+      // Realtime listener on users table
       window.supabaseClient
-        .channel('schema-users-changes-v5')
+        .channel('schema-users-changes-v6')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, async () => {
           this.loadUsersFromCloud();
         })
@@ -224,13 +319,17 @@ class AuthManager {
     if (window.supabaseClient) {
       try {
         const loginTime = new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+        const clean = userObj.email.toLowerCase().trim();
+        const isAdmin = clean === 'waterain8n@gmail.com' || clean === 'letuananh18@gmail.com';
         
+        const finalStatus = isAdmin ? 'approved' : (userObj.status || (this.approvedEmails.has(clean) ? 'approved' : 'pending'));
+
         await window.supabaseClient.from('users').upsert({
           uid: userObj.uid,
           name: userObj.name,
-          email: userObj.email.toLowerCase().trim(),
+          email: clean,
           role: userObj.role,
-          status: userObj.status || (userObj.email.includes('waterain8n') || userObj.email.includes('letuananh18') ? 'approved' : 'pending'),
+          status: finalStatus,
           avatar: userObj.avatar,
           department: userObj.department,
           last_login: loginTime
@@ -238,8 +337,8 @@ class AuthManager {
 
         await window.supabaseClient.from('login_logs').insert({
           uid: userObj.uid,
-          name: userObj.name || userObj.email.split('@')[0],
-          email: userObj.email.toLowerCase().trim(),
+          name: userObj.name || clean.split('@')[0],
+          email: clean,
           role: userObj.role,
           timestamp: loginTime
         });
@@ -278,34 +377,23 @@ class AuthManager {
     const cleanEmail = email.toLowerCase().trim();
     const isAdminEmail = cleanEmail === 'waterain8n@gmail.com' || cleanEmail === 'letuananh18@gmail.com';
 
-    // Remove from deleted list if Admin re-adds or logs in
     this.deletedEmails.delete(cleanEmail);
-    localStorage.setItem('thuduc_deleted_users', JSON.stringify(Array.from(this.deletedEmails)));
+    this.saveLocalCaches();
 
-    // 1. Check if user exists in usersList or DB
-    let existingUser = this.usersList.find(u => u.email.toLowerCase().trim() === cleanEmail);
-
-    if (!existingUser) {
-      existingUser = {
-        uid: "user_" + Date.now(),
-        name: cleanEmail.split('@')[0],
-        email: cleanEmail,
-        role: isAdminEmail ? "Admin / Quản trị hệ thống" : "Nhân viên / Client",
-        status: isAdminEmail ? "approved" : "pending",
-        department: "Phòng Kinh doanh & Dịch vụ Khách hàng",
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanEmail.split('@')[0])}&background=0284c7&color=fff&bold=true`,
-        lastLogin: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
-      };
-      this.usersList.push(existingUser);
-      await this.syncUserToCloud(existingUser);
+    // Determine status
+    let userStatus = 'pending';
+    if (isAdminEmail || this.approvedEmails.has(cleanEmail)) {
+      userStatus = 'approved';
+    } else if (this.blockedEmails.has(cleanEmail)) {
+      userStatus = 'blocked';
     }
 
-    // 2. Enforce Approval Check
-    if (existingUser.status === 'blocked' && !isAdminEmail) {
+    if (userStatus === 'blocked' && !isAdminEmail) {
       alert("⛔ TỪ CHỐI TRUY CẬP: Tài khoản của bạn đã bị Ban Quản trị Admin KHÓA QUYỀN TRUY CẬP vào hệ thống!");
       return null;
     }
-    if (existingUser.status === 'pending' && !isAdminEmail) {
+
+    if (userStatus === 'pending' && !isAdminEmail) {
       alert(`⏳ ĐANG CHỜ PHÊ DUYỆT: Tài khoản (${cleanEmail}) của bạn đã được ghi nhận trên hệ thống và đang CHỜ BAN QUẢN TRỊ ADMIN PHÊ DUYỆT!\n\nVui lòng báo Admin (waterain8n@gmail.com) bấm [✅ Duyệt] ở mục "Người dùng & Giám sát".`);
       return null;
     }
@@ -362,43 +450,73 @@ class AuthManager {
 
   async approveUser(email) {
     const clean = email.toLowerCase().trim();
+    this.approvedEmails.add(clean);
+    this.blockedEmails.delete(clean);
     this.deletedEmails.delete(clean);
-    localStorage.setItem('thuduc_deleted_users', JSON.stringify(Array.from(this.deletedEmails)));
+    this.saveLocalCaches();
 
     const u = this.usersList.find(x => x.email.toLowerCase().trim() === clean);
     if (u) {
       u.status = 'approved';
     }
+
     if (window.supabaseClient) {
       try {
         await window.supabaseClient.from('users').update({ status: 'approved' }).eq('email', clean);
       } catch (e) {}
     }
+
+    if (this.realtimeChannel) {
+      try {
+        this.realtimeChannel.send({
+          type: 'broadcast',
+          event: 'user_approved',
+          payload: { email: clean }
+        });
+      } catch (e) {}
+    }
+
     this.notify();
     if (window.appController) window.appController.renderUsersTable();
   }
 
   async blockUser(email) {
     const clean = email.toLowerCase().trim();
+    this.blockedEmails.add(clean);
+    this.approvedEmails.delete(clean);
+    this.saveLocalCaches();
+
     const u = this.usersList.find(x => x.email.toLowerCase().trim() === clean);
     if (u) {
       u.status = 'blocked';
     }
+
     if (window.supabaseClient) {
       try {
         await window.supabaseClient.from('users').update({ status: 'blocked' }).eq('email', clean);
       } catch (e) {}
     }
+
+    if (this.realtimeChannel) {
+      try {
+        this.realtimeChannel.send({
+          type: 'broadcast',
+          event: 'user_blocked',
+          payload: { email: clean }
+        });
+      } catch (e) {}
+    }
+
     this.notify();
     if (window.appController) window.appController.renderUsersTable();
   }
 
   async deleteUserAccount(email) {
     const clean = email.toLowerCase().trim();
-
-    // Add to deleted set and persist to localStorage
     this.deletedEmails.add(clean);
-    localStorage.setItem('thuduc_deleted_users', JSON.stringify(Array.from(this.deletedEmails)));
+    this.approvedEmails.delete(clean);
+    this.blockedEmails.delete(clean);
+    this.saveLocalCaches();
 
     this.usersList = this.usersList.filter(x => x.email.toLowerCase().trim() !== clean);
 
@@ -415,8 +533,10 @@ class AuthManager {
 
   async createUserAccount(name, email, role, department) {
     const cleanEmail = email.toLowerCase().trim();
+    this.approvedEmails.add(cleanEmail);
+    this.blockedEmails.delete(cleanEmail);
     this.deletedEmails.delete(cleanEmail);
-    localStorage.setItem('thuduc_deleted_users', JSON.stringify(Array.from(this.deletedEmails)));
+    this.saveLocalCaches();
 
     const newUser = {
       uid: "user_" + Date.now(),
