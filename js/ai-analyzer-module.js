@@ -172,6 +172,92 @@ class AiAnalyzerModule {
       }
     }
 
+  // 4B. SUPABASE REALTIME N8N AI GATEWAY INTEGRATION
+  isSupabaseAiMode() {
+    return localStorage.getItem('supabase_ai_mode') === 'true';
+  }
+
+  setSupabaseAiMode(enabled) {
+    localStorage.setItem('supabase_ai_mode', enabled ? 'true' : 'false');
+  }
+
+  async querySupabaseRealtimeAi(promptText, userEmail = '', userName = '') {
+    if (!this.isSupabaseAiMode() || !window.supabaseClient) return null;
+
+    const cleanPrompt = (promptText || '').trim();
+    if (!cleanPrompt) return null;
+
+    try {
+      // 1. Insert question into Supabase ai_chat_requests table
+      const { data, error } = await window.supabaseClient
+        .from('ai_chat_requests')
+        .insert([{
+          question: cleanPrompt,
+          user_email: userEmail || 'guest@thuducwater.vn',
+          user_name: userName || 'Khách hàng',
+          status: 'pending',
+          created_at: new Date().toISOString()
+        }])
+        .select();
+
+      if (error) {
+        console.warn("Supabase Realtime AI Insert Notice:", error.message);
+        window.handleSupabaseError && window.handleSupabaseError(error, "Insert ai_chat_requests");
+        return null;
+      }
+
+      if (!data || !data[0] || !data[0].id) return null;
+
+      const requestId = data[0].id;
+      console.log("⚡ Supabase Realtime AI question posted, Request ID:", requestId);
+
+      // 2. Wait for Postgres Realtime update on table ai_chat_requests (20s max timeout)
+      return new Promise((resolve) => {
+        let isResolved = false;
+
+        const cleanup = () => {
+          if (channel) {
+            try { window.supabaseClient.removeChannel(channel); } catch (e) {}
+          }
+        };
+
+        const timer = setTimeout(() => {
+          if (!isResolved) {
+            isResolved = true;
+            cleanup();
+            console.warn("⚠️ Supabase Realtime AI response timed out (20s). Falling back to RAG Engine.");
+            resolve(null);
+          }
+        }, 20000);
+
+        const channel = window.supabaseClient
+          .channel(`realtime_ai_${requestId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'ai_chat_requests',
+              filter: `id=eq.${requestId}`
+            },
+            (payload) => {
+              if (!isResolved && payload.new && payload.new.status === 'completed' && payload.new.reply) {
+                isResolved = true;
+                clearTimeout(timer);
+                cleanup();
+                console.log("🎉 Supabase Realtime AI answer received via n8n update:", payload.new.reply);
+                resolve(payload.new.reply);
+              }
+            }
+          )
+          .subscribe();
+      });
+    } catch (err) {
+      console.warn("Supabase Realtime AI Gateway Exception:", err);
+      return null;
+    }
+  }
+
   // 5. EXTRACT VECTOR TEXT FROM PDF BLOB USING PDF.JS
   async extractTextFromPdfBlob(blobOrUrl) {
     try {

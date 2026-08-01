@@ -2159,10 +2159,9 @@ class AppController {
     const inputKey = document.getElementById('geminiApiKeyInput');
     const statusEl = document.getElementById('geminiKeyStatus');
 
-    const inputN8n = document.getElementById('n8nWebhookUrlInput');
-    const btnSaveN8n = document.getElementById('btnSaveN8nWebhook');
-    const btnTestN8n = document.getElementById('btnTestN8nWebhook');
-    const statusN8n = document.getElementById('n8nWebhookStatus');
+    const toggleSupabaseAi = document.getElementById('toggleSupabaseAiMode');
+    const statusSupabaseAi = document.getElementById('supabaseAiStatus');
+    const sliderSupabaseAi = document.getElementById('sliderSupabaseAi');
 
     const updateStatus = () => {
       const savedKey = localStorage.getItem('gemini_api_key') || localStorage.getItem('openai_api_key') || '';
@@ -2179,16 +2178,19 @@ class AppController {
         }
       }
 
-      // n8n Webhook status
-      const savedN8nUrl = window.aiAnalyzerModule ? window.aiAnalyzerModule.getN8nWebhookUrl() : localStorage.getItem('n8n_webhook_url');
-      if (inputN8n && savedN8nUrl && !inputN8n.value) {
-        inputN8n.value = savedN8nUrl;
+      // Supabase Realtime AI Gateway Mode status
+      const isSupabaseAi = window.aiAnalyzerModule ? window.aiAnalyzerModule.isSupabaseAiMode() : (localStorage.getItem('supabase_ai_mode') === 'true');
+      if (toggleSupabaseAi) {
+        toggleSupabaseAi.checked = isSupabaseAi;
       }
-      if (statusN8n) {
-        if (savedN8nUrl) {
-          statusN8n.innerHTML = `<span style="color: #0284c7; display: inline-flex; align-items: center; gap: 4px;">🔗 Đã kích hoạt n8n AI Chatbot Webhook (${escapeHTML(savedN8nUrl)})</span>`;
+      if (sliderSupabaseAi) {
+        sliderSupabaseAi.style.backgroundColor = isSupabaseAi ? '#0284c7' : '#cbd5e1';
+      }
+      if (statusSupabaseAi) {
+        if (isSupabaseAi) {
+          statusSupabaseAi.innerHTML = `<span style="color: #0284c7; display: inline-flex; align-items: center; gap: 6px;">⚡ ĐÃ KÍCH HOẠT: AI Assistant chèn câu hỏi vào Supabase 'ai_chat_requests' và lắng nghe n8n Realtime update</span>`;
         } else {
-          statusN8n.innerHTML = `<span style="color: #64748b;">ℹ️ Chưa kết nối Webhook n8n (AI Assistant đang chạy Engine AI nội bộ)</span>`;
+          statusSupabaseAi.innerHTML = `<span style="color: #64748b;">ℹ️ Đang dùng Chế độ AI Engine đọc trực tiếp văn bản nội bộ (Tắt Supabase Realtime AI Gateway)</span>`;
         }
       }
     };
@@ -2209,54 +2211,21 @@ class AppController {
       }
     });
 
-    btnSaveN8n?.addEventListener('click', () => {
-      if (inputN8n) {
-        const val = inputN8n.value.trim();
-        if (window.aiAnalyzerModule) {
-          window.aiAnalyzerModule.setN8nWebhookUrl(val);
-        } else {
-          if (val) localStorage.setItem('n8n_webhook_url', val);
-          else localStorage.removeItem('n8n_webhook_url');
-        }
-        updateStatus();
-        if (val) {
-          alert(`🎉 Đã lưu n8n Webhook URL thành công!\n\nTừ bây giờ, tất cả câu hỏi trên cổng AI Assistant sẽ được chuyển trực tiếp tới n8n Bot của anh (${val}).`);
-        } else {
-          alert("ℹ️ Đã xóa Webhook URL n8n. AI Assistant chuyển về dùng Engine AI nội bộ!");
-        }
+    toggleSupabaseAi?.addEventListener('change', (e) => {
+      const isChecked = e.target.checked;
+      if (window.aiAnalyzerModule) {
+        window.aiAnalyzerModule.setSupabaseAiMode(isChecked);
+      } else {
+        localStorage.setItem('supabase_ai_mode', isChecked ? 'true' : 'false');
+      }
+      updateStatus();
+      if (isChecked) {
+        alert("⚡ ĐÃ KÍCH HOẠT CỔNG SUPABASE REALTIME AI GATEWAY!\n\nTừ bây giờ, mọi câu hỏi trên ô Chat AI Assistant sẽ được chèn vào bảng Supabase 'ai_chat_requests'. n8n của anh chỉ cần đọc Supabase, xử lý AI và 'Update a row' với reply mới!");
+      } else {
+        alert("ℹ️ Đã chuyển AI Assistant về dùng Chế độ AI RAG nội bộ trực tiếp!");
       }
     });
-
-    btnTestN8n?.addEventListener('click', async () => {
-      const url = inputN8n ? inputN8n.value.trim() : (localStorage.getItem('n8n_webhook_url') || '');
-      if (!url) {
-        alert("⚠️ Vui lòng dán đường dẫn n8n Webhook URL vào ô trước khi kiểm tra!");
-        return;
-      }
-
-      btnTestN8n.disabled = true;
-      const originalText = "⚡ Test Kết Nối";
-      btnTestN8n.textContent = "⌛ Đang kết nối test...";
-
-      try {
-        if (window.aiAnalyzerModule) {
-          const testRes = await window.aiAnalyzerModule.queryN8nWebhook("Xin chào n8n bot! Kiểm tra kết nối từ Thủ Đức Water Web App", "admin@thuducwater.vn");
-
-          if (testRes && testRes.success) {
-            const replyContent = (testRes.text || '✅ n8n Webhook đã nhận tín hiệu (HTTP 200 OK)').trim();
-            alert(`✅ KẾT NỐI N8N THÔNG THÀNH CÔNG (100% OK)!\n\n📌 Webhook Target: ${url}\n\n💬 Phản hồi nhận được từ n8n Bot:\n"${replyContent}"\n\n👉 Anh có thể sang mục AI Assistant gõ câu hỏi để n8n trả lời ngay!`);
-          } else {
-            const errDetail = testRes ? testRes.error : "Không nhận được phản hồi";
-            alert(`❌ CHƯA THÔNG KẾT NỐI TỚI N8N!\n\n📌 Webhook Target: ${url}\n⚠️ Chi tiết: ${errDetail}\n\n👉 ANH KIỂM TRA LẠI TRÊN N8N:\n1. Trong Node Webhook n8n, kiểm tra ô Respond đang chọn là 'Using Respond to Webhook Node' hay 'Immediately'.\n2. Trong Node Respond to Webhook, Response Body nhập: {"reply": "{{ $json.output }}"}.\n3. Workflow đã bấm nút gạt Active màu xanh chưa.`);
-          }
-        }
-      } catch (err) {
-        alert(`❌ LỖI KẾT NỐI: ${err.message || 'Hết thời gian chờ phản hồi từ n8n (Timeout)'}`);
-      } finally {
-        btnTestN8n.disabled = false;
-        btnTestN8n.textContent = originalText;
-      }
-    });
+  }
   }
 
   playNotificationChime() {

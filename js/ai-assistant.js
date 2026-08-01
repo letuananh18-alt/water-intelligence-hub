@@ -132,8 +132,16 @@ QUY TẮC PHẢN HỒI:
     const userPrompt = `${systemPrompt}\n\nDỮ LIỆU VĂN BẢN NỘI BỘ THỦ ĐỨC WATER:\n${docContext || 'Chưa có tệp văn bản đính kèm.'}\n\nCÂU HỎI CỦA ANH/CHỊ: "${q}"`;
 
     let aiResponse = null;
+    const currentUserEmail = window.authManager && window.authManager.currentUser ? window.authManager.currentUser.email : '';
+    const currentUserName = window.authManager && window.authManager.currentUser ? (window.authManager.currentUser.user_metadata?.display_name || window.authManager.currentUser.email) : '';
+
     if (window.aiAnalyzerModule) {
-      aiResponse = await window.aiAnalyzerModule.queryOpenAiGptGateway(userPrompt);
+      if (window.aiAnalyzerModule.isSupabaseAiMode()) {
+        aiResponse = await window.aiAnalyzerModule.querySupabaseRealtimeAi(q, currentUserEmail, currentUserName);
+      }
+      if (!aiResponse) {
+        aiResponse = await window.aiAnalyzerModule.queryOpenAiGptGateway(userPrompt);
+      }
       if (!aiResponse) {
         aiResponse = await window.aiAnalyzerModule.queryGeminiAI(userPrompt);
       }
