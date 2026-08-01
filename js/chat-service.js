@@ -40,7 +40,7 @@ class ChatService {
   }
 
   init() {
-    // 1. Load Local Storage Cache
+    // 1. Load Local Storage Cache & Purge Accidental Test Messages from chan_general
     const savedMsg = localStorage.getItem('thuduc_water_team_chats');
     if (savedMsg) {
       try {
@@ -48,6 +48,15 @@ class ChatService {
       } catch (e) {
         this.messages = INITIAL_MESSAGES;
       }
+    }
+
+    // Always keep chan_general clean of accidental test messages
+    if (this.messages['chan_general'] && Array.isArray(this.messages['chan_general'])) {
+      this.messages['chan_general'] = this.messages['chan_general'].filter(m => m.senderUid === 'system' || m.id === 'msg_init_1');
+      if (this.messages['chan_general'].length === 0) {
+        this.messages['chan_general'] = INITIAL_MESSAGES.chan_general;
+      }
+      this.saveLocal();
     }
 
     const savedUnread = localStorage.getItem('thuduc_water_unread_counts');
