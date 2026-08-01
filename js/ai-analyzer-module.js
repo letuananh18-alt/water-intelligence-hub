@@ -202,8 +202,18 @@ class AiAnalyzerModule {
     const rawUrl = this.getN8nWebhookUrl();
     if (!rawUrl) return { success: false, error: 'Chưa cấu hình URL n8n Webhook!' };
 
+    const cleanPrompt = (promptText || '').trim();
+    const sessionId = 'session_' + (userEmail || 'guest').replace(/[^a-zA-Z0-9]/g, '_');
     const userDisplayName = (userEmail || 'Khách hàng').split('@')[0];
     const userUniqueId = (userEmail || 'guest').replace(/[^a-zA-Z0-9]/g, '_');
+
+    // Candidate URLs: Raw URL + Auto-fallback between Production (/webhook/) and Test (/webhook-test/)
+    const candidateUrls = [rawUrl];
+    if (rawUrl.includes('/webhook/')) {
+      candidateUrls.push(rawUrl.replace('/webhook/', '/webhook-test/'));
+    } else if (rawUrl.includes('/webhook-test/')) {
+      candidateUrls.push(rawUrl.replace('/webhook-test/', '/webhook/'));
+    }
 
     // Comprehensive payload structured to match n8n Bot/Zalo event schemas
     const fullPayload = {
