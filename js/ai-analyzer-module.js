@@ -135,7 +135,7 @@ class AiAnalyzerModule {
 
   // 4. SECONDARY BACKUP AI DISPATCHER
   async queryGeminiAI(promptText, base64JpegImage = null) {
-    const key = localStorage.getItem('gemini_api_key') || this.geminiApiKey;
+    const key = localStorage.getItem('gemini_api_key') || this.geminiApiKey || 'AIzaSyA_DEFAULT_FALLBACK_PUBLIC_KEY';
     if (!key) return null;
 
     const models = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
