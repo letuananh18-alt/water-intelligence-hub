@@ -211,9 +211,10 @@ class AiAnalyzerModule {
       const requestId = data[0].id;
       console.log("⚡ Supabase Realtime AI question posted, Request ID:", requestId);
 
-      // 2. Wait for Postgres Realtime update on table ai_chat_requests (20s max timeout)
+      // 2. Wait for Postgres Realtime update on table ai_chat_requests (15s max timeout)
       return new Promise((resolve) => {
         let isResolved = false;
+        let channel = null;
 
         const cleanup = () => {
           if (channel) {
@@ -225,32 +226,36 @@ class AiAnalyzerModule {
           if (!isResolved) {
             isResolved = true;
             cleanup();
-            console.warn("⚠️ Supabase Realtime AI response timed out (20s). Falling back to RAG Engine.");
+            console.warn("⚠️ Supabase Realtime AI response timed out (15s). Falling back to RAG Engine.");
             resolve(null);
           }
-        }, 20000);
+        }, 15000);
 
-        const channel = window.supabaseClient
-          .channel(`realtime_ai_${requestId}`)
-          .on(
-            'postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'ai_chat_requests',
-              filter: `id=eq.${requestId}`
-            },
-            (payload) => {
-              if (!isResolved && payload.new && payload.new.status === 'completed' && payload.new.reply) {
-                isResolved = true;
-                clearTimeout(timer);
-                cleanup();
-                console.log("🎉 Supabase Realtime AI answer received via n8n update:", payload.new.reply);
-                resolve(payload.new.reply);
+        try {
+          channel = window.supabaseClient
+            .channel(`realtime_ai_${requestId}`)
+            .on(
+              'postgres_changes',
+              {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'ai_chat_requests',
+                filter: `id=eq.${requestId}`
+              },
+              (payload) => {
+                if (!isResolved && payload.new && payload.new.status === 'completed' && payload.new.reply) {
+                  isResolved = true;
+                  clearTimeout(timer);
+                  cleanup();
+                  console.log("🎉 Supabase Realtime AI answer received via n8n update:", payload.new.reply);
+                  resolve(payload.new.reply);
+                }
               }
-            }
-          )
-          .subscribe();
+            )
+            .subscribe();
+        } catch (subErr) {
+          console.warn("Realtime subscription notice:", subErr);
+        }
       });
     } catch (err) {
       console.warn("Supabase Realtime AI Gateway Exception:", err);
