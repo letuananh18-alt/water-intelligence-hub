@@ -415,7 +415,7 @@
           <!-- Personal Folders Grid -->
           <div id="personalFoldersSection" style="margin-bottom: 20px;">
             <div class="card-title" style="margin-bottom: 12px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: space-between;">
-              <span>📁 Thư mục cá nhân của bạn</span>
+              <span style="display: inline-flex; align-items: center; gap: 6px;"><i data-lucide="folder-lock" style="width: 18px; height: 18px; color: #2563eb;"></i> Thư mục cá nhân của bạn</span>
               <span style="font-size: 12px; font-weight: 500; color: var(--slate-400);">Bảo mật riêng tư 100%</span>
             </div>
             <div id="personalFoldersGrid" class="folder-grid-compact"></div>
@@ -448,7 +448,8 @@
                 <tbody id="personalFilesTableBody">
                   <tr>
                     <td colspan="6" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
-                      📄 Chưa có tài liệu cá nhân nào. Hãy bấm "Tải tệp cá nhân" để lưu tệp riêng của bạn!
+                      <i data-lucide="file-text" style="width: 24px; height: 24px; color: #94a3b8; display: block; margin: 0 auto 8px auto;"></i>
+                      <span>Chưa có tài liệu cá nhân nào. Hãy bấm "Tải tệp cá nhân" để lưu tệp riêng của bạn!</span>
                     </td>
                   </tr>
                 </tbody>
@@ -475,7 +476,7 @@
               </button>
               <button class="btn-primary" id="btnPurgeCloudFiles" style="display: none; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; width: auto;" title="Đồng bộ & Dọn dẹp sạch CSDL Supabase">
                 <i data-lucide="trash-2"></i>
-                <span>🧹 Dọn sạch CSDL Supabase</span>
+                <span>Dọn sạch CSDL Supabase</span>
               </button>
               <button class="btn-primary" id="btnCreateNewFolder" style="background: white; color: var(--accent-blue); border: 1px solid var(--slate-200); box-shadow: var(--shadow-sm); width: auto;">
                 <i data-lucide="folder-plus"></i>
@@ -489,7 +490,7 @@
           </div>
 
           <div id="deptFoldersSection">
-            <div class="card-title" style="margin-bottom: 12px; font-size: 15px; font-weight: 700;">📁 Thư mục Nghiệp vụ KDDVKH</div>
+            <div class="card-title" style="margin-bottom: 12px; font-size: 15px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;"><i data-lucide="folder" style="width: 18px; height: 18px; color: #2563eb;"></i> <span>Thư mục Nghiệp vụ KDDVKH</span></div>
             <div id="deptFoldersGrid" class="folder-grid-compact"></div>
           </div>
 
@@ -649,8 +650,8 @@
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <button id="btnMobileBackToAiThreads" class="table-btn mobile-only-btn" style="display: none; padding: 5px 10px; font-size: 12px; font-weight: 700; background: var(--accent-blue); color: white; border: none; border-radius: 6px; cursor: pointer;">← Lịch sử</button>
                   <div>
-                    <h3 style="font-size: 15px; font-weight: 700; color: #0f172a;">🤖 AI Assistant - Trợ lý Hỗ trợ Tra cứu Dữ liệu Nội bộ</h3>
-                    <span style="font-size: 12px; color: var(--accent-blue); font-weight: 600;">⚡ Trợ lý AI Thủ Đức Water</span>
+                    <h3 style="font-size: 15px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;"><i data-lucide="bot" style="width: 18px; height: 18px; color: #2563eb;"></i> AI Assistant - Trợ lý Hỗ trợ Tra cứu Dữ liệu Nội bộ</h3>
+                    <span style="font-size: 12px; color: var(--accent-blue); font-weight: 600; display: flex; align-items: center; gap: 4px;"><i data-lucide="zap" style="width: 12px; height: 12px;"></i> Trợ lý AI Thủ Đức Water</span>
                   </div>
                 </div>
                 <button id="btnClearAiHistory" class="table-btn" style="font-size: 12px; padding: 5px 12px; background: white; border: 1px solid var(--slate-200); width: auto;">
@@ -679,7 +680,7 @@
         <section id="viewReports" class="view-panel" style="display: none;">
           <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div>
-              <h2 class="welcome-title">📊 Báo cáo & Thống kê Kho KDDVKH</h2>
+              <h2 class="welcome-title" style="display: inline-flex; align-items: center; gap: 8px;"><i data-lucide="bar-chart-3" style="width: 22px; height: 22px; color: #2563eb;"></i> <span>Báo cáo & Thống kê Kho KDDVKH</span></h2>
               <p class="welcome-sub">Phân tích tổng quan số lượng văn bản, cơ cấu tài liệu và thống kê dung lượng hệ thống</p>
             </div>
             <button id="btnExportReport" class="btn-primary" style="padding: 10px 18px; font-size: 13px; width: auto;">
@@ -740,60 +741,48 @@
             <!-- Chart 1: Phân loại Văn bản Kho KDDVKH -->
             <div class="activity-card" style="padding: 20px;">
               <div class="card-header-flex" style="margin-bottom: 16px;">
-                <h3 class="card-title">📁 Tỷ lệ Phân loại Văn bản Kho KDDVKH</h3>
+                <h3 class="card-title" style="display: inline-flex; align-items: center; gap: 8px;"><i data-lucide="folder" style="width: 18px; height: 18px; color: #2563eb;"></i> <span>Tỷ lệ Phân loại Văn bản Kho KDDVKH</span></h3>
               </div>
               <div id="chartCategoryList" style="display: flex; flex-direction: column; gap: 14px;">
                 <!-- Dynamically populated by JS -->
               </div>
             </div>
 
-            <!-- Chart 2: Cơ cấu Định dạng Tệp tin -->
+            <!-- Chart 2: Status Breakdown -->
             <div class="activity-card" style="padding: 20px;">
               <div class="card-header-flex" style="margin-bottom: 16px;">
-                <h3 class="card-title">📄 Cơ cấu Định dạng Tệp tin Lưu trữ</h3>
+                <h3 class="card-title" style="display: inline-flex; align-items: center; gap: 8px;"><i data-lucide="pie-chart" style="width: 18px; height: 18px; color: #2563eb;"></i> <span>Trạng thái Văn bản & Pháp lý</span></h3>
               </div>
-              <div id="chartFormatList" style="display: flex; flex-direction: column; gap: 14px;">
-                <!-- Dynamically populated by JS -->
-              </div>
-            </div>
-          </div>
-
-          <!-- Table 3: Status Breakdown Summary -->
-          <div class="table-card">
-            <div class="table-header-bar">
-              <h3 class="card-title">📌 Thống kê Văn bản theo Trạng thái & Độ khẩn ban hành</h3>
-            </div>
-            <div class="data-table-wrapper">
               <table class="data-table">
                 <thead>
                   <tr>
-                    <th>Nhãn Trạng thái</th>
-                    <th>Số lượng tệp</th>
-                    <th>Tỷ lệ phần trăm</th>
-                    <th>Mức độ ưu tiên</th>
+                    <th>Trạng thái Tag</th>
+                    <th>Số lượng</th>
+                    <th>Tỷ lệ %</th>
+                    <th>Pháp lý</th>
                   </tr>
                 </thead>
-                <tbody id="rptStatusTableBody">
+                <tbody>
                   <tr>
-                    <td>🟢 Đã ban hành</td>
+                    <td><span style="display: inline-flex; align-items: center; gap: 4px; color: #10b981; font-weight: 600;"><i data-lucide="check-circle" style="width: 14px; height: 14px;"></i> Đã ban hành</span></td>
                     <td id="cntBanHanh">0</td>
                     <td id="pctBanHanh">0%</td>
-                    <td><span class="badge-tag type-pdf">ÁP DỤNG RỘNG RÃI</span></td>
+                    <td><span class="badge-tag type-pdf">CHÍNH THỨC</span></td>
                   </tr>
                   <tr>
-                    <td>🔴 Khẩn</td>
+                    <td><span style="display: inline-flex; align-items: center; gap: 4px; color: #dc2626; font-weight: 600;"><i data-lucide="alert-circle" style="width: 14px; height: 14px;"></i> Khẩn</span></td>
                     <td id="cntKhan">0</td>
                     <td id="pctKhan">0%</td>
                     <td><span class="badge-tag" style="background: #fee2e2; color: #dc2626;">ƯU TIÊN CAO</span></td>
                   </tr>
                   <tr>
-                    <td>🟡 Chờ duyệt</td>
+                    <td><span style="display: inline-flex; align-items: center; gap: 4px; color: #d97706; font-weight: 600;"><i data-lucide="clock" style="width: 14px; height: 14px;"></i> Chờ duyệt</span></td>
                     <td id="cntChoDuyet">0</td>
                     <td id="pctChoDuyet">0%</td>
                     <td><span class="badge-tag" style="background: #fef3c7; color: #d97706;">DỰ THẢO</span></td>
                   </tr>
                   <tr>
-                    <td>🔒 Mật</td>
+                    <td><span style="display: inline-flex; align-items: center; gap: 4px; color: #475569; font-weight: 600;"><i data-lucide="lock" style="width: 14px; height: 14px;"></i> Mật</span></td>
                     <td id="cntMat">0</td>
                     <td id="pctMat">0%</td>
                     <td><span class="badge-tag" style="background: #f1f5f9; color: #475569;">NỘI BỘ ADMIN</span></td>
@@ -816,9 +805,10 @@
           <!-- Table 1: Client Login Timestamp Audit & Admin Approval -->
           <div class="table-card">
             <div class="table-header-bar" style="display: flex; justify-content: space-between; align-items: center;">
-              <h3 class="card-title">👥 Quản lý & Phê duyệt Quyền Cán bộ Truy cập Hệ thống</h3>
-              <button id="btnCreateUserModal" class="btn-primary" style="padding: 8px 14px; font-size: 12.5px; width: auto;">
-                ➕ Thêm Cán Bộ Mới
+              <h3 class="card-title" style="display: inline-flex; align-items: center; gap: 8px;"><i data-lucide="users" style="width: 18px; height: 18px; color: #2563eb;"></i> <span>Quản lý & Phê duyệt Quyền Cán bộ Truy cập Hệ thống</span></h3>
+              <button id="btnCreateUserModal" class="btn-primary" style="padding: 8px 14px; font-size: 12.5px; width: auto; display: inline-flex; align-items: center; gap: 6px;">
+                <i data-lucide="user-plus" style="width: 15px; height: 15px;"></i>
+                <span>Thêm Cán Bộ Mới</span>
               </button>
             </div>
             <div class="data-table-wrapper">
@@ -850,7 +840,7 @@
           <!-- Table 2: Client Upload Audit Log with Privacy Protection -->
           <div class="table-card" style="margin-top: 20px;">
             <div class="table-header-bar">
-              <h3 class="card-title">📤 Nhật ký Tải tệp mới từ Client (Nội dung file được bảo mật)</h3>
+              <h3 class="card-title" style="display: inline-flex; align-items: center; gap: 8px;"><i data-lucide="upload-cloud" style="width: 18px; height: 18px; color: #2563eb;"></i> <span>Nhật ký Tải tệp mới từ Client (Nội dung file được bảo mật)</span></h3>
             </div>
             <div class="data-table-wrapper">
               <table class="data-table">
@@ -866,7 +856,8 @@
                 <tbody id="clientUploadAuditTableBody">
                   <tr>
                     <td colspan="5" style="text-align: center; padding: 25px; color: var(--slate-400);">
-                      🔒 Chưa có nhật ký tải lên nào từ Client.
+                      <i data-lucide="lock" style="width: 18px; height: 18px; color: #94a3b8; vertical-align: middle; margin-right: 6px;"></i>
+                      <span>Chưa có nhật ký tải lên nào từ Client.</span>
                     </td>
                   </tr>
                 </tbody>
@@ -1173,13 +1164,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Application Logic with Supabase Backend -->
-  <script src="js/supabase-config.js?v=20260801_v131"></script>
-  <script src="js/tech-bg.js?v=20260801_v131"></script>
-  <script src="js/auth.js?v=20260801_v131"></script>
-  <script src="js/storage-service.js?v=20260801_v131"></script>
-  <script src="js/chat-service.js?v=20260801_v131"></script>
-  <script src="js/ai-assistant.js?v=20260801_v131"></script>
-  <script src="js/ai-analyzer-module.js?v=20260801_v131"></script>
-  <script src="js/app.js?v=20260801_v131"></script>
+  <script src="js/supabase-config.js?v=20260801_v132"></script>
+  <script src="js/tech-bg.js?v=20260801_v132"></script>
+  <script src="js/auth.js?v=20260801_v132"></script>
+  <script src="js/storage-service.js?v=20260801_v132"></script>
+  <script src="js/chat-service.js?v=20260801_v132"></script>
+  <script src="js/ai-assistant.js?v=20260801_v132"></script>
+  <script src="js/ai-analyzer-module.js?v=20260801_v132"></script>
+  <script src="js/app.js?v=20260801_v132"></script>
 </body>
 </html>

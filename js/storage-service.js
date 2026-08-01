@@ -242,9 +242,11 @@ class StorageService {
   }
 
   normalizeFolderFromDb(f) {
+    const rawName = f.name || 'Thư mục';
+    const cleanName = rawName.replace(/^📁\s*/, '');
     return {
       id: f.id,
-      name: f.name,
+      name: cleanName,
       category: f.category || 'department',
       uploaderEmail: f.uploader_email || f.uploaderEmail || '',
       uploaderUid: f.uploader_uid || f.uploaderUid || '',
@@ -616,8 +618,7 @@ class StorageService {
     const uploaderEmail = user ? (user.email || '').toLowerCase().trim() : '';
     const uploaderUid = user ? user.uid : 'user_guest';
 
-    let cleanName = name.trim();
-    if (!cleanName.startsWith('📁')) cleanName = `📁 ${cleanName}`;
+    let cleanName = name.trim().replace(/^📁\s*/, '');
 
     const newFolder = {
       id: "fold_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
@@ -669,8 +670,7 @@ class StorageService {
     const f = this.folders.find(x => x.id === folderId);
     if (!f) return;
 
-    let cleanName = newName.trim();
-    if (!cleanName.startsWith('📁')) cleanName = `📁 ${cleanName}`;
+    let cleanName = newName.trim().replace(/^📁\s*/, '');
 
     f.name = cleanName;
     this.saveLocal();

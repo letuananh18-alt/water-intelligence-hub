@@ -359,7 +359,8 @@ class AppController {
       tbody.innerHTML = `
         <tr>
           <td colspan="5" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
-            📂 Kho Kinh doanh & DVKH chưa có văn bản khớp với tìm kiếm.
+            <i data-lucide="folder-open" style="width: 22px; height: 22px; display: block; margin: 0 auto 8px auto; color: #94a3b8;"></i>
+            <span>Kho Kinh doanh & DVKH chưa có văn bản khớp với tìm kiếm.</span>
           </td>
         </tr>
       `;
@@ -470,7 +471,7 @@ class AppController {
                 <i data-lucide="folder"></i>
               </div>
               <div class="folder-info-compact" style="flex: 1;">
-                <div class="folder-name-compact">${escapeHTML(f.name)}</div>
+                <div class="folder-name-compact">${escapeHTML(f.name.replace(/^📁\s*/, ''))}</div>
                 <div class="folder-meta-compact">${filesInFold.length} tệp cá nhân</div>
               </div>
               <div style="display: flex; gap: 4px;" onclick="event.stopPropagation();">
@@ -686,18 +687,19 @@ class AppController {
         realFileCount = Math.max(realFileCount, unassignedCount);
       }
 
+      const cleanFoldName = fold.name.replace(/^📁\s*/, '');
       return `
         <div class="folder-card-compact folder-card-item" data-folder-id="${escapeHTML(fold.id)}">
           <div class="folder-header-row">
             <div style="display: flex; align-items: flex-start; gap: 10px;">
-              <i data-lucide="folder" style="color: var(--accent-blue); width: 22px; height: 22px; flex-shrink: 0; margin-top: 2px;"></i>
-              <span class="folder-title-text">${escapeHTML(fold.name)}</span>
+              <i data-lucide="folder" style="color: #2563eb; width: 22px; height: 22px; flex-shrink: 0; margin-top: 2px;"></i>
+              <span class="folder-title-text">${escapeHTML(cleanFoldName)}</span>
             </div>
             ${isAdmin ? `<button class="icon-btn folder-opt-btn" data-folder-id="${escapeHTML(fold.id)}" title="Tùy chọn thư mục" style="padding: 2px 6px;">⋮</button>` : ''}
           </div>
           <div class="folder-meta-row">
-            <span style="font-weight: 700; color: var(--accent-blue);">📂 ${realFileCount} tệp</span>
-            <span>📅 ${escapeHTML(fold.date)}</span>
+            <span style="font-weight: 700; color: #2563eb; display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="files" style="width: 14px; height: 14px;"></i> ${realFileCount} tệp</span>
+            <span style="display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i> ${escapeHTML(fold.date)}</span>
           </div>
         </div>
       `;
@@ -705,6 +707,7 @@ class AppController {
 
     grid.innerHTML = html;
     if (allGrid) allGrid.innerHTML = html;
+    this.refreshLucideIcons();
   }
 
   bindDeptFilterEvents() {
