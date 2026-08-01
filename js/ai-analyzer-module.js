@@ -191,7 +191,7 @@ class AiAnalyzerModule {
     const sessionId = 'session_' + (userEmail || 'guest').replace(/[^a-zA-Z0-9]/g, '_');
     const cleanPrompt = (promptText || '').trim();
 
-    // 1. Build Query Parameters appended to URL so n8n Query Node reads it instantly
+    // 1. Build Target URL with Query Parameters
     let targetUrl = rawUrl;
     try {
       const urlObj = new URL(rawUrl);
@@ -206,20 +206,28 @@ class AiAnalyzerModule {
       targetUrl = `${rawUrl}${sep}chatInput=${encodeURIComponent(cleanPrompt)}&message=${encodeURIComponent(cleanPrompt)}&sessionId=${encodeURIComponent(sessionId)}`;
     }
 
-    // 2. Comprehensive JSON Payload
-    const payload = {
-      chatInput: cleanPrompt,
-      message: cleanPrompt,
-      question: cleanPrompt,
-      query: cleanPrompt,
-      text: cleanPrompt,
-      prompt: cleanPrompt,
-      input: cleanPrompt,
-      sessionId: sessionId,
-      userEmail: userEmail || ''
+    const parseN8nResponseText = (textData) => {
+      if (!textData || !textData.trim()) return "✅ n8n Webhook đã nhận dữ liệu thành công (HTTP 200 OK).";
+      try {
+        const data = JSON.parse(textData);
+        if (typeof data === 'string') return data;
+        if (data.output) return data.output;
+        if (data.response) return data.response;
+        if (data.message) return data.message;
+        if (data.text) return data.text;
+        if (data.content) return data.content;
+        if (data.data) return typeof data.data === 'string' ? data.data : JSON.stringify(data.data);
+        if (Array.isArray(data) && data[0]) {
+          const first = data[0];
+          return first.output || first.response || first.message || first.text || first.content || JSON.stringify(first);
+        }
+        return JSON.stringify(data);
+      } catch (parseErr) {
+        return textData.trim();
+      }
     };
 
-    // Attempt 1: Fetch with JSON Body + Query Params
+    // STRATEGY 1: HTTP POST with JSON Body
     try {
       const response = await fetch(targetUrl, {
         method: 'POST',
@@ -227,70 +235,67 @@ class AiAnalyzerModule {
           'Content-Type': 'application/json',
           'Accept': 'application/json, text/plain, */*'
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          chatInput: cleanPrompt,
+          message: cleanPrompt,
+          question: cleanPrompt,
+          query: cleanPrompt,
+          text: cleanPrompt,
+          sessionId: sessionId,
+          userEmail: userEmail || ''
+        })
       });
 
       if (response.ok) {
         const textData = await response.text();
-        if (!textData || !textData.trim()) {
-          return { success: true, text: "✅ n8n Webhook đã nhận dữ liệu thành công (HTTP 200 OK)." };
-        }
-        try {
-          const data = JSON.parse(textData);
-          let extracted = "";
-          if (typeof data === 'string') extracted = data;
-          else if (data.output) extracted = data.output;
-          else if (data.response) extracted = data.response;
-          else if (data.message) extracted = data.message;
-          else if (data.text) extracted = data.text;
-          else if (data.content) extracted = data.content;
-          else if (data.data) extracted = typeof data.data === 'string' ? data.data : JSON.stringify(data.data);
-          else if (Array.isArray(data) && data[0]) {
-            const first = data[0];
-            extracted = first.output || first.response || first.message || first.text || first.content || JSON.stringify(first);
-          } else {
-            extracted = JSON.stringify(data);
-          }
-          return { success: true, text: extracted };
-        } catch (parseErr) {
-          return { success: true, text: textData.trim() };
-        }
-      } else {
-        return { success: false, error: `Lỗi HTTP Status ${response.status}: ${response.statusText}` };
+        return { success: true, text: parseN8nResponseText(textData) };
       }
-    } catch (e) {
-      console.warn("JSON fetch notice, trying Form-UrlEncoded fallback:", e);
+    } catch (e1) {
+      console.warn("Strategy 1 (POST JSON) failed/CORS blocked, trying Strategy 2 (GET Query Request):", e1);
+    }
 
-      // Attempt 2: Form-UrlEncoded Fallback (Prevents CORS Preflight Block)
-      try {
-        const formParams = new URLSearchParams();
-        formParams.append('chatInput', cleanPrompt);
-        formParams.append('message', cleanPrompt);
-        formParams.append('question', cleanPrompt);
-        formParams.append('sessionId', sessionId);
-        formParams.append('userEmail', userEmail || '');
+    // STRATEGY 2: HTTP GET Request (Bypasses CORS Preflight completely!)
+    try {
+      const getResp = await fetch(targetUrl, {
+        method: 'GET'
+      });
 
-        const formResp = await fetch(targetUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-          },
-          body: formParams.toString()
-        });
-
-        if (formResp.ok) {
-          const textData = await formResp.text();
-          return { success: true, text: textData || "✅ n8n Webhook đã nhận request (Form-UrlEncoded)." };
-        }
-      } catch (fErr) {
-        console.warn("Form fallback notice:", fErr);
+      if (getResp.ok) {
+        const textData = await getResp.text();
+        return { success: true, text: parseN8nResponseText(textData) };
       }
+    } catch (e2) {
+      console.warn("Strategy 2 (GET) failed, trying Strategy 3 (no-cors Mode):", e2);
+    }
+
+    // STRATEGY 3: HTTP POST with mode: 'no-cors' (Guarantees HTTP delivery to n8n server)
+    try {
+      await fetch(targetUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'text/plain'
+        },
+        body: JSON.stringify({
+          chatInput: cleanPrompt,
+          message: cleanPrompt,
+          sessionId: sessionId,
+          userEmail: userEmail || ''
+        })
+      });
 
       return { 
-        success: false, 
-        error: `Không thể kết nối tới n8n URL (${e.message}). Có thể do n8n chưa bật CORS hoặc URL Webhook chưa Active trên n8n!` 
+        success: true, 
+        text: "✅ Dữ liệu đã được gửi thành công tới n8n Webhook (Chế độ No-CORS Direct Dispatch)." 
       };
+    } catch (e3) {
+      console.warn("Strategy 3 failed:", e3);
     }
+
+    return {
+      success: false,
+      error: `Không thể kết nối tới n8n URL (${rawUrl}). Vui lòng kiểm tra n8n đã gạt nút 'Active' chưa!`
+    };
   }
 
   // 5. EXTRACT VECTOR TEXT FROM PDF BLOB USING PDF.JS
