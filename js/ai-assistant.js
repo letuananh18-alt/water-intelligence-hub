@@ -136,9 +136,7 @@ QUY TẮC PHẢN HỒI:
     const currentUserName = window.authManager && window.authManager.currentUser ? (window.authManager.currentUser.user_metadata?.display_name || window.authManager.currentUser.email) : '';
 
     if (window.aiAnalyzerModule) {
-      if (window.aiAnalyzerModule.isSupabaseAiMode()) {
-        aiResponse = await window.aiAnalyzerModule.querySupabaseRealtimeAi(q, currentUserEmail, currentUserName);
-      }
+      aiResponse = await window.aiAnalyzerModule.querySupabaseRealtimeAi(q, currentUserEmail, currentUserName);
       if (!aiResponse) {
         aiResponse = await window.aiAnalyzerModule.queryOpenAiGptGateway(userPrompt);
       }

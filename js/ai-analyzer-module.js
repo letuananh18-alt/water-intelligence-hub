@@ -199,7 +199,21 @@ class AiAnalyzerModule {
   }
 
   async querySupabaseRealtimeAi(promptText, userEmail = '', userName = '') {
-    if (!this.isSupabaseAiMode() || !window.supabaseClient) return null;
+    // Ensure Supabase client is active
+    if (!window.supabaseClient && typeof supabase !== 'undefined') {
+      try {
+        window.supabaseClient = supabase.createClient(
+          "https://woqotssnklsarpvkalrw.supabase.co",
+          "sb_publishable_RIIwAnyfoXiAL_kFUVDGoQ_RUftl-1W"
+        );
+      } catch (e) {
+        console.warn("Supabase on-the-fly client creation notice:", e);
+      }
+    }
+
+    if (!window.supabaseClient) {
+      return "⚠️ Chưa kết nối được Supabase Client SDK. Vui lòng kiểm tra lại kết nối mạng!";
+    }
 
     const cleanPrompt = (promptText || '').trim();
     if (!cleanPrompt) return null;
@@ -214,7 +228,7 @@ class AiAnalyzerModule {
     const requestId = generateUUID();
 
     try {
-      // 1. Insert question into Supabase ai_chat_requests table with explicit client-generated UUID
+      // 1. Insert question into Supabase ai_chat_requests table
       const insertPayload = {
         id: requestId,
         question: cleanPrompt,
@@ -225,23 +239,22 @@ class AiAnalyzerModule {
 
       console.log("⚡ Attempting to insert question into Supabase ai_chat_requests:", insertPayload);
 
-      const { error } = await window.supabaseClient
+      let { error } = await window.supabaseClient
         .from('ai_chat_requests')
         .insert([insertPayload]);
 
       if (error) {
-        console.warn("⚠️ Supabase Realtime AI Insert Notice:", error.message || error);
-        window.handleSupabaseError && window.handleSupabaseError(error, "Insert ai_chat_requests");
-        
-        // Try simple insert without extra metadata
-        const { error: err2 } = await window.supabaseClient
+        console.warn("⚠️ Supabase Primary Insert Notice:", error.message || error);
+        // Try minimal insert
+        const res2 = await window.supabaseClient
           .from('ai_chat_requests')
           .insert([{ id: requestId, question: cleanPrompt, status: 'pending' }]);
-          
-        if (err2) {
-          console.error("❌ Supabase Insert failed completely:", err2.message || err2);
-          return `⚠️ Lỗi ghi CSDL Supabase: ${err2.message || 'Bị khóa bởi RLS Policy'}.\n\n👉 ANH VUI LÒNG MỞ SUPABASE SQL EDITOR CHẠY CÂU LỆNH NÀY:\nALTER TABLE public.ai_chat_requests DISABLE ROW LEVEL SECURITY;`;
-        }
+        error = res2.error;
+      }
+
+      if (error) {
+        console.error("❌ Supabase Insert failed:", error.message || error);
+        return `⚠️ CHƯA GHI ĐƯỢC VÀO SUPABASE: ${error.message || 'Lỗi RLS Policy'}.\n\n👉 ANH VUI LÒNG MỞ SUPABASE SQL EDITOR CHẠY 1 DÒNG NÀY ĐỂ MỞ QUYỀN GHI:\nALTER TABLE public.ai_chat_requests DISABLE ROW LEVEL SECURITY;`;
       }
 
       console.log("✅ Supabase Realtime AI question inserted successfully! Request ID:", requestId);
