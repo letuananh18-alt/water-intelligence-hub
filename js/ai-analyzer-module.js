@@ -174,7 +174,8 @@ class AiAnalyzerModule {
 
   // 4B. SUPABASE REALTIME N8N AI GATEWAY INTEGRATION
   isSupabaseAiMode() {
-    return localStorage.getItem('supabase_ai_mode') === 'true';
+    const mode = localStorage.getItem('supabase_ai_mode');
+    return mode !== 'false'; // Default to enabled unless explicitly turned off!
   }
 
   setSupabaseAiMode(enabled) {
@@ -205,19 +206,34 @@ class AiAnalyzerModule {
 
     try {
       // 1. Insert question into Supabase ai_chat_requests table
-      const { data, error } = await window.supabaseClient
+      let insertPayload = {
+        question: cleanPrompt,
+        user_email: userEmail || 'guest@thuducwater.vn',
+        user_name: userName || 'Khách hàng',
+        status: 'pending'
+      };
+
+      let { data, error } = await window.supabaseClient
         .from('ai_chat_requests')
-        .insert([{
-          question: cleanPrompt,
-          user_email: userEmail || 'guest@thuducwater.vn',
-          user_name: userName || 'Khách hàng',
-          status: 'pending',
-          created_at: new Date().toISOString()
-        }])
+        .insert([insertPayload])
         .select();
 
+      // Fallback insert with minimal fields if table schema differs
       if (error) {
-        console.warn("Supabase Realtime AI Insert Notice:", error.message);
+        console.warn("Supabase Realtime AI Insert Notice (Primary):", error.message);
+        const simpleResult = await window.supabaseClient
+          .from('ai_chat_requests')
+          .insert([{
+            question: cleanPrompt,
+            status: 'pending'
+          }])
+          .select();
+        data = simpleResult.data;
+        error = simpleResult.error;
+      }
+
+      if (error) {
+        console.warn("Supabase Realtime AI Insert Notice (Final):", error.message);
         window.handleSupabaseError && window.handleSupabaseError(error, "Insert ai_chat_requests");
         return null;
       }
@@ -225,7 +241,7 @@ class AiAnalyzerModule {
       if (!data || !data[0] || !data[0].id) return null;
 
       const requestId = data[0].id;
-      console.log("⚡ Supabase Realtime AI question posted, Request ID:", requestId);
+      console.log("⚡ Supabase Realtime AI question posted successfully, Request ID:", requestId);
 
       // 2. Wait for Postgres Realtime update on table ai_chat_requests (15s max timeout)
       return new Promise((resolve) => {
