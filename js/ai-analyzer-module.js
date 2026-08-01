@@ -272,7 +272,21 @@ class AiAnalyzerModule {
 
         if (response && response.ok) {
           const textData = await response.text();
-          return { success: true, text: parseN8nResponseText(textData) };
+          return { 
+            success: true, 
+            text: parseN8nResponseText(textData),
+            debug: {
+              url: targetUrl,
+              method: 'POST',
+              payload: {
+                chatInput: cleanPrompt,
+                message: cleanPrompt,
+                sessionId: sessionId,
+                userEmail: userEmail || ''
+              },
+              status: response.status
+            }
+          };
         }
       } catch (e1) {
         console.warn(`Strategy 1 (POST JSON) notice for ${urlItem}:`, e1);
@@ -286,7 +300,15 @@ class AiAnalyzerModule {
 
         if (getResp && getResp.ok) {
           const textData = await getResp.text();
-          return { success: true, text: parseN8nResponseText(textData) };
+          return { 
+            success: true, 
+            text: parseN8nResponseText(textData),
+            debug: {
+              url: targetUrl,
+              method: 'GET',
+              status: getResp.status
+            }
+          };
         }
       } catch (e2) {
         console.warn(`Strategy 2 (GET) notice for ${urlItem}:`, e2);
