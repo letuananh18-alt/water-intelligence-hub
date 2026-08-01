@@ -1421,23 +1421,84 @@ a:hover {
    ========================================================================== */
 
 @media (max-width: 991px) {
+  .auth-container {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    align-items: flex-start !important;
+    padding: 20px 12px 40px 12px !important;
+  }
+
   .auth-layout-wrapper {
-    grid-template-columns: 1fr;
-    gap: 28px;
-    max-width: 480px;
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+    max-width: 460px !important;
+    margin: 0 auto !important;
+    padding: 10px 0 !important;
   }
 
   .auth-hero-banner {
     text-align: center;
     align-items: center;
+    gap: 10px;
+  }
+
+  .hero-brand-logo {
+    height: 52px !important;
+    max-width: 200px !important;
+  }
+
+  .hero-app-title {
+    font-size: 20px !important;
+  }
+
+  .hero-app-subtitle {
+    font-size: 11px !important;
   }
 
   .hero-description {
-    font-size: 14px;
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+    margin: 2px 0 8px 0 !important;
   }
 
-  .hero-features-list {
-    align-items: center;
+  .hero-badges-grid {
+    gap: 8px !important;
+  }
+
+  .hero-badge-card {
+    padding: 10px 4px !important;
+  }
+
+  .badge-icon-box {
+    width: 32px !important;
+    height: 32px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .badge-title {
+    font-size: 9.5px !important;
+  }
+
+  .badge-sub {
+    font-size: 8.5px !important;
+  }
+
+  .hero-copyright {
+    display: none;
+  }
+
+  .auth-card {
+    padding: 28px 20px !important;
+    border-radius: 20px !important;
+    margin-bottom: 40px !important;
+  }
+
+  .auth-welcome-title {
+    font-size: 22px !important;
+  }
+
+  .auth-welcome-sub {
+    font-size: 13px !important;
   }
 
   .mobile-menu-btn {
