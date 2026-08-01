@@ -4,94 +4,13 @@
 // Realtime File & Folder Multi-User Sync & Live Broadcast Engine
 // ==========================================================================
 
-const INITIAL_FILES = [
-  {
-    id: "doc_kddvkh_001",
-    name: "Quy_Trinh_Giai_Quyet_Khieu_Nai_Hoa_Don_T7_2026.pdf",
-    type: "PDF",
-    docType: "Quy trình CSKH",
-    statusTag: "🟢 Đã ban hành",
-    category: "department",
-    folderId: "fold_kddvkh_1",
-    size: 2457600,
-    sizeFormatted: "2.4 MB",
-    uploadedBy: "Lê Tuấn Anh (Master Admin)",
-    uploaderEmail: "letuananh18@gmail.com",
-    uploaderUid: "user_admin_master_001",
-    uploadDate: "29/07/2026 14:20",
-    url: "#"
-  },
-  {
-    id: "doc_kddvkh_002",
-    name: "Biểu_Giá_Dịch_Vụ_Cấp_Nước_Đô_Thị_Thủ_Đức_2026.docx",
-    type: "DOCX",
-    docType: "Biểu giá dịch vụ",
-    statusTag: "🟡 Đang trình ký",
-    category: "department",
-    folderId: "fold_kddvkh_1",
-    size: 1572864,
-    sizeFormatted: "1.5 MB",
-    uploadedBy: "Nguyễn Văn Hùng",
-    uploaderEmail: "hung.nguyen@thuducwater.com.vn",
-    uploaderUid: "user_hung_002",
-    uploadDate: "28/07/2026 09:15",
-    url: "#"
-  },
-  {
-    id: "doc_kddvkh_003",
-    name: "Hop_Dong_Cap_Nuoc_Khu_Do_Thi_Truong_Tho_2026.pdf",
-    type: "PDF",
-    docType: "Hợp đồng cấp nước",
-    statusTag: "🟢 Đã ban hành",
-    category: "department",
-    folderId: "fold_kddvkh_1",
-    size: 4194304,
-    sizeFormatted: "4.2 MB",
-    uploadedBy: "Lê Tuấn Anh (Master Admin)",
-    uploaderEmail: "letuananh18@gmail.com",
-    uploaderUid: "user_admin_master_001",
-    uploadDate: "27/07/2026 16:45",
-    url: "#"
-  }
-];
-
-const INITIAL_FOLDERS = [
-  {
-    id: "fold_kddvkh_1",
-    name: "📁 Quy trình CSKH & Giá Nước P.KDDVKH",
-    category: "department",
-    uploaderEmail: "letuananh18@gmail.com",
-    uploaderUid: "user_admin_master_001",
-    parentFolderId: null,
-    fileCount: 3,
-    createdAt: "2026-07-25"
-  },
-  {
-    id: "fold_kddvkh_2",
-    name: "📁 Hợp đồng & Hồ sơ Cấp nước Dự án 2026",
-    category: "department",
-    uploaderEmail: "letuananh18@gmail.com",
-    uploaderUid: "user_admin_master_001",
-    parentFolderId: null,
-    fileCount: 0,
-    createdAt: "2026-07-26"
-  },
-  {
-    id: "fold_kddvkh_3",
-    name: "📁 Báo cáo Thống kê & Công văn Đi - Đến",
-    category: "department",
-    uploaderEmail: "letuananh18@gmail.com",
-    uploaderUid: "user_admin_master_001",
-    parentFolderId: null,
-    fileCount: 0,
-    createdAt: "2026-07-27"
-  }
-];
+const INITIAL_FILES = [];
+const INITIAL_FOLDERS = [];
 
 class StorageService {
   constructor() {
-    this.files = [...INITIAL_FILES];
-    this.folders = [...INITIAL_FOLDERS];
+    this.files = [];
+    this.folders = [];
     this.listeners = [];
     this.rawFileObjects = {};
     this.realtimeStorageChannel = null;
@@ -201,20 +120,17 @@ class StorageService {
         window.handleSupabaseError?.(error, 'syncFolders');
         return;
       }
-      if (data && data.length > 0) {
+      if (data !== null) {
         const cloudFolders = data.map(f => this.normalizeFolderFromDb(f));
-        cloudFolders.forEach(cf => {
-          const idx = this.folders.findIndex(x => x.id === cf.id);
-          if (idx >= 0) {
-            this.folders[idx] = cf;
-          } else {
-            this.folders.push(cf);
-          }
-        });
+        // Keep personal folders, but department folders are 100% authoritative from Supabase Cloud
+        const personalFolders = this.folders.filter(f => f.category === 'personal');
+        this.folders = [...cloudFolders, ...personalFolders];
         this.saveLocal();
         this.notify();
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn("syncFoldersFromSupabase notice:", e);
+    }
   }
 
   async syncFilesFromSupabase() {
@@ -225,20 +141,17 @@ class StorageService {
         window.handleSupabaseError?.(error, 'syncFiles');
         return;
       }
-      if (data && data.length > 0) {
+      if (data !== null) {
         const cloudFiles = data.map(f => this.normalizeFileFromDb(f));
-        cloudFiles.forEach(cf => {
-          const idx = this.files.findIndex(x => x.id === cf.id);
-          if (idx >= 0) {
-            this.files[idx] = cf;
-          } else {
-            this.files.unshift(cf);
-          }
-        });
+        // Keep personal files, but department files are 100% authoritative from Supabase Cloud
+        const personalFiles = this.files.filter(f => f.category === 'personal');
+        this.files = [...cloudFiles, ...personalFiles];
         this.saveLocal();
         this.notify();
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn("syncFilesFromSupabase notice:", e);
+    }
   }
 
   normalizeFolderFromDb(f) {
