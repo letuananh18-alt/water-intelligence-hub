@@ -789,7 +789,23 @@ class ChatService {
 
     const realUsers = this.getRealDirectUsers();
     const dm = realUsers.find(u => u.id === this.activeTargetId);
-    if (dm) return { id: dm.id, name: `👤 ${dm.name} (${dm.email})`, desc: dm.desc };
+    if (dm) return { id: dm.id, name: `👤 ${dm.name}`, desc: dm.desc };
+
+    // Dynamic DM room info generator if activeTargetId is a 1:1 DM room
+    if (this.activeTargetId && this.activeTargetId.startsWith('dm_')) {
+      const parts = this.activeTargetId.replace(/^dm_/, '').split('__');
+      const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
+      const currentEmailSlug = currentUser && currentUser.email ? currentUser.email.toLowerCase().trim().replace(/[@.]/g, '_') : '';
+      
+      const otherSlug = parts.find(p => p !== currentEmailSlug) || parts[0] || 'user';
+      const prettyEmail = otherSlug.replace(/_gmail_com$/, '@gmail.com').replace(/_/g, '.');
+
+      return {
+        id: this.activeTargetId,
+        name: `👤 Trò chuyện 1:1 với ${prettyEmail}`,
+        desc: `🔒 Phòng chat riêng 1:1 bảo mật giữa 2 người (${prettyEmail})`
+      };
+    }
 
     return this.channels[0];
   }
