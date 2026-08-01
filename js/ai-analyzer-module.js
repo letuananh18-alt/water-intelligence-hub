@@ -225,6 +225,7 @@ class AiAnalyzerModule {
       try {
         const data = JSON.parse(textData);
         if (typeof data === 'string') return data;
+        if (data.reply) return data.reply;
         if (data.output) return data.output;
         if (data.response) return data.response;
         if (data.message) return data.message;
@@ -233,7 +234,7 @@ class AiAnalyzerModule {
         if (data.data) return typeof data.data === 'string' ? data.data : JSON.stringify(data.data);
         if (Array.isArray(data) && data[0]) {
           const first = data[0];
-          return first.output || first.response || first.message || first.text || first.content || JSON.stringify(first);
+          return first.reply || first.output || first.response || first.message || first.text || first.content || JSON.stringify(first);
         }
         return JSON.stringify(data);
       } catch (parseErr) {
