@@ -214,14 +214,14 @@ class AiAnalyzerModule {
     }
 
     const parseN8nResponseText = (textData) => {
-      if (!textData || !textData.trim()) return "✅ n8n Webhook đã nhận dữ liệu thành công (HTTP 200 OK).";
+      if (!textData || !textData.trim()) return "✅ n8n Webhook đã nhận tín hiệu dữ liệu thành công (HTTP 200 OK).";
       try {
         const data = JSON.parse(textData);
-        if (typeof data === 'string') return data;
+        if (typeof data === 'string' && data.trim()) return data;
         if (data.reply) return data.reply;
         if (data.output) return data.output;
         if (data.response) return data.response;
-        if (data.message) return data.message;
+        if (data.message && data.message !== 'Workflow was started') return data.message;
         if (data.text) return data.text;
         if (data.content) return data.content;
         if (data.data) return typeof data.data === 'string' ? data.data : JSON.stringify(data.data);
@@ -229,7 +229,8 @@ class AiAnalyzerModule {
           const first = data[0];
           return first.reply || first.output || first.response || first.message || first.text || first.content || JSON.stringify(first);
         }
-        return JSON.stringify(data);
+        const jsonStr = JSON.stringify(data);
+        return jsonStr !== '{}' ? jsonStr : "✅ n8n Webhook đã nhận tín hiệu thành công (HTTP 200 OK).";
       } catch (parseErr) {
         return textData.trim();
       }

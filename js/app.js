@@ -2243,10 +2243,11 @@ class AppController {
           const testRes = await window.aiAnalyzerModule.queryN8nWebhook("Xin chào n8n bot! Kiểm tra kết nối từ Thủ Đức Water Web App", "admin@thuducwater.vn");
 
           if (testRes && testRes.success) {
-            alert(`✅ KẾT NỐI N8N THÔNG THÀNH CÔNG (100% OK)!\n\nURL Webhook: ${url}\n\nPhản hồi từ n8n Bot:\n"${(testRes.text || '').substring(0, 400)}..."`);
+            const replyContent = (testRes.text || '✅ n8n Webhook đã nhận tín hiệu (HTTP 200 OK)').trim();
+            alert(`✅ KẾT NỐI N8N THÔNG THÀNH CÔNG (100% OK)!\n\n📌 Webhook Target: ${url}\n\n💬 Phản hồi nhận được từ n8n Bot:\n"${replyContent}"\n\n👉 Anh có thể sang mục AI Assistant gõ câu hỏi để n8n trả lời ngay!`);
           } else {
             const errDetail = testRes ? testRes.error : "Không nhận được phản hồi";
-            alert(`❌ CHƯA THÔNG KẾT NỐI TỚI N8N!\n\nURL Webhook: ${url}\nChi tiết kết quả: ${errDetail}\n\n👉 BƯỚC NĂM RÕ NGUYÊN NHÂN & CÁCH KHẮC PHỤC THƯỜNG GẶP:\n1. n8n có 2 loại URL Webhook: Nếu Workflow CHƯA Active, n8n chỉ nhận URL dạng '/webhook-test/...' khi bấm 'Listen for Test Event'!\n2. Nếu đã bấm gạt công tắc Active (Màu xanh), hãy dùng URL chính thức dạng '/webhook/...'\n3. Kiểm tra HTTP Method trong Node Webhook n8n (Chọn GET hoặc POST).`);
+            alert(`❌ CHƯA THÔNG KẾT NỐI TỚI N8N!\n\n📌 Webhook Target: ${url}\n⚠️ Chi tiết: ${errDetail}\n\n👉 ANH KIỂM TRA LẠI TRÊN N8N:\n1. Trong Node Webhook n8n, kiểm tra ô Respond đang chọn là 'Using Respond to Webhook Node' hay 'Immediately'.\n2. Trong Node Respond to Webhook, Response Body nhập: {"reply": "{{ $json.output }}"}.\n3. Workflow đã bấm nút gạt Active màu xanh chưa.`);
           }
         }
       } catch (err) {
