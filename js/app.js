@@ -1791,7 +1791,9 @@ class AppController {
       } else {
         dmContainer.innerHTML = realUsers.map(u => {
           const unread = window.chatService.getUnreadCount(u.id);
-          const unreadBadgeHtml = unread > 0 ? `<span class="unread-pill" style="background: #ef4444; color: white; padding: 2px 7px; border-radius: 10px; font-weight: 800; font-size: 10.5px; box-shadow: 0 0 10px rgba(239,68,68,0.6);">${unread} NEW</span>` : '';
+          const unreadDotHtml = unread > 0 ? `
+            <span title="Có ${unread} tin nhắn mới" style="width: 8px; height: 8px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 10px #ef4444; display: inline-block; flex-shrink: 0;"></span>
+          ` : '';
           const isOnline = u.isOnline;
 
           const statusHtml = isOnline ? `
@@ -1804,12 +1806,12 @@ class AppController {
           `;
 
           return `
-            <div class="thread-item ${window.chatService.activeTargetId === u.id ? 'active' : ''}" data-target="${escapeHTML(u.id)}" style="display: flex; align-items: center; justify-content: space-between; border-left: ${unread > 0 ? '3px solid #ef4444' : 'none'};">
+            <div class="thread-item ${window.chatService.activeTargetId === u.id ? 'active' : ''}" data-target="${escapeHTML(u.id)}" style="display: flex; align-items: center; justify-content: space-between; font-weight: ${unread > 0 ? '700' : 'normal'};">
               <div style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                 <span>👤 ${escapeHTML(u.name)}</span>
+                ${unreadDotHtml}
               </div>
               <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-                ${unreadBadgeHtml}
                 ${statusHtml}
               </div>
             </div>
