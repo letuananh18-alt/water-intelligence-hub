@@ -171,6 +171,60 @@ class AiAnalyzerModule {
         console.warn(`AI Engine Backup ${model} notice:`, e);
       }
     }
+  // 4B. N8N WORKFLOW WEBHOOK INTEGRATION
+  getN8nWebhookUrl() {
+    return localStorage.getItem('n8n_webhook_url') || '';
+  }
+
+  setN8nWebhookUrl(url) {
+    if (url && url.trim()) {
+      localStorage.setItem('n8n_webhook_url', url.trim());
+    } else {
+      localStorage.removeItem('n8n_webhook_url');
+    }
+  }
+
+  async queryN8nWebhook(promptText, userEmail = '') {
+    const webhookUrl = this.getN8nWebhookUrl();
+    if (!webhookUrl) return null;
+
+    try {
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          chatInput: promptText,
+          message: promptText,
+          question: promptText,
+          sessionId: 'session_' + (userEmail || 'guest').replace(/[^a-zA-Z0-9]/g, '_'),
+          userEmail: userEmail || ''
+        })
+      });
+
+      if (response.ok) {
+        const textData = await response.text();
+        try {
+          const data = JSON.parse(textData);
+          if (typeof data === 'string') return data;
+          if (data.output) return data.output;
+          if (data.response) return data.response;
+          if (data.message) return data.message;
+          if (data.text) return data.text;
+          if (data.content) return data.content;
+          if (Array.isArray(data) && data[0]) {
+            const first = data[0];
+            return first.output || first.response || first.message || first.text || JSON.stringify(first);
+          }
+          return JSON.stringify(data);
+        } catch (parseErr) {
+          if (textData && textData.trim()) return textData;
+        }
+      }
+    } catch (e) {
+      console.warn("n8n Webhook Query Notice:", e);
+    }
     return null;
   }
 

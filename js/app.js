@@ -2159,6 +2159,11 @@ class AppController {
     const inputKey = document.getElementById('geminiApiKeyInput');
     const statusEl = document.getElementById('geminiKeyStatus');
 
+    const inputN8n = document.getElementById('n8nWebhookUrlInput');
+    const btnSaveN8n = document.getElementById('btnSaveN8nWebhook');
+    const btnTestN8n = document.getElementById('btnTestN8nWebhook');
+    const statusN8n = document.getElementById('n8nWebhookStatus');
+
     const updateStatus = () => {
       const savedKey = localStorage.getItem('gemini_api_key') || localStorage.getItem('openai_api_key') || '';
       if (inputKey && savedKey && !inputKey.value) {
@@ -2171,6 +2176,19 @@ class AppController {
             `<span style="color: #10b981; display: inline-flex; align-items: center; gap: 4px;">✅ Đã kích hoạt Google Gemini AI Key (${savedKey.slice(0, 6)}...)</span>`;
         } else {
           statusEl.innerHTML = `<span style="color: #64748b;">ℹ️ Chưa dán Mã Khóa AI Engine tùy chỉnh (Đang dùng Key mặc định của hệ thống)</span>`;
+        }
+      }
+
+      // n8n Webhook status
+      const savedN8nUrl = window.aiAnalyzerModule ? window.aiAnalyzerModule.getN8nWebhookUrl() : localStorage.getItem('n8n_webhook_url');
+      if (inputN8n && savedN8nUrl && !inputN8n.value) {
+        inputN8n.value = savedN8nUrl;
+      }
+      if (statusN8n) {
+        if (savedN8nUrl) {
+          statusN8n.innerHTML = `<span style="color: #0284c7; display: inline-flex; align-items: center; gap: 4px;">🔗 Đã kích hoạt n8n AI Chatbot Webhook (${escapeHTML(savedN8nUrl)})</span>`;
+        } else {
+          statusN8n.innerHTML = `<span style="color: #64748b;">ℹ️ Chưa kết nối Webhook n8n (AI Assistant đang chạy Engine AI nội bộ)</span>`;
         }
       }
     };
@@ -2188,6 +2206,48 @@ class AppController {
         }
         updateStatus();
         alert("🎉 Đã lưu và kích hoạt Cấu hình Mã Khóa AI Engine thành công!");
+      }
+    });
+
+    btnSaveN8n?.addEventListener('click', () => {
+      if (inputN8n) {
+        const val = inputN8n.value.trim();
+        if (window.aiAnalyzerModule) {
+          window.aiAnalyzerModule.setN8nWebhookUrl(val);
+        } else {
+          if (val) localStorage.setItem('n8n_webhook_url', val);
+          else localStorage.removeItem('n8n_webhook_url');
+        }
+        updateStatus();
+        if (val) {
+          alert(`🎉 Đã lưu n8n Webhook URL thành công!\n\nTừ bây giờ, tất cả câu hỏi trên cổng AI Assistant sẽ được chuyển trực tiếp tới n8n Bot của anh (${val}).`);
+        } else {
+          alert("ℹ️ Đã xóa Webhook URL n8n. AI Assistant chuyển về dùng Engine AI nội bộ!");
+        }
+      }
+    });
+
+    btnTestN8n?.addEventListener('click', async () => {
+      const url = inputN8n ? inputN8n.value.trim() : (localStorage.getItem('n8n_webhook_url') || '');
+      if (!url) {
+        alert("⚠️ Vui lòng dán đường dẫn n8n Webhook URL vào ô trước khi kiểm tra!");
+        return;
+      }
+
+      btnTestN8n.disabled = true;
+      const originalText = btnTestN8n.textContent;
+      btnTestN8n.textContent = "⌛ Đang kết nối test...";
+
+      if (window.aiAnalyzerModule) {
+        const testRes = await window.aiAnalyzerModule.queryN8nWebhook("Xin chào n8n bot! Kiểm tra kết nối từ Thủ Đức Water Web App", "admin@thuducwater.vn");
+        btnTestN8n.disabled = false;
+        btnTestN8n.textContent = originalText;
+
+        if (testRes) {
+          alert(`✅ KẾT NỐI N8N THÀNH CÔNG!\n\nPhản hồi nhận được từ n8n Bot:\n"${testRes.substring(0, 300)}..."`);
+        } else {
+          alert(`❌ KẾT NỐI TỚI N8N THẤT BẠI!\n\nKhông nhận được phản hồi từ URL: ${url}\n\nVui lòng kiểm tra lại:\n1. Workflow trong n8n đã bấm 'Active' (Hoạt động) chưa?\n2. Phương thức Webhook có đúng là POST không?\n3. n8n đã có node 'Respond to Webhook' chưa?`);
+        }
       }
     });
   }
