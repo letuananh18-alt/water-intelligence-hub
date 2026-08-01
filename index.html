@@ -148,46 +148,72 @@
       </div>
 
       <nav class="sidebar-nav">
-        <div class="nav-section-title">Menu Chính</div>
+        <div class="nav-section-title">MENU CHÍNH</div>
+        
         <div class="nav-item active" data-view="dashboard">
           <i data-lucide="layout-dashboard"></i>
           <span>Tổng quan</span>
         </div>
-        <div class="nav-item" data-view="personal-docs">
-          <i data-lucide="file-text"></i>
-          <span>Tài liệu cá nhân</span>
-        </div>
-        <div class="nav-item" data-view="dept-docs">
-          <i data-lucide="building-2"></i>
-          <span>Kho Kinh doanh & DVKH</span>
-        </div>
-        <div class="nav-item" data-view="team-chat">
-          <i data-lucide="message-square"></i>
-          <span>Trò chuyện (Chat)</span>
-          <span class="nav-badge">0</span>
-        </div>
-        <div class="nav-item" data-view="folders">
-          <i data-lucide="folder"></i>
-          <span>Thư mục</span>
-        </div>
+
         <div class="nav-item" data-view="ai-assistant">
           <i data-lucide="bot"></i>
           <span>AI Assistant</span>
         </div>
 
-        <div class="nav-section-title">Quản Lý</div>
+        <div class="nav-item" data-view="dept-docs">
+          <i data-lucide="book-open"></i>
+          <span>Kho tri thức</span>
+        </div>
+
         <div class="nav-item" data-view="reports">
           <i data-lucide="bar-chart-3"></i>
-          <span>Báo cáo</span>
+          <span>Báo cáo & Phân tích</span>
         </div>
-        <div class="nav-item" data-view="activity">
-          <i data-lucide="clock"></i>
-          <span>Hoạt động</span>
+
+        <div class="nav-item" data-view="dept-docs">
+          <i data-lucide="git-pull-request"></i>
+          <span>Quy trình & Công việc</span>
         </div>
-        <div class="nav-item" id="navItemUsers" data-view="users" style="display: none;">
-          <i data-lucide="users"></i>
-          <span>Người dùng & Giám sát</span>
+
+        <div class="nav-item" data-view="dept-docs">
+          <i data-lucide="files"></i>
+          <span>Tài liệu và Biểu mẫu</span>
         </div>
+
+        <div class="nav-item" data-view="personal-docs">
+          <i data-lucide="folder-lock"></i>
+          <span>Tài liệu cá nhân</span>
+        </div>
+
+        <div class="nav-item" data-view="team-chat">
+          <i data-lucide="message-square"></i>
+          <span>Trò chuyện (Chat)</span>
+          <span class="nav-badge">0</span>
+        </div>
+
+        <!-- GIÁM SÁT HỆ THỐNG (MỤC CHA CHỨA 3 MỤC CON) -->
+        <div class="nav-section-title" style="margin-top: 18px; display: flex; align-items: center; gap: 6px;">
+          <i data-lucide="activity" style="width: 14px; height: 14px; color: #38bdf8;"></i>
+          <span>GIÁM SÁT HỆ THỐNG</span>
+        </div>
+        
+        <div class="nav-submenu-group" style="padding-left: 6px;">
+          <div class="nav-item" data-view="reports">
+            <i data-lucide="pie-chart"></i>
+            <span>Báo cáo</span>
+          </div>
+          <div class="nav-item" data-view="activity">
+            <i data-lucide="clock"></i>
+            <span>Hoạt động</span>
+          </div>
+          <div class="nav-item" id="navItemUsers" data-view="users" style="display: none;">
+            <i data-lucide="users"></i>
+            <span>Người dùng & Giám sát</span>
+          </div>
+        </div>
+
+        <!-- CÀI ĐẶT -->
+        <div class="nav-section-title" style="margin-top: 18px;">HỆ THỐNG</div>
         <div class="nav-item" data-view="settings">
           <i data-lucide="settings"></i>
           <span>Cài đặt</span>
@@ -1167,13 +1193,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Application Logic with Supabase Backend -->
-  <script src="js/supabase-config.js?v=20260801_v133"></script>
-  <script src="js/tech-bg.js?v=20260801_v133"></script>
-  <script src="js/auth.js?v=20260801_v133"></script>
-  <script src="js/storage-service.js?v=20260801_v133"></script>
-  <script src="js/chat-service.js?v=20260801_v133"></script>
-  <script src="js/ai-assistant.js?v=20260801_v133"></script>
-  <script src="js/ai-analyzer-module.js?v=20260801_v133"></script>
-  <script src="js/app.js?v=20260801_v133"></script>
+  <script src="js/supabase-config.js?v=20260801_v134"></script>
+  <script src="js/tech-bg.js?v=20260801_v134"></script>
+  <script src="js/auth.js?v=20260801_v134"></script>
+  <script src="js/storage-service.js?v=20260801_v134"></script>
+  <script src="js/chat-service.js?v=20260801_v134"></script>
+  <script src="js/ai-assistant.js?v=20260801_v134"></script>
+  <script src="js/ai-analyzer-module.js?v=20260801_v134"></script>
+  <script src="js/app.js?v=20260801_v134"></script>
 </body>
 </html>
