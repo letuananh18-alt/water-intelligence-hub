@@ -283,6 +283,16 @@ class ChatService {
             }
           }
         })
+        .on('broadcast', { event: 'delete_message' }, (payload) => {
+          if (payload && payload.payload) {
+            const { targetId, messageId } = payload.payload;
+            if (targetId && messageId && this.messages[targetId]) {
+              this.messages[targetId] = this.messages[targetId].filter(m => m.id !== messageId);
+              this.saveLocal();
+              this.notify();
+            }
+          }
+        })
         .on('broadcast', { event: 'user_presence_ping' }, (payload) => {
           if (payload && payload.payload && payload.payload.email) {
             const pingEmail = payload.payload.email.toLowerCase().trim();
@@ -807,6 +817,23 @@ class ChatService {
     this.unreadCounts[this.activeTargetId] = 0;
     this.saveLocal();
     this.notify();
+  }
+
+  deleteSingleMessage(targetId, messageId) {
+    if (this.messages[targetId]) {
+      this.messages[targetId] = this.messages[targetId].filter(m => m.id !== messageId);
+      this.saveLocal();
+      if (this.realtimeChannel) {
+        try {
+          this.realtimeChannel.send({
+            type: 'broadcast',
+            event: 'delete_message',
+            payload: { targetId, messageId }
+          });
+        } catch (e) {}
+      }
+      this.notify();
+    }
   }
 
   onChange(callback) {

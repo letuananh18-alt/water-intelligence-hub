@@ -1846,20 +1846,43 @@ class AppController {
     if (!listEl || !window.chatService) return;
 
     const targetInfo = window.chatService.getActiveTargetInfo();
+    const activeTargetId = window.chatService.activeTargetId;
+    const isGeneralChan = activeTargetId === 'chan_general';
+    const isDm = activeTargetId.startsWith('dm_');
+
     if (titleEl && targetInfo) titleEl.textContent = targetInfo.name;
     if (descEl && targetInfo) descEl.textContent = targetInfo.desc || "Kênh trao đổi công việc P.KDDVKH";
 
     const msgs = window.chatService.getActiveMessages();
     const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
+    const currentEmail = currentUser ? (currentUser.email || '').toLowerCase().trim() : '';
+    const isAdmin = window.authManager ? window.authManager.isAdmin() : false;
+
+    let bannerHtml = '';
+    if (isGeneralChan) {
+      bannerHtml = `
+        <div style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 10px 14px; border-radius: 10px; font-size: 12.5px; margin-bottom: 16px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+          <span>📢 <strong>KÊNH CHUNG PHÒNG BAN:</strong> Tất cả cán bộ đều nhìn thấy tin nhắn ở đây.</span>
+          <span style="font-size: 11px; color: #2563eb; background: white; padding: 3px 8px; border-radius: 6px; border: 1px solid #93c5fd;">🔒 Muốn nhắn riêng 1:1? Nhấp tên người nhận ở mục 'TIN NHẮN TRỰC TIẾP' bên trái</span>
+        </div>
+      `;
+    } else if (isDm) {
+      bannerHtml = `
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 8px 14px; border-radius: 10px; font-size: 12px; margin-bottom: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+          <span>🔒 <strong>CUỘC TRÒ CHUYỆN RIÊNG TƯ 1:1:</strong> Tin nhắn được bảo mật tuyệt đối, chỉ duy nhất 2 người trong cuộc hội thoại nhìn thấy.</span>
+        </div>
+      `;
+    }
 
     if (msgs.length === 0) {
-      listEl.innerHTML = `<div style="font-size: 13px; color: var(--slate-400); text-align: center; margin-top: 40px;">💬 Chưa có tin nhắn nào trong kênh này. Hãy gửi tin nhắn đầu tiên!</div>`;
+      listEl.innerHTML = bannerHtml + `<div style="font-size: 13px; color: var(--slate-400); text-align: center; margin-top: 40px;">💬 Chưa có tin nhắn nào trong kênh này. Hãy gửi tin nhắn đầu tiên!</div>`;
       return;
     }
 
-    listEl.innerHTML = msgs.map(msg => {
-      const isUser = msg.senderUid === (currentUser ? currentUser.uid : 'admin_18');
-      
+    const messagesHtml = msgs.map(msg => {
+      const isUser = msg.senderUid === (currentUser ? currentUser.uid : 'admin_18') || (msg.senderEmail && msg.senderEmail.toLowerCase().trim() === currentEmail);
+      const canDelete = isUser || isAdmin;
+
       let attachmentHtml = '';
       if (msg.attachment) {
         attachmentHtml = `
@@ -1875,14 +1898,19 @@ class AppController {
         `;
       }
 
+      const deleteBtnHtml = canDelete ? `
+        <button class="btn-delete-msg" data-msg-id="${escapeHTML(msg.id)}" title="Xóa tin nhắn này" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; font-size: 11px; padding: 2px 4px; border-radius: 4px; margin-left: 6px;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#94a3b8'">🗑️ Xóa</button>
+      ` : '';
+
       return `
         <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-direction: ${isUser ? 'row-reverse' : 'row'}; align-items: flex-start;">
           <div style="width: 34px; height: 34px; border-radius: 50%; background: ${isUser ? '#0284c7' : '#475569'}; color: white; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; flex-shrink: 0;">
             ${escapeHTML((msg.senderName || 'U').charAt(0))}
           </div>
           <div style="max-width: 75%;">
-            <div style="font-size: 11px; color: #64748b; margin-bottom: 4px; font-weight: 600; text-align: ${isUser ? 'right' : 'left'};">
-              ${escapeHTML(msg.senderName)} <span style="background: #e2e8f0; color: #334155; padding: 1px 6px; border-radius: 4px; font-size: 10px;">${escapeHTML(msg.senderRole || 'Cán bộ')}</span> • ${escapeHTML(msg.timestamp)}
+            <div style="font-size: 11px; color: #64748b; margin-bottom: 4px; font-weight: 600; text-align: ${isUser ? 'right' : 'left'}; display: flex; align-items: center; gap: 6px; justify-content: ${isUser ? 'flex-end' : 'flex-start'};">
+              <span>${escapeHTML(msg.senderName)} <span style="background: #e2e8f0; color: #334155; padding: 1px 6px; border-radius: 4px; font-size: 10px;">${escapeHTML(msg.senderRole || 'Cán bộ')}</span> • ${escapeHTML(msg.timestamp)}</span>
+              ${deleteBtnHtml}
             </div>
             <div style="background: ${isUser ? 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)' : '#ffffff'}; color: ${isUser ? '#ffffff' : '#1e293b'}; border: ${isUser ? 'none' : '1px solid #e2e8f0'}; padding: 12px 16px; border-radius: ${isUser ? '16px 16px 2px 16px' : '16px 16px 16px 2px'}; font-size: 13.5px; line-height: 1.6; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
               ${escapeHTML(msg.text).replace(/\n/g, '<br>')}
@@ -1892,6 +1920,19 @@ class AppController {
         </div>
       `;
     }).join('');
+
+    listEl.innerHTML = bannerHtml + messagesHtml;
+
+    // Bind event listeners for single message deletion
+    listEl.querySelectorAll('.btn-delete-msg').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const msgId = btn.getAttribute('data-msg-id');
+        if (msgId && confirm("Bạn có chắc chắn muốn xóa tin nhắn này không?")) {
+          window.chatService.deleteSingleMessage(activeTargetId, msgId);
+        }
+      });
+    });
 
     listEl.scrollTop = listEl.scrollHeight;
   }
