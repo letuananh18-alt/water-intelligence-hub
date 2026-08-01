@@ -147,30 +147,14 @@ QUY TẮC PHẢN HỒI:
       }
     }
 
-    // 4. Fallback Knowledge Engine (Smart Semantic Search across Internal Files)
+    // 4. Response Resolution
     let responseText = "";
     if (aiResponse && aiResponse.trim()) {
       responseText = aiResponse
         .replace(/Danh sách các tệp[^:]*:/gi, '')
         .replace(/Các tệp văn bản hiện có[^:]*:/gi, '');
     } else {
-      // Smart Fallback Semantic Search across Internal Files
-      const matchedFiles = allFiles.filter(f => {
-        const str = `${f.name} ${f.docType || ''} ${f.text || ''} ${f.content || ''}`.toLowerCase();
-        const keywords = qLower.split(/\s+/).filter(w => w.length > 2);
-        return keywords.some(kw => str.includes(kw));
-      });
-
-      if (qLower.includes('nhiệm vụ') || qLower.includes('chức năng') || qLower.includes('phòng kinh doanh')) {
-        responseText = `Dạ kính chào Anh/Chị! Về **Chức năng & Nhiệm vụ của Phòng Kinh doanh & Dịch vụ Khách hàng (Thủ Đức Water)**, em xin thông tin chi tiết đến Anh/Chị như sau ạ:\n\n1. **Quản lý & Đóng/Mở Hợp đồng Cấp nước:** Tiếp nhận hồ sơ sang tên, ký mới, gia hạn hợp đồng cấp nước cho hộ dân và doanh nghiệp.\n2. **Công tác Ghi thu & Phát hành Hóa đơn:** Quản lý số liệu chỉ số đồng hồ nước, lập hóa đơn tiền nước và theo dõi thanh toán.\n3. **Giải quyết Khiếu nại & Hỗ trợ Khách hàng:** Tiếp nhận xử lý các thắc mắc về chỉ số nước, tiền nước, kiểm định đồng hồ nước và sự cố thất thoát nước.\n4. **Phát triển Mạng lưới Khách hàng:** Thực hiện khảo sát lắp đặt mới, áp giá biểu nước theo đúng mục đích sử dụng (sinh hoạt, sản xuất, kinh doanh).\n\n📌 *Dữ liệu được trích xuất trực tiếp từ Quy chế Hoạt động Nội bộ Phòng KDDVKH.*`;
-      } else if (qLower.includes('sự cố') || qLower.includes('xử lý') || qLower.includes('báo hỏng')) {
-        responseText = `Dạ kính chào Anh/Chị! Về **Quy trình Xử lý Sự cố Cấp nước**, em xin hỗ trợ Anh/Chị các bước thực hiện như sau ạ:\n\n1. **Bước 1 (Tiếp nhận):** Tổng đài CSKH / Kênh nội bộ tiếp nhận vị trí và mức độ sự cố.\n2. **Bước 2 (Khảo sát):** Đội quản lý mạng lưới di chuyển tới hiện trường xác minh trong vòng 2 giờ.\n3. **Bước 3 (Khắc phục):** Tiến hành cô lập tuyến ống, sửa chữa rò rỉ và nghiệm thu xả rửa nước sạch.\n4. **Bước 4 (Cập nhật):** Báo cáo hoàn tất lên hệ thống và phản hồi cho khách hàng.`;
-      } else if (matchedFiles.length > 0) {
-        const fileNames = matchedFiles.map(f => `• **${f.name}** (${f.docType || 'Tài liệu nội bộ'})`).join('\n');
-        responseText = `Dạ kính chào Anh/Chị! Em đã tra cứu trong CSDL nội bộ và tìm thấy các văn bản liên quan đến nội dung **"${q}"** như sau ạ:\n\n${fileNames}\n\nAnh/Chị có thể mở trực tiếp các văn bản này tại mục **Kho nội bộ Phòng KDDVKH** hoặc cho em xin từ khóa chi tiết hơn để em hỗ trợ bóc tách nội dung nhé ạ!`;
-      } else {
-        responseText = `Dạ kính chào Anh/Chị! Về nội dung **"${q}"**, em đã kiểm tra trên Kho CSDL Nội bộ Phòng Kinh doanh & DVKH. Hiện chưa có văn bản quy định chi tiết đúng từ khóa này.\n\nAnh/Chị có thể tham khảo các mục **Quy trình xử lý sự cố**, **Thủ tục hợp đồng mới**, **Biểu giá nước 2026** hoặc liên hệ trực tiếp Ban Quản trị phòng KDDVKH để được hỗ trợ giải đáp nhanh nhất ạ!`;
-      }
+      responseText = `Dạ kính chào Anh/Chị! Em đã tiếp nhận câu hỏi **"${q}"**. Vui lòng kiểm tra mục **Cài đặt** để đảm bảo Cổng kết nối AI Engine hoặc Supabase Realtime đã được mở nhé ạ!`;
     }
 
     const aiMsg = {
