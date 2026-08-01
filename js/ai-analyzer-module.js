@@ -185,19 +185,43 @@ class AiAnalyzerModule {
   }
 
   async queryN8nWebhook(promptText, userEmail = '') {
-    const webhookUrl = this.getN8nWebhookUrl();
-    if (!webhookUrl) return { success: false, error: 'Chưa cấu hình URL n8n Webhook!' };
+    const rawUrl = this.getN8nWebhookUrl();
+    if (!rawUrl) return { success: false, error: 'Chưa cấu hình URL n8n Webhook!' };
 
+    const sessionId = 'session_' + (userEmail || 'guest').replace(/[^a-zA-Z0-9]/g, '_');
+    const cleanPrompt = (promptText || '').trim();
+
+    // 1. Build Query Parameters appended to URL so n8n Query Node reads it instantly
+    let targetUrl = rawUrl;
     try {
-      const payload = {
-        chatInput: promptText,
-        message: promptText,
-        question: promptText,
-        sessionId: 'session_' + (userEmail || 'guest').replace(/[^a-zA-Z0-9]/g, '_'),
-        userEmail: userEmail || ''
-      };
+      const urlObj = new URL(rawUrl);
+      urlObj.searchParams.set('chatInput', cleanPrompt);
+      urlObj.searchParams.set('message', cleanPrompt);
+      urlObj.searchParams.set('question', cleanPrompt);
+      urlObj.searchParams.set('sessionId', sessionId);
+      urlObj.searchParams.set('userEmail', userEmail || '');
+      targetUrl = urlObj.toString();
+    } catch (uErr) {
+      const sep = rawUrl.includes('?') ? '&' : '?';
+      targetUrl = `${rawUrl}${sep}chatInput=${encodeURIComponent(cleanPrompt)}&message=${encodeURIComponent(cleanPrompt)}&sessionId=${encodeURIComponent(sessionId)}`;
+    }
 
-      const response = await fetch(webhookUrl, {
+    // 2. Comprehensive JSON Payload
+    const payload = {
+      chatInput: cleanPrompt,
+      message: cleanPrompt,
+      question: cleanPrompt,
+      query: cleanPrompt,
+      text: cleanPrompt,
+      prompt: cleanPrompt,
+      input: cleanPrompt,
+      sessionId: sessionId,
+      userEmail: userEmail || ''
+    };
+
+    // Attempt 1: Fetch with JSON Body + Query Params
+    try {
+      const response = await fetch(targetUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -209,7 +233,7 @@ class AiAnalyzerModule {
       if (response.ok) {
         const textData = await response.text();
         if (!textData || !textData.trim()) {
-          return { success: true, text: "✅ n8n Webhook đã nhận request thành công (HTTP 200 OK)." };
+          return { success: true, text: "✅ n8n Webhook đã nhận dữ liệu thành công (HTTP 200 OK)." };
         }
         try {
           const data = JSON.parse(textData);
@@ -235,8 +259,37 @@ class AiAnalyzerModule {
         return { success: false, error: `Lỗi HTTP Status ${response.status}: ${response.statusText}` };
       }
     } catch (e) {
-      console.warn("n8n Webhook Query Notice:", e);
-      return { success: false, error: `Lỗi kết nối / CORS: ${e.message || 'Không thể gửi request tới Webhook URL'}` };
+      console.warn("JSON fetch notice, trying Form-UrlEncoded fallback:", e);
+
+      // Attempt 2: Form-UrlEncoded Fallback (Prevents CORS Preflight Block)
+      try {
+        const formParams = new URLSearchParams();
+        formParams.append('chatInput', cleanPrompt);
+        formParams.append('message', cleanPrompt);
+        formParams.append('question', cleanPrompt);
+        formParams.append('sessionId', sessionId);
+        formParams.append('userEmail', userEmail || '');
+
+        const formResp = await fetch(targetUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+          },
+          body: formParams.toString()
+        });
+
+        if (formResp.ok) {
+          const textData = await formResp.text();
+          return { success: true, text: textData || "✅ n8n Webhook đã nhận request (Form-UrlEncoded)." };
+        }
+      } catch (fErr) {
+        console.warn("Form fallback notice:", fErr);
+      }
+
+      return { 
+        success: false, 
+        error: `Không thể kết nối tới n8n URL (${e.message}). Có thể do n8n chưa bật CORS hoặc URL Webhook chưa Active trên n8n!` 
+      };
     }
   }
 
