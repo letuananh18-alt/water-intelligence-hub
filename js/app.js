@@ -1792,7 +1792,7 @@ class AppController {
         dmContainer.innerHTML = realUsers.map(u => {
           const unread = window.chatService.getUnreadCount(u.id);
           const unreadDotHtml = unread > 0 ? `
-            <span title="Có ${unread} tin nhắn mới" style="width: 8px; height: 8px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 10px #ef4444; display: inline-block; flex-shrink: 0;"></span>
+            <span class="unread-red-dot" title="Có ${unread} tin nhắn mới chưa đọc"></span>
           ` : '';
           const isOnline = u.isOnline;
 
