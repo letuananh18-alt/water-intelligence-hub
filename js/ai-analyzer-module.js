@@ -204,46 +204,49 @@ class AiAnalyzerModule {
     const cleanPrompt = (promptText || '').trim();
     if (!cleanPrompt) return null;
 
+    const generateUUID = () => {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+      return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, c =>
+        (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> (c / 4))).toString(16)
+      );
+    };
+
+    const requestId = generateUUID();
+
     try {
-      // 1. Insert question into Supabase ai_chat_requests table
-      let insertPayload = {
+      // 1. Insert question into Supabase ai_chat_requests table with explicit client-generated UUID
+      const insertPayload = {
+        id: requestId,
         question: cleanPrompt,
-        user_email: userEmail || 'guest@thuducwater.vn',
+        user_email: userEmail || 'waterain8n@gmail.com',
         user_name: userName || 'Khách hàng',
         status: 'pending'
       };
 
-      let { data, error } = await window.supabaseClient
+      console.log("⚡ Attempting to insert question into Supabase ai_chat_requests:", insertPayload);
+
+      const { error } = await window.supabaseClient
         .from('ai_chat_requests')
-        .insert([insertPayload])
-        .select();
-
-      // Fallback insert with minimal fields if table schema differs
-      if (error) {
-        console.warn("Supabase Realtime AI Insert Notice (Primary):", error.message);
-        const simpleResult = await window.supabaseClient
-          .from('ai_chat_requests')
-          .insert([{
-            question: cleanPrompt,
-            status: 'pending'
-          }])
-          .select();
-        data = simpleResult.data;
-        error = simpleResult.error;
-      }
+        .insert([insertPayload]);
 
       if (error) {
-        console.warn("Supabase Realtime AI Insert Notice (Final):", error.message);
+        console.warn("⚠️ Supabase Realtime AI Insert Notice:", error.message || error);
         window.handleSupabaseError && window.handleSupabaseError(error, "Insert ai_chat_requests");
-        return null;
+        
+        // Try simple insert without extra metadata
+        const { error: err2 } = await window.supabaseClient
+          .from('ai_chat_requests')
+          .insert([{ id: requestId, question: cleanPrompt, status: 'pending' }]);
+          
+        if (err2) {
+          console.error("❌ Supabase Insert failed completely:", err2.message || err2);
+          return `⚠️ Lỗi ghi CSDL Supabase: ${err2.message || 'Bị khóa bởi RLS Policy'}.\n\n👉 ANH VUI LÒNG MỞ SUPABASE SQL EDITOR CHẠY CÂU LỆNH NÀY:\nALTER TABLE public.ai_chat_requests DISABLE ROW LEVEL SECURITY;`;
+        }
       }
 
-      if (!data || !data[0] || !data[0].id) return null;
+      console.log("✅ Supabase Realtime AI question inserted successfully! Request ID:", requestId);
 
-      const requestId = data[0].id;
-      console.log("⚡ Supabase Realtime AI question posted successfully, Request ID:", requestId);
-
-      // 2. Wait for Postgres Realtime update on table ai_chat_requests (15s max timeout)
+      // 2. Wait for Postgres Realtime update on table ai_chat_requests (25s timeout)
       return new Promise((resolve) => {
         let isResolved = false;
         let channel = null;
@@ -258,10 +261,10 @@ class AiAnalyzerModule {
           if (!isResolved) {
             isResolved = true;
             cleanup();
-            console.warn("⚠️ Supabase Realtime AI response timed out (15s). Falling back to RAG Engine.");
-            resolve(null);
+            console.warn("⚠️ Supabase Realtime AI response timed out (25s).");
+            resolve(`⚡ Câu hỏi đã được chèn vào Supabase thành công (ID: ${requestId.slice(0, 8)}...). Đang chờ n8n Workflow của anh cập nhật câu trả lời.`);
           }
-        }, 15000);
+        }, 25000);
 
         try {
           channel = window.supabaseClient
