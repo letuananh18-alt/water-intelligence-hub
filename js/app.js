@@ -2154,6 +2154,44 @@ class AppController {
     });
   }
 
+  bindSettingsEvents() {
+    const btnSaveKey = document.getElementById('btnSaveGeminiKey');
+    const inputKey = document.getElementById('geminiApiKeyInput');
+    const statusEl = document.getElementById('geminiKeyStatus');
+
+    const updateStatus = () => {
+      const savedKey = localStorage.getItem('gemini_api_key') || localStorage.getItem('openai_api_key') || '';
+      if (inputKey && savedKey && !inputKey.value) {
+        inputKey.value = savedKey;
+      }
+      if (statusEl) {
+        if (savedKey) {
+          statusEl.innerHTML = savedKey.startsWith('sk-') ? 
+            `<span style="color: #10b981; display: inline-flex; align-items: center; gap: 4px;">✅ Đã kích hoạt OpenAI ChatGPT Key (${savedKey.slice(0, 7)}...)</span>` : 
+            `<span style="color: #10b981; display: inline-flex; align-items: center; gap: 4px;">✅ Đã kích hoạt Google Gemini AI Key (${savedKey.slice(0, 6)}...)</span>`;
+        } else {
+          statusEl.innerHTML = `<span style="color: #64748b;">ℹ️ Chưa dán Mã Khóa AI Engine tùy chỉnh (Đang dùng Key mặc định của hệ thống)</span>`;
+        }
+      }
+    };
+
+    updateStatus();
+
+    btnSaveKey?.addEventListener('click', () => {
+      if (inputKey && inputKey.value.trim()) {
+        const val = inputKey.value.trim();
+        if (val.startsWith('sk-')) {
+          localStorage.setItem('openai_api_key', val);
+          if (window.aiAnalyzerModule) window.aiAnalyzerModule.setOpenAiKey(val);
+        } else {
+          localStorage.setItem('gemini_api_key', val);
+        }
+        updateStatus();
+        alert("🎉 Đã lưu và kích hoạt Cấu hình Mã Khóa AI Engine thành công!");
+      }
+    });
+  }
+
   playNotificationChime() {
     try {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
