@@ -1791,27 +1791,28 @@ class AppController {
       } else {
         dmContainer.innerHTML = realUsers.map(u => {
           const unread = window.chatService.getUnreadCount(u.id);
-          const unreadDotHtml = unread > 0 ? `
+          const hasUnread = unread > 0;
+          const unreadDotHtml = hasUnread ? `
             <span class="unread-red-dot" title="Có ${unread} tin nhắn mới chưa đọc"></span>
           ` : '';
           const isOnline = u.isOnline;
 
           const statusHtml = isOnline ? `
-            <span style="font-size: 10px; color: #10b981; float: right; font-weight: 700; display: flex; align-items: center; gap: 5px;">
+            <span style="font-size: 10px; color: #10b981; font-weight: 700; display: flex; align-items: center; gap: 4px;">
               <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981; display: inline-block;"></span>
               Trực tuyến
             </span>
           ` : `
-            <span style="font-size: 10px; color: #94a3b8; float: right; font-weight: 500;">⚪ Ngoại tuyến</span>
+            <span style="font-size: 10px; color: #94a3b8; font-weight: 500;">⚪ Ngoại tuyến</span>
           `;
 
           return `
-            <div class="thread-item ${window.chatService.activeTargetId === u.id ? 'active' : ''}" data-target="${escapeHTML(u.id)}" style="display: flex; align-items: center; justify-content: space-between; font-weight: ${unread > 0 ? '700' : 'normal'};">
+            <div class="thread-item ${window.chatService.activeTargetId === u.id ? 'active' : ''} ${hasUnread ? 'has-unread' : ''}" data-target="${escapeHTML(u.id)}" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; margin-bottom: 4px;">
               <div style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                <span>👤 ${escapeHTML(u.name)}</span>
-                ${unreadDotHtml}
+                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">👤 ${escapeHTML(u.name)}</span>
               </div>
-              <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+              <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 6px;">
+                ${unreadDotHtml}
                 ${statusHtml}
               </div>
             </div>
