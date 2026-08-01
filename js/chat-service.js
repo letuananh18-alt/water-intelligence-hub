@@ -208,7 +208,7 @@ class ChatService {
     return true;
   }
 
-  // Bulletproof Hybrid Online Status Check (Socket Presence + Realtime Ping + Active Last Seen)
+  // Bulletproof Hybrid Online Status Check (Socket Presence + Realtime Ping + Active Last Seen + Cloud DB Login)
   isUserOnline(email) {
     if (!email) return false;
     const clean = email.toLowerCase().trim();
@@ -227,9 +227,32 @@ class ChatService {
     if (this.onlineUserEmails.has(clean)) return true;
 
     const lastSeen = this.lastSeenTimestamps[clean] || 0;
-    // Considered online ONLY if ping received within last 2 minutes (120,000 ms)
-    if (Date.now() - lastSeen < 120000) {
+    // Considered online if ping received within last 5 minutes (300,000 ms)
+    if (Date.now() - lastSeen < 300000) {
       return true;
+    }
+
+    // Check lastLogin from authManager usersList (synced with Supabase Cloud DB)
+    if (window.authManager && window.authManager.usersList) {
+      const u = window.authManager.usersList.find(x => x && x.email && x.email.toLowerCase().trim() === clean);
+      if (u && u.lastLogin) {
+        if (u.lastLogin.includes('Vừa xong')) return true;
+        try {
+          const parts = u.lastLogin.split(' ');
+          if (parts.length >= 2) {
+            const timeParts = parts[0].split(':');
+            const dateParts = parts[1].split('/');
+            if (timeParts.length === 2 && dateParts.length === 3) {
+              const loginDate = new Date(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0], timeParts[1]);
+              const diffMs = Date.now() - loginDate.getTime();
+              // If logged in within last 20 minutes and date matches today
+              if (diffMs >= 0 && diffMs < 1200000) {
+                return true;
+              }
+            }
+          }
+        } catch (e) {}
+      }
     }
 
     return false;
