@@ -208,7 +208,7 @@ class ChatService {
     return true;
   }
 
-  // Bulletproof Hybrid Online Status Check (Socket Presence + Realtime Ping + Message Activity)
+  // Bulletproof Hybrid Online Status Check (Socket Presence + Realtime Ping + Active Last Seen)
   isUserOnline(email) {
     if (!email) return false;
     const clean = email.toLowerCase().trim();
@@ -227,17 +227,9 @@ class ChatService {
     if (this.onlineUserEmails.has(clean)) return true;
 
     const lastSeen = this.lastSeenTimestamps[clean] || 0;
-    // Considered online if active within last 5 minutes (300,000 ms)
-    if (Date.now() - lastSeen < 300000) {
+    // Considered online ONLY if ping received within last 2 minutes (120,000 ms)
+    if (Date.now() - lastSeen < 120000) {
       return true;
-    }
-
-    // Check authManager usersList for active status or recent lastLogin
-    if (window.authManager && window.authManager.usersList) {
-      const u = window.authManager.usersList.find(x => x && x.email && x.email.toLowerCase().trim() === clean);
-      if (u) {
-        if (u.isOnline || u.status === 'approved') return true;
-      }
     }
 
     return false;
@@ -620,16 +612,17 @@ class ChatService {
       const emailClean = u.email.toLowerCase().trim();
       const isOnline = this.isUserOnline(emailClean);
       const dmRoomId = currentEmail ? this.getCanonicalDmId(currentEmail, emailClean) : `dm_guest_${emailClean.replace(/[@.]/g, '_')}`;
+      const displayName = u.name.includes('@') ? u.name : `${u.name} (${emailClean})`;
 
       return {
         id: dmRoomId,
         targetEmail: emailClean,
-        name: u.name,
+        name: displayName,
         email: emailClean,
         role: u.role,
         status: isOnline ? "🟢 Trực tuyến" : "⚪ Ngoại tuyến",
         isOnline: isOnline,
-        desc: `Trò chuyện riêng 1:1 với ${u.name} (${emailClean})`
+        desc: `🔒 Trò chuyện riêng tư 1:1 với ${displayName}`
       };
     });
   }
@@ -782,6 +775,9 @@ class ChatService {
     this.activeTargetId = targetId;
     this.clearUnreadCount(targetId);
     this.notify();
+    if (window.appController && typeof window.appController.renderTeamChat === 'function') {
+      window.appController.renderTeamChat();
+    }
   }
 
   sendMessage(text, attachment = null) {

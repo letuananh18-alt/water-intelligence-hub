@@ -1833,6 +1833,7 @@ class AppController {
         document.querySelector('.team-chat-container')?.classList.add('mobile-show-chat');
 
         if (window.chatService) window.chatService.setActiveTarget(targetId);
+        this.renderTeamChat();
       });
     });
   }
