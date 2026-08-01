@@ -276,6 +276,9 @@ class ChatService {
 
                 this.saveLocal();
                 this.notify();
+                if (window.appController && typeof window.appController.renderTeamChatSidebar === 'function') {
+                  window.appController.renderTeamChatSidebar();
+                }
               }
             }
           }
@@ -552,6 +555,26 @@ class ChatService {
           name: u.name || u.email.split('@')[0],
           email: u.email.toLowerCase().trim(),
           role: u.role || "Cán bộ P.KDDVKH"
+        });
+      }
+    });
+
+    // CRITICAL ENHANCEMENT: Scan all DM rooms & unread counts in this.messages for any active DM senders!
+    const allRoomKeys = new Set([...Object.keys(this.messages), ...Object.keys(this.unreadCounts)]);
+    allRoomKeys.forEach(roomId => {
+      if (roomId.startsWith('dm_')) {
+        const msgs = this.messages[roomId] || [];
+        msgs.forEach(m => {
+          if (m && m.senderEmail) {
+            const semail = m.senderEmail.toLowerCase().trim();
+            if (semail && semail !== currentEmail && !knownAccounts.some(k => k.email.toLowerCase() === semail)) {
+              knownAccounts.push({
+                name: m.senderName || semail.split('@')[0],
+                email: semail,
+                role: m.senderRole || "Cán bộ P.KDDVKH"
+              });
+            }
+          }
         });
       }
     });
