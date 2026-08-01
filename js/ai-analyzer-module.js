@@ -186,46 +186,58 @@ class AiAnalyzerModule {
 
   async queryN8nWebhook(promptText, userEmail = '') {
     const webhookUrl = this.getN8nWebhookUrl();
-    if (!webhookUrl) return null;
+    if (!webhookUrl) return { success: false, error: 'Chưa cấu hình URL n8n Webhook!' };
 
     try {
+      const payload = {
+        chatInput: promptText,
+        message: promptText,
+        question: promptText,
+        sessionId: 'session_' + (userEmail || 'guest').replace(/[^a-zA-Z0-9]/g, '_'),
+        userEmail: userEmail || ''
+      };
+
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json, text/plain, */*'
         },
-        body: JSON.stringify({
-          chatInput: promptText,
-          message: promptText,
-          question: promptText,
-          sessionId: 'session_' + (userEmail || 'guest').replace(/[^a-zA-Z0-9]/g, '_'),
-          userEmail: userEmail || ''
-        })
+        body: JSON.stringify(payload)
       });
 
       if (response.ok) {
         const textData = await response.text();
+        if (!textData || !textData.trim()) {
+          return { success: true, text: "✅ n8n Webhook đã nhận request thành công (HTTP 200 OK)." };
+        }
         try {
           const data = JSON.parse(textData);
-          if (typeof data === 'string') return data;
-          if (data.output) return data.output;
-          if (data.response) return data.response;
-          if (data.message) return data.message;
-          if (data.text) return data.text;
-          if (data.content) return data.content;
-          if (Array.isArray(data) && data[0]) {
+          let extracted = "";
+          if (typeof data === 'string') extracted = data;
+          else if (data.output) extracted = data.output;
+          else if (data.response) extracted = data.response;
+          else if (data.message) extracted = data.message;
+          else if (data.text) extracted = data.text;
+          else if (data.content) extracted = data.content;
+          else if (data.data) extracted = typeof data.data === 'string' ? data.data : JSON.stringify(data.data);
+          else if (Array.isArray(data) && data[0]) {
             const first = data[0];
-            return first.output || first.response || first.message || first.text || JSON.stringify(first);
+            extracted = first.output || first.response || first.message || first.text || first.content || JSON.stringify(first);
+          } else {
+            extracted = JSON.stringify(data);
           }
-          return JSON.stringify(data);
+          return { success: true, text: extracted };
         } catch (parseErr) {
-          if (textData && textData.trim()) return textData;
+          return { success: true, text: textData.trim() };
         }
+      } else {
+        return { success: false, error: `Lỗi HTTP Status ${response.status}: ${response.statusText}` };
       }
     } catch (e) {
       console.warn("n8n Webhook Query Notice:", e);
+      return { success: false, error: `Lỗi kết nối / CORS: ${e.message || 'Không thể gửi request tới Webhook URL'}` };
     }
-    return null;
   }
 
   // 5. EXTRACT VECTOR TEXT FROM PDF BLOB USING PDF.JS

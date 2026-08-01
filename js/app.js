@@ -2243,10 +2243,11 @@ class AppController {
         btnTestN8n.disabled = false;
         btnTestN8n.textContent = originalText;
 
-        if (testRes) {
-          alert(`✅ KẾT NỐI N8N THÀNH CÔNG!\n\nPhản hồi nhận được từ n8n Bot:\n"${testRes.substring(0, 300)}..."`);
+        if (testRes && testRes.success) {
+          alert(`✅ KẾT NỐI N8N THÔNG THÀNH CÔNG (100% OK)!\n\nURL Webhook: ${url}\n\nPhản hồi từ n8n Bot:\n"${(testRes.text || '').substring(0, 400)}..."`);
         } else {
-          alert(`❌ KẾT NỐI TỚI N8N THẤT BẠI!\n\nKhông nhận được phản hồi từ URL: ${url}\n\nVui lòng kiểm tra lại:\n1. Workflow trong n8n đã bấm 'Active' (Hoạt động) chưa?\n2. Phương thức Webhook có đúng là POST không?\n3. n8n đã có node 'Respond to Webhook' chưa?`);
+          const errDetail = testRes ? testRes.error : "Không thể gửi request";
+          alert(`❌ CHƯA THÔNG KẾT NỐI TỚI N8N!\n\nChi tiết kết quả: ${errDetail}\nURL Webhook: ${url}\n\n👉 BƯỚC NĂM RÕ NGUYÊN NHÂN & CÁCH KHẮC PHỤC TRÊN N8N:\n1. Kiểm tra Workflow n8n đã gạt công tắc sang 'Active' (Hoạt động) chưa?\n2. Trong node Webhook n8n, kiểm tra HTTP Method có đúng là 'POST' không?\n3. Đảm bảo n8n có node 'Respond to Webhook' để trả phản hồi JSON về Web App!`);
         }
       }
     });

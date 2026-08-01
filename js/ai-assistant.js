@@ -135,7 +135,10 @@ QUY TẮC PHẢN HỒI:
     const currentUserEmail = window.authManager && window.authManager.currentUser ? window.authManager.currentUser.email : '';
     if (window.aiAnalyzerModule) {
       if (window.aiAnalyzerModule.getN8nWebhookUrl()) {
-        aiResponse = await window.aiAnalyzerModule.queryN8nWebhook(q, currentUserEmail);
+        const n8nRes = await window.aiAnalyzerModule.queryN8nWebhook(q, currentUserEmail);
+        if (n8nRes && n8nRes.success && n8nRes.text) {
+          aiResponse = n8nRes.text;
+        }
       }
       if (!aiResponse) {
         aiResponse = await window.aiAnalyzerModule.queryOpenAiGptGateway(userPrompt);
