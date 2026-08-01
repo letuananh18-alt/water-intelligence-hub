@@ -29,44 +29,60 @@
     <canvas id="techBgCanvas"></canvas>
 
     <div class="auth-layout-wrapper">
-      <!-- Left Hero Banner Showcase (Outside Card on 3D Motion Canvas) -->
+      <!-- Left Hero Banner Showcase (Logo, Title, Description, 3 Feature Badges, Copyright) -->
       <div class="auth-hero-banner">
-        <div class="hero-company-badge">CÔNG TY CỔ PHẦN CẤP NƯỚC THỦ ĐỨC</div>
-        <h1 class="hero-app-title">Water Intelligence Hub</h1>
+        <div class="hero-logo-wrapper">
+          <img src="assets/logo.png" alt="THUDUC WATER Logo" class="hero-brand-logo">
+        </div>
+
+        <h1 class="hero-app-title">WATER INTELLIGENCE HUB</h1>
+        <div class="hero-app-subtitle">THỦ ĐỨC WATER PORTAL</div>
+
         <p class="hero-description">
-          Nền tảng lưu trữ, quản lý và chia sẻ dữ liệu thông minh hàng đầu. 
-          Tối ưu hóa quy trình nghiệp vụ Phòng Kinh doanh & Dịch vụ Khách hàng, 
-          kết nối tri thức nội bộ và bảo mật dữ liệu theo tiêu chuẩn chuyển đổi số hiện đại.
+          Nền tảng quản lý và dữ liệu ngành cấp nước thông minh, kết nối - tối ưu vận hành - phục vụ khách hàng tốt hơn mỗi ngày.
         </p>
 
-        <div class="hero-features-list">
-          <div class="hero-feature-item">
-            <i data-lucide="shield-check" class="hero-feature-icon"></i>
-            <span>Bảo mật dữ liệu chuẩn CSDL Supabase Cloud</span>
+        <div class="hero-badges-grid">
+          <div class="hero-badge-card">
+            <div class="badge-icon-box">
+              <i data-lucide="shield-check"></i>
+            </div>
+            <div class="badge-title">BẢO MẬT</div>
+            <div class="badge-sub">Security</div>
           </div>
-          <div class="hero-feature-item">
-            <i data-lucide="zap" class="hero-feature-icon"></i>
-            <span>Đồng bộ thời gian thực mượt mà trên mọi thiết bị</span>
+          <div class="hero-badge-card">
+            <div class="badge-icon-box">
+              <i data-lucide="sparkles"></i>
+            </div>
+            <div class="badge-title">THÔNG MINH</div>
+            <div class="badge-sub">AI-Powered Insights</div>
           </div>
-          <div class="hero-feature-item">
-            <i data-lucide="bot" class="hero-feature-icon"></i>
-            <span>Trợ lý AI tra cứu văn bản & quy trình KDDVKH 24/7</span>
+          <div class="hero-badge-card">
+            <div class="badge-icon-box">
+              <i data-lucide="droplets"></i>
+            </div>
+            <div class="badge-title">KẾT NỐI</div>
+            <div class="badge-sub">Interoperability Ecosystem</div>
           </div>
+        </div>
+
+        <div class="hero-copyright">
+          © 2024 Thủ Đức Water. All rights reserved.
         </div>
       </div>
 
-      <!-- Right Login Card -->
+      <!-- Right Glassmorphism Login Card -->
       <div class="auth-card">
-        <div class="brand-logo-wrapper">
-          <img src="assets/logo.png" alt="THUDUC WATER Logo" class="auth-brand-logo">
-          <div class="form-card-title">Đăng nhập hệ thống</div>
+        <div class="auth-card-header">
+          <h2 class="auth-welcome-title">Chào mừng trở lại!</h2>
+          <p class="auth-welcome-sub">Đăng nhập để tiếp tục làm việc</p>
         </div>
 
         <form id="authForm" class="auth-form">
           <div class="form-group">
             <label class="form-label" for="authEmail">Email</label>
             <div class="input-icon-wrapper">
-              <i data-lucide="mail" class="input-icon"></i>
+              <i data-lucide="search" class="input-icon"></i>
               <input type="email" id="authEmail" class="form-input" placeholder="Nhập email của bạn" required>
             </div>
           </div>
@@ -74,7 +90,7 @@
           <div class="form-group">
             <label class="form-label" for="authPassword">Mật khẩu</label>
             <div class="input-icon-wrapper">
-              <i data-lucide="lock" class="input-icon"></i>
+              <i data-lucide="search" class="input-icon"></i>
               <input type="password" id="authPassword" class="form-input" placeholder="Nhập mật khẩu" required>
               <i data-lucide="eye" class="toggle-password" id="togglePasswordBtn"></i>
             </div>
@@ -82,7 +98,8 @@
 
           <div class="form-options">
             <label class="checkbox-label">
-              <input type="checkbox" checked> Ghi nhớ đăng nhập trong phiên
+              <input type="checkbox" checked>
+              <span>Ghi nhớ đăng nhập</span>
             </label>
             <a href="#" id="forgotPasswordLink">Quên mật khẩu?</a>
           </div>
@@ -94,7 +111,7 @@
         </form>
 
         <div class="auth-divider">
-          <span>Hoặc</span>
+          <span>Hoặc đăng nhập với</span>
         </div>
 
         <button type="button" id="btnGoogleSignIn" class="btn-google">
@@ -105,7 +122,9 @@
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
           </svg>
           <span>Đăng nhập với Google</span>
-        <p class="auth-footer">Chưa có tài khoản? <a href="#" id="toggleSignupLink">Đăng ký ngay</a></p>
+        </button>
+
+        <p class="auth-footer">Chưa có tài khoản? <a href="#" id="toggleSignupLink">Liên hệ quản trị hệ thống</a></p>
       </div>
     </div>
   </div>
@@ -1154,13 +1173,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Application Logic with Supabase Backend -->
-  <script src="js/supabase-config.js?v=20260731_v128"></script>
-  <script src="js/tech-bg.js?v=20260731_v128"></script>
-  <script src="js/auth.js?v=20260731_v128"></script>
-  <script src="js/storage-service.js?v=20260731_v128"></script>
-  <script src="js/chat-service.js?v=20260731_v128"></script>
-  <script src="js/ai-assistant.js?v=20260731_v128"></script>
-  <script src="js/ai-analyzer-module.js?v=20260731_v128"></script>
-  <script src="js/app.js?v=20260731_v128"></script>
+  <script src="js/supabase-config.js?v=20260801_v129"></script>
+  <script src="js/tech-bg.js?v=20260801_v129"></script>
+  <script src="js/auth.js?v=20260801_v129"></script>
+  <script src="js/storage-service.js?v=20260801_v129"></script>
+  <script src="js/chat-service.js?v=20260801_v129"></script>
+  <script src="js/ai-assistant.js?v=20260801_v129"></script>
+  <script src="js/ai-analyzer-module.js?v=20260801_v129"></script>
+  <script src="js/app.js?v=20260801_v129"></script>
 </body>
 </html>
