@@ -932,37 +932,26 @@
                 Khi bật tính năng này, tất cả câu hỏi trên <strong>AI Assistant</strong> sẽ được tự động chèn vào bảng Supabase <code>ai_chat_requests</code>. Node n8n của anh sẽ đọc từ Supabase, cho AI trả lời và <code>Update a row</code>. Hệ thống sẽ tự động lắng nghe <strong>Postgres Realtime</strong> và hiển thị câu trả lời ngay lập tức (Không sợ bị chặn CORS!):
               </p>
               
-              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap;">
                 <label style="position: relative; display: inline-block; width: 46px; height: 24px; cursor: pointer;">
                   <input type="checkbox" id="toggleSupabaseAiMode" style="opacity: 0; width: 0; height: 0;">
                   <span id="sliderSupabaseAi" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .3s; border-radius: 24px;"></span>
                 </label>
                 <span style="font-size: 13.5px; font-weight: 700; color: var(--slate-800);">Kích hoạt chế độ AI Gateway qua Supabase Realtime + n8n Engine</span>
+                <button id="btnTestSupabaseInsert" onclick="window.testSupabaseInsert && window.testSupabaseInsert()" class="btn-primary" style="padding: 6px 14px; font-size: 12px; width: auto; font-weight: 700; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; border-radius: 6px; margin-left: 10px;">🧪 Test Ghi Dữ Liệu Vào Supabase</button>
               </div>
 
               <div id="supabaseAiStatus" style="font-size: 12.5px; margin-top: 8px; font-weight: 700;"></div>
 
               <!-- SQL CREATION SCRIPT GUIDE -->
               <details style="margin-top: 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
-                <summary style="font-size: 12.5px; font-weight: 700; color: #0369a1; cursor: pointer;">📜 Xem đoạn mã SQL tạo bảng 'ai_chat_requests' trên Supabase (Copy dán vào SQL Editor)</summary>
+                <summary style="font-size: 12.5px; font-weight: 700; color: #0369a1; cursor: pointer;">📜 Xem đoạn mã SQL Mở Quyền Ghi (Tắt RLS) cho bảng 'ai_chat_requests' trên Supabase</summary>
                 <pre style="background: #0f172a; color: #38bdf8; padding: 12px; border-radius: 6px; font-size: 11.5px; font-family: monospace; overflow-x: auto; margin-top: 10px; white-space: pre-wrap;">
--- 1. Tạo bảng lưu trữ câu hỏi và câu trả lời AI
-CREATE TABLE IF NOT EXISTS public.ai_chat_requests (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    user_email TEXT,
-    user_name TEXT,
-    question TEXT NOT NULL,
-    reply TEXT,
-    status TEXT DEFAULT 'pending' NOT NULL
-);
+-- 1. Tắt RLS để bảng ai_chat_requests chuyển thành UNRESTRICTED (Giống tất cả các bảng khác trong dự án của anh)
+ALTER TABLE public.ai_chat_requests DISABLE ROW LEVEL SECURITY;
 
--- 2. Kích hoạt tính năng PostgreSQL Realtime cho bảng
+-- 2. Đảm bảo Kích hoạt tính năng PostgreSQL Realtime cho bảng
 ALTER PUBLICATION supabase_realtime ADD TABLE public.ai_chat_requests;
-
--- 3. Mở quyền RLS cho phép ghi và đọc dữ liệu
-ALTER TABLE public.ai_chat_requests ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Cho phap tat ca truy cap ai_chat_requests" ON public.ai_chat_requests FOR ALL USING (true);
                 </pre>
               </details>
             </div>
@@ -1234,13 +1223,13 @@ CREATE POLICY "Cho phap tat ca truy cap ai_chat_requests" ON public.ai_chat_requ
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Application Logic with Supabase Backend -->
-  <script src="js/supabase-config.js?v=20260801_v170"></script>
-  <script src="js/tech-bg.js?v=20260801_v170"></script>
-  <script src="js/auth.js?v=20260801_v170"></script>
-  <script src="js/storage-service.js?v=20260801_v170"></script>
-  <script src="js/chat-service.js?v=20260801_v170"></script>
-  <script src="js/ai-assistant.js?v=20260801_v170"></script>
-  <script src="js/ai-analyzer-module.js?v=20260801_v170"></script>
-  <script src="js/app.js?v=20260801_v170"></script>
+  <script src="js/supabase-config.js?v=20260802_v171"></script>
+  <script src="js/tech-bg.js?v=20260802_v171"></script>
+  <script src="js/auth.js?v=20260802_v171"></script>
+  <script src="js/storage-service.js?v=20260802_v171"></script>
+  <script src="js/chat-service.js?v=20260802_v171"></script>
+  <script src="js/ai-assistant.js?v=20260802_v171"></script>
+  <script src="js/ai-analyzer-module.js?v=20260802_v171"></script>
+  <script src="js/app.js?v=20260802_v171"></script>
 </body>
 </html>

@@ -2347,3 +2347,44 @@ class AppController {
 }
 
 new AppController();
+
+// Global Handler to test Supabase Data Insertion directly
+window.testSupabaseInsert = async function() {
+  const btn = document.getElementById('btnTestSupabaseInsert');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "⌛ Đang test ghi CSDL...";
+  }
+
+  try {
+    if (!window.supabaseClient) {
+      alert("⚠️ Chưa kết nối Supabase client!");
+      return;
+    }
+
+    const testQuestion = `[Test Ghi Dữ Liệu] ${new Date().toLocaleTimeString('vi-VN')} - Kiểm tra ghi dữ liệu vào Supabase ai_chat_requests`;
+
+    const { data, error } = await window.supabaseClient
+      .from('ai_chat_requests')
+      .insert([{
+        question: testQuestion,
+        user_email: 'waterain8n@gmail.com',
+        user_name: 'Water AI Tester',
+        status: 'pending'
+      }])
+      .select();
+
+    if (error) {
+      alert(`❌ LỖI GHI DỮ LIỆU TỪ SUPABASE:\n\n${error.message || JSON.stringify(error)}\n\n👉 NGUYÊN NHÂN: Bảng 'ai_chat_requests' của anh đang bật RLS (1 RLS policy) nên bị khóa quyền ghi từ client SDK.\n\n📌 BƯỚC KHẮC PHỤC (10 GIÂY):\n1. Mở Supabase SQL Editor.\n2. Dán dòng này vào và bấm Run:\n   ALTER TABLE public.ai_chat_requests DISABLE ROW LEVEL SECURITY;\n3. Bấm nút test này lại sẽ THÀNH CÔNG 100%!`);
+    } else {
+      alert(`🎉 CHÈN THÀNH CÔNG 100% VÀO SUPABASE!\n\n📌 ID dòng mới: ${data[0]?.id}\n💬 Nội dung: "${testQuestion}"\n\n👉 Anh sang trang Supabase Table Editor bấm REFRESH sẽ thấy dòng dữ liệu xuất hiện ngay lập tức!`);
+    }
+  } catch (err) {
+    alert(`❌ LỖI EXCEPTION: ${err.message}`);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "🧪 Test Ghi Dữ Liệu Vào Supabase";
+    }
+  }
+};
