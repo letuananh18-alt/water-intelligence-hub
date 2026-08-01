@@ -2211,8 +2211,20 @@ class AppController {
       }
     });
 
-    toggleSupabaseAi?.addEventListener('change', (e) => {
+    toggleSupabaseAi?.addEventListener('change', async (e) => {
       const isChecked = e.target.checked;
+      
+      if (isChecked && window.aiAnalyzerModule) {
+        const tableExists = await window.aiAnalyzerModule.checkSupabaseAiTable();
+        if (!tableExists) {
+          e.target.checked = false;
+          if (window.aiAnalyzerModule) window.aiAnalyzerModule.setSupabaseAiMode(false);
+          updateStatus();
+          alert("⚠️ CHƯA TẠO BẢNG 'ai_chat_requests' TRÊN SUPABASE!\n\nHệ thống chưa tìm thấy bảng 'ai_chat_requests' trên CSDL Supabase của anh.\n\n👉 VUI LÒNG TẠO BẢNG TRƯỚC THEO 2 BƯỚC:\n1. Vào Supabase Dashboard -> SQL Editor.\n2. Copy đoạn mã SQL (có sẵn ở mục Cài đặt ngay phía dưới) dán vào và bấm Run.\n3. Sau khi bấm Run tạo bảng xong, anh bật lại công tắc này nhé!");
+          return;
+        }
+      }
+
       if (window.aiAnalyzerModule) {
         window.aiAnalyzerModule.setSupabaseAiMode(isChecked);
       } else {
@@ -2220,12 +2232,11 @@ class AppController {
       }
       updateStatus();
       if (isChecked) {
-        alert("⚡ ĐÃ KÍCH HOẠT CỔNG SUPABASE REALTIME AI GATEWAY!\n\nTừ bây giờ, mọi câu hỏi trên ô Chat AI Assistant sẽ được chèn vào bảng Supabase 'ai_chat_requests'. n8n của anh chỉ cần đọc Supabase, xử lý AI và 'Update a row' với reply mới!");
+        alert("⚡ ĐÃ KÍCH HOẠT CỔNG SUPABASE REALTIME AI GATEWAY!\n\nBảng 'ai_chat_requests' đã sẵn sàng! Mọi câu hỏi trên ô Chat AI Assistant sẽ được chèn vào Supabase và tự động nhận phản hồi Realtime từ n8n!");
       } else {
         alert("ℹ️ Đã chuyển AI Assistant về dùng Chế độ AI RAG nội bộ trực tiếp!");
       }
     });
-  }
   }
 
   playNotificationChime() {

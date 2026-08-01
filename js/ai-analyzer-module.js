@@ -181,6 +181,22 @@ class AiAnalyzerModule {
     localStorage.setItem('supabase_ai_mode', enabled ? 'true' : 'false');
   }
 
+  async checkSupabaseAiTable() {
+    if (!window.supabaseClient) return false;
+    try {
+      const { error } = await window.supabaseClient
+        .from('ai_chat_requests')
+        .select('id')
+        .limit(1);
+      if (error && (error.code === '42P01' || (error.message && error.message.includes('does not exist')))) {
+        return false;
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   async querySupabaseRealtimeAi(promptText, userEmail = '', userName = '') {
     if (!this.isSupabaseAiMode() || !window.supabaseClient) return null;
 
