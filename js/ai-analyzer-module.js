@@ -307,7 +307,7 @@ class AiAnalyzerModule {
       });
     } catch (err) {
       console.warn("Supabase Realtime AI Gateway Exception:", err);
-      return null;
+      return `❌ Lỗi Exception khi kết nối CSDL Supabase: ${err.message || err}. Vui lòng kiểm tra lại mạng hoặc cấu hình Supabase!`;
     }
   }
 

@@ -139,9 +139,9 @@ QUY TẮC PHẢN HỒI:
       aiResponse = await window.aiAnalyzerModule.querySupabaseRealtimeAi(q, currentUserEmail, currentUserName);
       if (!aiResponse) {
         aiResponse = await window.aiAnalyzerModule.queryOpenAiGptGateway(userPrompt);
-      }
-      if (!aiResponse) {
-        aiResponse = await window.aiAnalyzerModule.queryGeminiAI(userPrompt);
+        if (!aiResponse) {
+          aiResponse = await window.aiAnalyzerModule.queryGeminiAI(userPrompt);
+        }
       }
     }
 
