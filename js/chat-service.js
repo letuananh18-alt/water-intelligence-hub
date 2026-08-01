@@ -75,11 +75,12 @@ class ChatService {
     // 3. Sync Cloud Custom Channels
     this.syncCustomChannelsWithCloud();
 
-    // 4. Periodic Presence Heartbeat Ping (every 8s) for 100% bulletproof glowing online LEDs
+    // 4. Periodic Presence Heartbeat Ping (every 5s) for 100% bulletproof glowing online LEDs
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+    this.updateUserPresence();
     this.heartbeatTimer = setInterval(() => {
       this.updateUserPresence();
-    }, 8000);
+    }, 5000);
   }
 
   async syncCustomChannelsWithCloud() {
@@ -217,9 +218,17 @@ class ChatService {
     if (this.onlineUserEmails.has(clean)) return true;
 
     const lastSeen = this.lastSeenTimestamps[clean] || 0;
-    // Considered online if active within last 2.5 minutes (150,000 ms)
-    if (Date.now() - lastSeen < 150000) {
+    // Considered online if active within last 5 minutes (300,000 ms)
+    if (Date.now() - lastSeen < 300000) {
       return true;
+    }
+
+    // Check authManager usersList for active status or recent lastLogin
+    if (window.authManager && window.authManager.usersList) {
+      const u = window.authManager.usersList.find(x => x && x.email && x.email.toLowerCase().trim() === clean);
+      if (u) {
+        if (u.isOnline || u.status === 'approved') return true;
+      }
     }
 
     return false;
@@ -301,6 +310,9 @@ class ChatService {
               this.onlineUserEmails.add(pingEmail);
               this.lastSeenTimestamps[pingEmail] = Date.now();
               this.notify();
+              if (window.appController && typeof window.appController.renderTeamChatSidebar === 'function') {
+                window.appController.renderTeamChatSidebar();
+              }
             }
           }
         })

@@ -1859,14 +1859,7 @@ class AppController {
     const isAdmin = window.authManager ? window.authManager.isAdmin() : false;
 
     let bannerHtml = '';
-    if (isGeneralChan) {
-      bannerHtml = `
-        <div style="background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 10px 14px; border-radius: 10px; font-size: 12.5px; margin-bottom: 16px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
-          <span>📢 <strong>KÊNH CHUNG PHÒNG BAN:</strong> Tất cả cán bộ đều nhìn thấy tin nhắn ở đây.</span>
-          <span style="font-size: 11px; color: #2563eb; background: white; padding: 3px 8px; border-radius: 6px; border: 1px solid #93c5fd;">🔒 Muốn nhắn riêng 1:1? Nhấp tên người nhận ở mục 'TIN NHẮN TRỰC TIẾP' bên trái</span>
-        </div>
-      `;
-    } else if (isDm) {
+    if (isDm) {
       bannerHtml = `
         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 8px 14px; border-radius: 10px; font-size: 12px; margin-bottom: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
           <span>🔒 <strong>CUỘC TRÒ CHUYỆN RIÊNG TƯ 1:1:</strong> Tin nhắn được bảo mật tuyệt đối, chỉ duy nhất 2 người trong cuộc hội thoại nhìn thấy.</span>
