@@ -1859,17 +1859,8 @@ class AppController {
     const currentEmail = currentUser ? (currentUser.email || '').toLowerCase().trim() : '';
     const isAdmin = window.authManager ? window.authManager.isAdmin() : false;
 
-    let bannerHtml = '';
-    if (isDm) {
-      bannerHtml = `
-        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 8px 14px; border-radius: 10px; font-size: 12px; margin-bottom: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-          <span>🔒 <strong>CUỘC TRÒ CHUYỆN RIÊNG TƯ 1:1:</strong> Tin nhắn được bảo mật tuyệt đối, chỉ duy nhất 2 người trong cuộc hội thoại nhìn thấy.</span>
-        </div>
-      `;
-    }
-
     if (msgs.length === 0) {
-      listEl.innerHTML = bannerHtml + `<div style="font-size: 13px; color: var(--slate-400); text-align: center; margin-top: 40px;">💬 Chưa có tin nhắn nào trong kênh này. Hãy gửi tin nhắn đầu tiên!</div>`;
+      listEl.innerHTML = `<div style="font-size: 13px; color: var(--slate-400); text-align: center; margin-top: 40px;">💬 Chưa có tin nhắn nào trong kênh này. Hãy gửi tin nhắn đầu tiên!</div>`;
       return;
     }
 
@@ -1915,7 +1906,7 @@ class AppController {
       `;
     }).join('');
 
-    listEl.innerHTML = bannerHtml + messagesHtml;
+    listEl.innerHTML = messagesHtml;
 
     // Bind event listeners for single message deletion
     listEl.querySelectorAll('.btn-delete-msg').forEach(btn => {
