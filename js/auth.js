@@ -113,6 +113,10 @@ class AuthManager {
         }
       } catch (e) {}
     }
+    // Master admin and system admin can NEVER be in deletedEmails
+    this.deletedEmails.delete("letuananh18@gmail.com");
+    this.deletedEmails.delete("waterain8n@gmail.com");
+    this.saveLocalCaches();
 
     if (window.supabaseClient) {
       this.setupSupabaseRealtime();
@@ -266,6 +270,12 @@ class AuthManager {
         dbUsers.forEach(u => {
           if (!u || !u.email) return;
           const clean = u.email.toLowerCase().trim();
+          
+          // System admins can never be deleted
+          if (clean === MASTER_ADMIN_EMAIL || clean === 'waterain8n@gmail.com') {
+            this.deletedEmails.delete(clean);
+          }
+
           if (this.deletedEmails.has(clean)) return;
 
           const existingIdx = this.usersList.findIndex(x => x.email.toLowerCase().trim() === clean);
