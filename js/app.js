@@ -2235,20 +2235,25 @@ class AppController {
       }
 
       btnTestN8n.disabled = true;
-      const originalText = btnTestN8n.textContent;
+      const originalText = "⚡ Test Kết Nối";
       btnTestN8n.textContent = "⌛ Đang kết nối test...";
 
-      if (window.aiAnalyzerModule) {
-        const testRes = await window.aiAnalyzerModule.queryN8nWebhook("Xin chào n8n bot! Kiểm tra kết nối từ Thủ Đức Water Web App", "admin@thuducwater.vn");
+      try {
+        if (window.aiAnalyzerModule) {
+          const testRes = await window.aiAnalyzerModule.queryN8nWebhook("Xin chào n8n bot! Kiểm tra kết nối từ Thủ Đức Water Web App", "admin@thuducwater.vn");
+
+          if (testRes && testRes.success) {
+            alert(`✅ KẾT NỐI N8N THÔNG THÀNH CÔNG (100% OK)!\n\nURL Webhook: ${url}\n\nPhản hồi từ n8n Bot:\n"${(testRes.text || '').substring(0, 400)}..."`);
+          } else {
+            const errDetail = testRes ? testRes.error : "Không nhận được phản hồi";
+            alert(`❌ CHƯA THÔNG KẾT NỐI TỚI N8N!\n\nURL Webhook: ${url}\nChi tiết kết quả: ${errDetail}\n\n👉 BƯỚC NĂM RÕ NGUYÊN NHÂN & CÁCH KHẮC PHỤC THƯỜNG GẶP:\n1. n8n có 2 loại URL Webhook: Nếu Workflow CHƯA Active, n8n chỉ nhận URL dạng '/webhook-test/...' khi bấm 'Listen for Test Event'!\n2. Nếu đã bấm gạt công tắc Active (Màu xanh), hãy dùng URL chính thức dạng '/webhook/...'\n3. Kiểm tra HTTP Method trong Node Webhook n8n (Chọn GET hoặc POST).`);
+          }
+        }
+      } catch (err) {
+        alert(`❌ LỖI KẾT NỐI: ${err.message || 'Hết thời gian chờ phản hồi từ n8n (Timeout)'}`);
+      } finally {
         btnTestN8n.disabled = false;
         btnTestN8n.textContent = originalText;
-
-        if (testRes && testRes.success) {
-          alert(`✅ KẾT NỐI N8N THÔNG THÀNH CÔNG (100% OK)!\n\nURL Webhook: ${url}\n\nPhản hồi từ n8n Bot:\n"${(testRes.text || '').substring(0, 400)}..."`);
-        } else {
-          const errDetail = testRes ? testRes.error : "Không thể gửi request";
-          alert(`❌ CHƯA THÔNG KẾT NỐI TỚI N8N!\n\nChi tiết kết quả: ${errDetail}\nURL Webhook: ${url}\n\n👉 BƯỚC NĂM RÕ NGUYÊN NHÂN & CÁCH KHẮC PHỤC TRÊN N8N:\n1. Kiểm tra Workflow n8n đã gạt công tắc sang 'Active' (Hoạt động) chưa?\n2. Trong node Webhook n8n, kiểm tra HTTP Method có đúng là 'POST' không?\n3. Đảm bảo n8n có node 'Respond to Webhook' để trả phản hồi JSON về Web App!`);
-        }
       }
     });
   }

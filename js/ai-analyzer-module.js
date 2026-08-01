@@ -184,6 +184,20 @@ class AiAnalyzerModule {
     }
   }
 
+  // Helper fetch with strict AbortController timeout to prevent UI hanging
+  async fetchWithTimeout(url, options = {}, timeoutMs = 6000) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(id);
+      return response;
+    } catch (err) {
+      clearTimeout(id);
+      throw err;
+    }
+  }
+
   async queryN8nWebhook(promptText, userEmail = '') {
     const rawUrl = this.getN8nWebhookUrl();
     if (!rawUrl) return { success: false, error: 'Chưa cấu hình URL n8n Webhook!' };
@@ -227,9 +241,9 @@ class AiAnalyzerModule {
       }
     };
 
-    // STRATEGY 1: HTTP POST with JSON Body
+    // STRATEGY 1: HTTP POST with JSON Body (6s Timeout)
     try {
-      const response = await fetch(targetUrl, {
+      const response = await this.fetchWithTimeout(targetUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -244,33 +258,33 @@ class AiAnalyzerModule {
           sessionId: sessionId,
           userEmail: userEmail || ''
         })
-      });
+      }, 6000);
 
-      if (response.ok) {
+      if (response && response.ok) {
         const textData = await response.text();
         return { success: true, text: parseN8nResponseText(textData) };
       }
     } catch (e1) {
-      console.warn("Strategy 1 (POST JSON) failed/CORS blocked, trying Strategy 2 (GET Query Request):", e1);
+      console.warn("Strategy 1 (POST JSON) notice:", e1);
     }
 
-    // STRATEGY 2: HTTP GET Request (Bypasses CORS Preflight completely!)
+    // STRATEGY 2: HTTP GET Request (6s Timeout - Bypasses CORS Preflight completely!)
     try {
-      const getResp = await fetch(targetUrl, {
+      const getResp = await this.fetchWithTimeout(targetUrl, {
         method: 'GET'
-      });
+      }, 6000);
 
-      if (getResp.ok) {
+      if (getResp && getResp.ok) {
         const textData = await getResp.text();
         return { success: true, text: parseN8nResponseText(textData) };
       }
     } catch (e2) {
-      console.warn("Strategy 2 (GET) failed, trying Strategy 3 (no-cors Mode):", e2);
+      console.warn("Strategy 2 (GET) notice:", e2);
     }
 
-    // STRATEGY 3: HTTP POST with mode: 'no-cors' (Guarantees HTTP delivery to n8n server)
+    // STRATEGY 3: HTTP POST with mode: 'no-cors' (3s Timeout - Direct Server Push)
     try {
-      await fetch(targetUrl, {
+      await this.fetchWithTimeout(targetUrl, {
         method: 'POST',
         mode: 'no-cors',
         headers: {
@@ -282,19 +296,19 @@ class AiAnalyzerModule {
           sessionId: sessionId,
           userEmail: userEmail || ''
         })
-      });
+      }, 3000);
 
       return { 
         success: true, 
-        text: "✅ Dữ liệu đã được gửi thành công tới n8n Webhook (Chế độ No-CORS Direct Dispatch)." 
+        text: "✅ Dữ liệu đã được gửi thành công tới n8n Webhook (Chế độ No-CORS Direct Push)." 
       };
     } catch (e3) {
-      console.warn("Strategy 3 failed:", e3);
+      console.warn("Strategy 3 notice:", e3);
     }
 
     return {
       success: false,
-      error: `Không thể kết nối tới n8n URL (${rawUrl}). Vui lòng kiểm tra n8n đã gạt nút 'Active' chưa!`
+      error: `Không nhận được phản hồi từ URL (${rawUrl}). Vui lòng kiểm tra lại URL hoặc nút Active trên n8n!`
     };
   }
 
