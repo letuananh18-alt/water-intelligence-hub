@@ -750,24 +750,23 @@ class AppController {
           </span>
         `;
 
-        let approvalBadge = '';
-        if (uStatus === 'pending') {
-          approvalBadge = `<span class="badge-tag" style="background: #fef3c7; color: #d97706; border: 1px solid #fde68a;">⏳ Chờ Phê Duyệt</span>`;
-        } else if (uStatus === 'blocked') {
-          approvalBadge = `<span class="badge-tag" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5;">⛔ Bị Khóa</span>`;
+        let accountStatusTag = '';
+        if (uStatus === 'blocked') {
+          accountStatusTag = `<span class="badge-tag" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; font-weight: 800;">⛔ Đã Khóa</span>`;
         } else {
-          approvalBadge = `<span class="badge-tag" style="background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd;">✅ Đã Phê Duyệt</span>`;
+          accountStatusTag = `<span class="badge-tag" style="background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; font-weight: 700;">🟢 Hoạt động</span>`;
         }
 
         let adminActionsHtml = '<span style="color: var(--slate-400); font-size: 12px; font-style: italic;">Master Admin</span>';
         if (isAdmin && !isMasterAdmin) {
-          const approveBtn = uStatus === 'pending' ? `<button class="table-btn btn-approve-user" data-email="${escapeHTML(u.email)}" style="padding: 4px 8px; font-size: 11px; background: #10b981; color: white; border: none; font-weight: 700;">✅ Duyệt</button>` : '';
-          const toggleBlockBtn = uStatus === 'blocked' ? `<button class="table-btn btn-unblock-user" data-email="${escapeHTML(u.email)}" style="padding: 4px 8px; font-size: 11px; background: #0284c7; color: white; border: none;">🔓 Mở Khóa</button>` : `<button class="table-btn btn-block-user" data-email="${escapeHTML(u.email)}" style="padding: 4px 8px; font-size: 11px; background: #f59e0b; color: white; border: none;">⛔ Khóa</button>`;
-          const deleteBtn = `<button class="table-btn table-btn-delete btn-delete-user" data-email="${escapeHTML(u.email)}" style="padding: 4px 8px; font-size: 11px;">🗑️ Xóa</button>`;
+          const toggleBlockBtn = uStatus === 'blocked' ? 
+            `<button class="table-btn btn-unblock-user" data-email="${escapeHTML(u.email)}" style="padding: 4px 10px; font-size: 11px; background: #0284c7; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer;">🔓 Mở Khóa</button>` : 
+            `<button class="table-btn btn-block-user" data-email="${escapeHTML(u.email)}" style="padding: 4px 10px; font-size: 11px; background: #ef4444; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer;">⛔ Khóa</button>`;
+          
+          const deleteBtn = `<button class="table-btn table-btn-delete btn-delete-user" data-email="${escapeHTML(u.email)}" style="padding: 4px 10px; font-size: 11px; border-radius: 6px; font-weight: 700; cursor: pointer;">🗑️ Xóa</button>`;
 
           adminActionsHtml = `
-            <div style="display: flex; gap: 4px; justify-content: center;">
-              ${approveBtn}
+            <div style="display: flex; gap: 6px; justify-content: center;">
               ${toggleBlockBtn}
               ${deleteBtn}
             </div>
@@ -780,9 +779,9 @@ class AppController {
             <td>${escapeHTML(u.email)}</td>
             <td>${escapeHTML(u.department || 'Phòng Kinh doanh & Dịch vụ Khách hàng')}</td>
             <td>
-              <div style="display: flex; gap: 4px; align-items: center;">
+              <div style="display: flex; gap: 6px; align-items: center;">
                 <span class="badge-tag ${isMasterAdmin ? 'type-pdf' : 'type-docx'}">${isMasterAdmin ? 'ADMIN' : 'CLIENT'}</span>
-                ${approvalBadge}
+                ${accountStatusTag}
               </div>
             </td>
             <td>

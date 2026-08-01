@@ -465,29 +465,21 @@ class AuthManager {
       return;
     }
 
-    this.deletedEmails.add(clean);
-    this.approvedEmails.delete(clean);
-    this.blockedEmails.delete(clean);
-    this.usersList = this.usersList.filter(u => u.email.toLowerCase().trim() !== clean);
-    this.saveLocalCaches();
-
+    // 1. Delete user record directly from Supabase Cloud users table
     if (window.supabaseClient) {
       try {
         await window.supabaseClient.from('users').delete().eq('email', clean);
-      } catch (e) {}
+      } catch (e) {
+        console.warn("Supabase Cloud user delete notice:", e);
+      }
     }
 
-    if (window.storageService) {
-      try {
-        await window.storageService.purgeFilesByUser(clean);
-      } catch (e) {}
-    }
-
-    if (window.chatService) {
-      try {
-        await window.chatService.purgeUserData(clean);
-      } catch (e) {}
-    }
+    // 2. Clear state caches and remove from usersList (do NOT blacklist in deletedEmails so re-login works)
+    this.approvedEmails.delete(clean);
+    this.blockedEmails.delete(clean);
+    this.deletedEmails.delete(clean);
+    this.usersList = this.usersList.filter(u => u.email.toLowerCase().trim() !== clean);
+    this.saveLocalCaches();
 
     this.notify();
   }
