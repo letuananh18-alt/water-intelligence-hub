@@ -245,7 +245,6 @@
             <div>
               <h2 class="welcome-title">
                 <span>Xin chào, <span id="dashGreetingName">Tuấn Anh</span>!</span>
-                <span>👋</span>
               </h2>
               <p class="welcome-sub">Chào mừng bạn quay trở lại với Water Intelligence Hub (Thủ Đức Water Cloud Engine)</p>
             </div>
@@ -310,11 +309,12 @@
                 <div class="card-header-flex" style="margin-bottom: 16px; align-items: center;">
                   <div>
                     <h3 class="card-title" style="font-size: 15px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                      <span>📊</span> <span>Thống kê Phân loại & Tiến độ Dữ liệu Kho KDDVKH</span>
+                      <i data-lucide="bar-chart-3" style="width: 18px; height: 18px; color: #2563eb;"></i>
+                      <span>Thống kê Phân loại & Tiến độ Dữ liệu Kho KDDVKH</span>
                     </h3>
                     <div style="font-size: 12px; color: var(--slate-500); margin-top: 2px;">Cập nhật thời gian thực từ CSDL Supabase PostgreSQL</div>
                   </div>
-                  <span class="badge-tag" style="background: #e0f2fe; color: #0284c7; font-weight: 700; font-size: 11px;">⚡ Realtime Engine</span>
+                  <span class="badge-tag" style="background: #e0f2fe; color: #0284c7; font-weight: 700; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="zap" style="width: 12px; height: 12px;"></i> <span>Realtime Engine</span></span>
                 </div>
 
                 <!-- Dynamic Progress Bars for 5 Categories -->
@@ -325,14 +325,17 @@
 
               <!-- Quick Action Pills Footer -->
               <div style="display: flex; gap: 10px; padding-top: 14px; border-top: 1px solid var(--slate-100); flex-wrap: wrap;">
-                <button class="table-btn preview-btn" id="btnDashGotoDept" style="padding: 6px 14px; font-size: 12px; font-weight: 700; background: #f8fafc; border: 1px solid var(--slate-200); color: var(--accent-blue);">
-                  📁 Kho KDDVKH
+                <button class="table-btn preview-btn" id="btnDashGotoDept" style="padding: 6px 14px; font-size: 12px; font-weight: 700; background: #f8fafc; border: 1px solid var(--slate-200); color: var(--accent-blue); display: inline-flex; align-items: center; gap: 6px;">
+                  <i data-lucide="folder" style="width: 14px; height: 14px; color: #2563eb;"></i>
+                  <span>Kho KDDVKH</span>
                 </button>
-                <button class="table-btn preview-btn" id="btnDashGotoReports" style="padding: 6px 14px; font-size: 12px; font-weight: 700; background: #f8fafc; border: 1px solid var(--slate-200); color: #0284c7;">
-                  📊 Xem Báo cáo
+                <button class="table-btn preview-btn" id="btnDashGotoReports" style="padding: 6px 14px; font-size: 12px; font-weight: 700; background: #f8fafc; border: 1px solid var(--slate-200); color: #0284c7; display: inline-flex; align-items: center; gap: 6px;">
+                  <i data-lucide="bar-chart-3" style="width: 14px; height: 14px; color: #0284c7;"></i>
+                  <span>Xem Báo cáo</span>
                 </button>
-                <button class="table-btn preview-btn" id="btnDashGotoAi" style="padding: 6px 14px; font-size: 12px; font-weight: 700; background: #f8fafc; border: 1px solid var(--slate-200); color: #7c3aed;">
-                  🤖 Trợ lý AI 24/7
+                <button class="table-btn preview-btn" id="btnDashGotoAi" style="padding: 6px 14px; font-size: 12px; font-weight: 700; background: #f8fafc; border: 1px solid var(--slate-200); color: #7c3aed; display: inline-flex; align-items: center; gap: 6px;">
+                  <i data-lucide="bot" style="width: 14px; height: 14px; color: #7c3aed;"></i>
+                  <span>Trợ lý AI 24/7</span>
                 </button>
               </div>
             </div>
@@ -1164,13 +1167,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Application Logic with Supabase Backend -->
-  <script src="js/supabase-config.js?v=20260801_v132"></script>
-  <script src="js/tech-bg.js?v=20260801_v132"></script>
-  <script src="js/auth.js?v=20260801_v132"></script>
-  <script src="js/storage-service.js?v=20260801_v132"></script>
-  <script src="js/chat-service.js?v=20260801_v132"></script>
-  <script src="js/ai-assistant.js?v=20260801_v132"></script>
-  <script src="js/ai-analyzer-module.js?v=20260801_v132"></script>
-  <script src="js/app.js?v=20260801_v132"></script>
+  <script src="js/supabase-config.js?v=20260801_v133"></script>
+  <script src="js/tech-bg.js?v=20260801_v133"></script>
+  <script src="js/auth.js?v=20260801_v133"></script>
+  <script src="js/storage-service.js?v=20260801_v133"></script>
+  <script src="js/chat-service.js?v=20260801_v133"></script>
+  <script src="js/ai-assistant.js?v=20260801_v133"></script>
+  <script src="js/ai-analyzer-module.js?v=20260801_v133"></script>
+  <script src="js/app.js?v=20260801_v133"></script>
 </body>
 </html>
