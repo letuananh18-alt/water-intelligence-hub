@@ -645,7 +645,7 @@ class ChatService {
         role: u.role,
         status: isOnline ? "🟢 Trực tuyến" : "⚪ Ngoại tuyến",
         isOnline: isOnline,
-        desc: `🔒 Trò chuyện riêng tư 1:1 với ${displayName}`
+        desc: `Trò chuyện trực tiếp với ${displayName}`
       };
     });
   }
@@ -791,7 +791,7 @@ class ChatService {
     const dm = realUsers.find(u => u.id === this.activeTargetId);
     if (dm) return { id: dm.id, name: `👤 ${dm.name}`, desc: dm.desc };
 
-    // Dynamic DM room info generator if activeTargetId is a 1:1 DM room
+    // Dynamic DM room info generator if activeTargetId is a DM room
     if (this.activeTargetId && this.activeTargetId.startsWith('dm_')) {
       const parts = this.activeTargetId.replace(/^dm_/, '').split('__');
       const currentUser = window.authManager ? window.authManager.getCurrentUser() : null;
@@ -800,10 +800,16 @@ class ChatService {
       const otherSlug = parts.find(p => p !== currentEmailSlug) || parts[0] || 'user';
       const prettyEmail = otherSlug.replace(/_gmail_com$/, '@gmail.com').replace(/_/g, '.');
 
+      let userName = prettyEmail;
+      if (window.authManager && window.authManager.usersList) {
+        const u = window.authManager.usersList.find(x => x && x.email && x.email.toLowerCase().trim() === prettyEmail.toLowerCase());
+        if (u && u.name) userName = u.name;
+      }
+
       return {
         id: this.activeTargetId,
-        name: `👤 Trò chuyện 1:1 với ${prettyEmail}`,
-        desc: `🔒 Phòng chat riêng 1:1 bảo mật giữa 2 người (${prettyEmail})`
+        name: `👤 ${userName}`,
+        desc: `Trò chuyện trực tiếp với ${userName} (${prettyEmail})`
       };
     }
 
