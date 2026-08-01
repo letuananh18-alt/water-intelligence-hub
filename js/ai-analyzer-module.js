@@ -205,19 +205,12 @@ class AiAnalyzerModule {
     const sessionId = 'session_' + (userEmail || 'guest').replace(/[^a-zA-Z0-9]/g, '_');
     const cleanPrompt = (promptText || '').trim();
 
-    // 1. Build Target URL with Query Parameters
-    let targetUrl = rawUrl;
-    try {
-      const urlObj = new URL(rawUrl);
-      urlObj.searchParams.set('chatInput', cleanPrompt);
-      urlObj.searchParams.set('message', cleanPrompt);
-      urlObj.searchParams.set('question', cleanPrompt);
-      urlObj.searchParams.set('sessionId', sessionId);
-      urlObj.searchParams.set('userEmail', userEmail || '');
-      targetUrl = urlObj.toString();
-    } catch (uErr) {
-      const sep = rawUrl.includes('?') ? '&' : '?';
-      targetUrl = `${rawUrl}${sep}chatInput=${encodeURIComponent(cleanPrompt)}&message=${encodeURIComponent(cleanPrompt)}&sessionId=${encodeURIComponent(sessionId)}`;
+    // Candidate URLs: Raw URL + Auto-fallback between Production (/webhook/) and Test (/webhook-test/)
+    const candidateUrls = [rawUrl];
+    if (rawUrl.includes('/webhook/')) {
+      candidateUrls.push(rawUrl.replace('/webhook/', '/webhook-test/'));
+    } else if (rawUrl.includes('/webhook-test/')) {
+      candidateUrls.push(rawUrl.replace('/webhook-test/', '/webhook/'));
     }
 
     const parseN8nResponseText = (textData) => {
@@ -242,74 +235,66 @@ class AiAnalyzerModule {
       }
     };
 
-    // STRATEGY 1: HTTP POST with JSON Body (6s Timeout)
-    try {
-      const response = await this.fetchWithTimeout(targetUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json, text/plain, */*'
-        },
-        body: JSON.stringify({
-          chatInput: cleanPrompt,
-          message: cleanPrompt,
-          question: cleanPrompt,
-          query: cleanPrompt,
-          text: cleanPrompt,
-          sessionId: sessionId,
-          userEmail: userEmail || ''
-        })
-      }, 6000);
-
-      if (response && response.ok) {
-        const textData = await response.text();
-        return { success: true, text: parseN8nResponseText(textData) };
+    for (const urlItem of candidateUrls) {
+      let targetUrl = urlItem;
+      try {
+        const urlObj = new URL(urlItem);
+        urlObj.searchParams.set('chatInput', cleanPrompt);
+        urlObj.searchParams.set('message', cleanPrompt);
+        urlObj.searchParams.set('question', cleanPrompt);
+        urlObj.searchParams.set('sessionId', sessionId);
+        urlObj.searchParams.set('userEmail', userEmail || '');
+        targetUrl = urlObj.toString();
+      } catch (uErr) {
+        const sep = urlItem.includes('?') ? '&' : '?';
+        targetUrl = `${urlItem}${sep}chatInput=${encodeURIComponent(cleanPrompt)}&message=${encodeURIComponent(cleanPrompt)}&sessionId=${encodeURIComponent(sessionId)}`;
       }
-    } catch (e1) {
-      console.warn("Strategy 1 (POST JSON) notice:", e1);
-    }
 
-    // STRATEGY 2: HTTP GET Request (6s Timeout - Bypasses CORS Preflight completely!)
-    try {
-      const getResp = await this.fetchWithTimeout(targetUrl, {
-        method: 'GET'
-      }, 6000);
+      // STRATEGY 1: HTTP POST with JSON Body (5s Timeout)
+      try {
+        const response = await this.fetchWithTimeout(targetUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json, text/plain, */*'
+          },
+          body: JSON.stringify({
+            chatInput: cleanPrompt,
+            message: cleanPrompt,
+            question: cleanPrompt,
+            query: cleanPrompt,
+            text: cleanPrompt,
+            sessionId: sessionId,
+            userEmail: userEmail || ''
+          })
+        }, 5000);
 
-      if (getResp && getResp.ok) {
-        const textData = await getResp.text();
-        return { success: true, text: parseN8nResponseText(textData) };
+        if (response && response.ok) {
+          const textData = await response.text();
+          return { success: true, text: parseN8nResponseText(textData) };
+        }
+      } catch (e1) {
+        console.warn(`Strategy 1 (POST JSON) notice for ${urlItem}:`, e1);
       }
-    } catch (e2) {
-      console.warn("Strategy 2 (GET) notice:", e2);
-    }
 
-    // STRATEGY 3: HTTP POST with mode: 'no-cors' (3s Timeout - Direct Server Push)
-    try {
-      await this.fetchWithTimeout(targetUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'text/plain'
-        },
-        body: JSON.stringify({
-          chatInput: cleanPrompt,
-          message: cleanPrompt,
-          sessionId: sessionId,
-          userEmail: userEmail || ''
-        })
-      }, 3000);
+      // STRATEGY 2: HTTP GET Request (5s Timeout - Bypasses CORS Preflight)
+      try {
+        const getResp = await this.fetchWithTimeout(targetUrl, {
+          method: 'GET'
+        }, 5000);
 
-      return { 
-        success: true, 
-        text: "✅ Dữ liệu đã được gửi thành công tới n8n Webhook (Chế độ No-CORS Direct Push)." 
-      };
-    } catch (e3) {
-      console.warn("Strategy 3 notice:", e3);
+        if (getResp && getResp.ok) {
+          const textData = await getResp.text();
+          return { success: true, text: parseN8nResponseText(textData) };
+        }
+      } catch (e2) {
+        console.warn(`Strategy 2 (GET) notice for ${urlItem}:`, e2);
+      }
     }
 
     return {
       success: false,
-      error: `Không nhận được phản hồi từ URL (${rawUrl}). Vui lòng kiểm tra lại URL hoặc nút Active trên n8n!`
+      error: `Không nhận được phản hồi từ URL (${rawUrl}). Vui lòng xem 3 bước hướng dẫn cài đặt trên n8n!`
     };
   }
 
