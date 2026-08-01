@@ -202,16 +202,33 @@ class AiAnalyzerModule {
     const rawUrl = this.getN8nWebhookUrl();
     if (!rawUrl) return { success: false, error: 'Chưa cấu hình URL n8n Webhook!' };
 
-    const sessionId = 'session_' + (userEmail || 'guest').replace(/[^a-zA-Z0-9]/g, '_');
-    const cleanPrompt = (promptText || '').trim();
+    const userDisplayName = (userEmail || 'Khách hàng').split('@')[0];
+    const userUniqueId = (userEmail || 'guest').replace(/[^a-zA-Z0-9]/g, '_');
 
-    // Candidate URLs: Raw URL + Auto-fallback between Production (/webhook/) and Test (/webhook-test/)
-    const candidateUrls = [rawUrl];
-    if (rawUrl.includes('/webhook/')) {
-      candidateUrls.push(rawUrl.replace('/webhook/', '/webhook-test/'));
-    } else if (rawUrl.includes('/webhook-test/')) {
-      candidateUrls.push(rawUrl.replace('/webhook-test/', '/webhook/'));
-    }
+    // Comprehensive payload structured to match n8n Bot/Zalo event schemas
+    const fullPayload = {
+      event_name: "message.text.received",
+      chatInput: cleanPrompt,
+      message: {
+        date: Date.now(),
+        chat: {
+          chat_type: "PRIVATE",
+          id: userUniqueId
+        },
+        message_id: "msg_" + Date.now(),
+        from: {
+          id: userUniqueId,
+          is_bot: false,
+          display_name: userDisplayName
+        },
+        text: cleanPrompt
+      },
+      question: cleanPrompt,
+      query: cleanPrompt,
+      text: cleanPrompt,
+      sessionId: sessionId,
+      userEmail: userEmail || ''
+    };
 
     const parseN8nResponseText = (textData) => {
       if (!textData || !textData.trim()) return "✅ n8n Webhook đã nhận tín hiệu dữ liệu thành công (HTTP 200 OK).";
@@ -221,13 +238,16 @@ class AiAnalyzerModule {
         if (data.reply) return data.reply;
         if (data.output) return data.output;
         if (data.response) return data.response;
-        if (data.message && data.message !== 'Workflow was started') return data.message;
+        if (data.message) {
+          if (typeof data.message === 'string' && data.message !== 'Workflow was started') return data.message;
+          if (typeof data.message === 'object' && data.message.text) return data.message.text;
+        }
         if (data.text) return data.text;
         if (data.content) return data.content;
         if (data.data) return typeof data.data === 'string' ? data.data : JSON.stringify(data.data);
         if (Array.isArray(data) && data[0]) {
           const first = data[0];
-          return first.reply || first.output || first.response || first.message || first.text || first.content || JSON.stringify(first);
+          return first.reply || first.output || first.response || (typeof first.message === 'string' ? first.message : (first.message?.text || '')) || first.text || first.content || JSON.stringify(first);
         }
         const jsonStr = JSON.stringify(data);
         return jsonStr !== '{}' ? jsonStr : "✅ n8n Webhook đã nhận tín hiệu thành công (HTTP 200 OK).";
@@ -259,15 +279,7 @@ class AiAnalyzerModule {
             'Content-Type': 'application/json',
             'Accept': 'application/json, text/plain, */*'
           },
-          body: JSON.stringify({
-            chatInput: cleanPrompt,
-            message: cleanPrompt,
-            question: cleanPrompt,
-            query: cleanPrompt,
-            text: cleanPrompt,
-            sessionId: sessionId,
-            userEmail: userEmail || ''
-          })
+          body: JSON.stringify(fullPayload)
         }, 5000);
 
         if (response && response.ok) {
@@ -278,12 +290,7 @@ class AiAnalyzerModule {
             debug: {
               url: targetUrl,
               method: 'POST',
-              payload: {
-                chatInput: cleanPrompt,
-                message: cleanPrompt,
-                sessionId: sessionId,
-                userEmail: userEmail || ''
-              },
+              payload: fullPayload,
               status: response.status
             }
           };
