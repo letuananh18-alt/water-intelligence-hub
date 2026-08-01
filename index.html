@@ -933,8 +933,8 @@
               </p>
               <div style="display: flex; gap: 10px; max-width: 680px; flex-wrap: wrap;">
                 <input type="url" id="n8nWebhookUrlInput" class="form-input" placeholder="https://n8n.domain.com/webhook/water-ai-bot" style="padding: 10px 14px; flex: 1; min-width: 280px;">
-                <button id="btnSaveN8nWebhook" class="btn-primary" style="padding: 10px 20px; font-size: 13px; width: auto; flex-shrink: 0; font-weight: 700; background: #0284c7;">Lưu Webhook n8n</button>
-                <button id="btnTestN8nWebhook" class="btn-primary" style="padding: 10px 16px; font-size: 13px; width: auto; flex-shrink: 0; font-weight: 700; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;">⚡ Test Kết Nối</button>
+                <button id="btnSaveN8nWebhook" onclick="window.saveN8nWebhook && window.saveN8nWebhook()" class="btn-primary" style="padding: 10px 20px; font-size: 13px; width: auto; flex-shrink: 0; font-weight: 700; background: #0284c7;">Lưu Webhook n8n</button>
+                <button id="btnTestN8nWebhook" onclick="window.testN8nConnection && window.testN8nConnection()" class="btn-primary" style="padding: 10px 16px; font-size: 13px; width: auto; flex-shrink: 0; font-weight: 700; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;">⚡ Test Kết Nối</button>
               </div>
               <div id="n8nWebhookStatus" style="font-size: 12.5px; margin-top: 10px; font-weight: 700;"></div>
             </div>
@@ -1206,13 +1206,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Application Logic with Supabase Backend -->
-  <script src="js/supabase-config.js?v=20260801_v163"></script>
-  <script src="js/tech-bg.js?v=20260801_v163"></script>
-  <script src="js/auth.js?v=20260801_v163"></script>
-  <script src="js/storage-service.js?v=20260801_v163"></script>
-  <script src="js/chat-service.js?v=20260801_v163"></script>
-  <script src="js/ai-assistant.js?v=20260801_v163"></script>
-  <script src="js/ai-analyzer-module.js?v=20260801_v163"></script>
-  <script src="js/app.js?v=20260801_v163"></script>
+  <script src="js/supabase-config.js?v=20260801_v164"></script>
+  <script src="js/tech-bg.js?v=20260801_v164"></script>
+  <script src="js/auth.js?v=20260801_v164"></script>
+  <script src="js/storage-service.js?v=20260801_v164"></script>
+  <script src="js/chat-service.js?v=20260801_v164"></script>
+  <script src="js/ai-assistant.js?v=20260801_v164"></script>
+  <script src="js/ai-analyzer-module.js?v=20260801_v164"></script>
+  <script src="js/app.js?v=20260801_v164"></script>
 </body>
 </html>
