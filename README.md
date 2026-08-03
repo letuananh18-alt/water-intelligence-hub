@@ -1,82 +1,67 @@
-# 🌊 Water Intelligence Hub (Thủ Đức Water Client Portal)
+# 🌊 Water Intelligence Hub — Thủ Đức Water Client Portal
 
-Hệ thống lưu trữ và quản lý dữ liệu thông minh, tích hợp **Firebase Backend** (Auth, Cloud Firestore, Storage), phân quyền lưu trữ **Kho cá nhân & Kho nội bộ phòng ban**, **Trò chuyện trực tiếp (Live Team Chat)** và **Trợ lý AI phân tích tài liệu**.
-
----
-
-## 🌟 Tính năng nổi bật (Features)
-
-1. **Giao diện chuẩn Doanh nghiệp (Enterprise UI)**:
-   - Được thiết kế dựa theo đúng mẫu giao diện Thủ Đức Water với tông màu xanh Blue/Navy hiện đại, hiệu ứng Glassmorphism đăng nhập và hệ thống icon Lucide sắc nét.
-2. **Xử lý Đăng nhập & Phân quyền (Auth & RBAC)**:
-   - Hỗ trợ Firebase Authentication (Email/Password & Google Sign-in).
-   - Tích hợp tính năng chuyển đổi tài khoản mẫu **Admin (Nguyễn Văn Tuấn)** và **Member (Trần Minh Anh)** ngay tại trang Đăng nhập để dùng thử nhanh.
-3. **Phân chia Lưu trữ 2 Lớp (Dual Storage Vault)**:
-   - 📁 **Kho cá nhân (Personal Storage)**: Mỗi user tự do tải lên, quản lý và xóa tệp của riêng mình.
-   - 🏢 **Kho nội bộ phòng ban (Department Vault)**: Nơi Admin đăng tải văn bản, sơ đồ kỹ thuật, quy trình dùng chung cho toàn bộ nhân viên trong phòng xem & tải về.
-4. **Kéo & Thả Tệp Thực tế (Drag & Drop File Upload)**:
-   - Tải lên tệp thực tế (PDF, DOCX, XLSX, AI, JPG...) từ máy tính với dung lượng tự động tính toán, xem trước file và xóa file.
-5. **Hệ thống Trò chuyện Đồng nghiệp (Real-time Team Chat)**:
-   - Chat nhóm theo kênh (`# Phòng Kỹ Thuật & Vận Hành`, `# Dự Án Cấp Nước Q2`).
-   - Chat 1-1 trực tiếp giữa các nhân viên và đính kèm file trong tin nhắn.
-6. **Trợ lý AI Document Assistant**:
-   - Tự động phân tích và tóm tắt quy trình xử lý nước sạch 6 bước (Lọc thô -> Keo tụ -> Lắng -> Lọc nhanh -> Khử trùng -> Lưu trữ), trả lời thắc mắc kỹ thuật theo thời gian thực.
+Water Intelligence Hub là ứng dụng web client thuần (HTML5 + CSS3 + ES Modules) dùng Supabase làm backend để quản lý người dùng, lưu trữ tài liệu và giao tiếp nội bộ cho nhân viên Thủ Đức Water. Ứng dụng giữ phong cách "zero-dependency" — có thể mở trực tiếp bằng trình duyệt hoặc chạy qua Live Server; mọi xác thực, lưu trữ và realtime được xử lý bằng Supabase (Auth, Postgres, Realtime, Storage).
 
 ---
 
-## 🚀 Hướng dẫn Chạy ứng dụng trên Máy tính (Local Setup)
-
-Ứng dụng được thiết kế theo dạng **Zero-Dependency Modern Web Application (HTML5 + CSS3 + ES Modules + Firebase SDK v10)**, không đòi hỏi cài đặt môi trường `npm` phức tạp.
-
-1. **Mở trực tiếp trên trình duyệt**:
-   - Double-click vào file `index.html` trong thư mục `water-intelligence-hub`.
-2. **Hoặc chạy qua extension Live Server (VS Code / Antigravity IDE)**.
+## 🌟 Tính năng chính (Hiện trạng)
+- Giao diện doanh nghiệp (Enterprise UI)
+  - Theme Blue/Navy, hiệu ứng Glassmorphism và hệ thống icon (Lucide).
+- Xác thực & phân quyền (Auth & RBAC)
+  - Sử dụng Supabase Auth (Email/Password, Google và các provider khác).
+  - Phân quyền cơ bản theo role (Admin / Member) lưu trong bảng users; truy cập được kiểm soát bằng Row Level Security (RLS) và policies.
+- Lưu trữ 2 lớp (Dual Storage Vault)
+  - 📁 Kho cá nhân (Personal Storage): mỗi user tải lên, xem trước và xóa file của riêng mình.
+  - 🏢 Kho phòng ban (Department Vault): Admin quản lý tài liệu dùng chung (văn bản, sơ đồ, quy trình).
+  - Tệp lưu trong Supabase Storage (bucket); metadata lưu trong Postgres.
+- Tải tệp kéo & thả (Drag & Drop File Upload)
+  - Hỗ trợ upload các định dạng phổ biến (PDF, DOCX, XLSX, JPG, AI...), hiển thị kích thước, preview và xóa.
+- Chat nội bộ thời gian thực
+  - Chat nhóm theo kênh (ví dụ: #Phòng Kỹ Thuật), chat 1-1; dùng Supabase Realtime (logical replication / channels) hoặc lắng nghe thay đổi bảng messages.
+- Trợ lý tài liệu AI (Document Assistant)
+  - Tích hợp công cụ tóm tắt / truy vấn nội dung tài liệu đã upload; dữ liệu nguồn lấy từ file metadata / text đã lưu trong Postgres hoặc vector store tùy cấu hình.
+- Triển khai & vận hành
+  - Ứng dụng chạy thuần client; cấu hình kết nối tới Supabase qua file js/supabase-config.js (không lưu service_role key ở client).
+  - Hỗ trợ triển khai lên GitHub Pages, Vercel/Netlify hoặc bất kỳ static hosting nào.
 
 ---
 
-## ⚙️ Cấu hình Live Firebase Backend
+## ⚙️ Cấu hình Live Supabase Backend (tóm tắt)
+1. Tạo project mới tại https://app.supabase.com và ghi lại:
+   - Project URL (ví dụ: https://xyzabc.supabase.co)
+   - Public anon key (ANON KEY) — dùng trên client
+   - Service role key — KHÔNG dùng trên client (chỉ server-side)
+2. Bật Authentication: Email/Password và provider (Google) nếu cần.
+3. Tạo các bảng Postgres chính (ví dụ: users, departments, files, messages, ...).
+4. Bật Supabase Storage và tạo bucket cho file uploads.
+5. Kích hoạt Row Level Security (RLS) cho bảng nhạy cảm và viết policies để đảm bảo:
+   - Người dùng chỉ truy cập metadata/files của chính họ trừ khi có role Admin.
+   - Bucket policies cho phép public/private theo nhu cầu.
+6. Cập nhật client:
+   - Tạo file js/supabase-config.js chứa SUPABASE_URL và SUPABASE_ANON_KEY (dùng placeholder; KHÔNG commit key nhạy cảm).
+   - Thay các call Firebase trước đây bằng supabase-js: auth, from('table').select(), storage.from('bucket').upload(), realtime subscription...
+7. Kiểm tra realtime: sử dụng Realtime (subscription) hoặc realtime replication trên bảng messages để sync chat.
 
-Để kết nối trực tiếp với dự án Firebase của bạn trên Cloud:
-1. Truy cập [Firebase Console](https://console.firebase.google.com/) và tạo một project mới.
-2. Bật dịch vụ **Authentication** (Email/Password & Google), **Cloud Firestore Database**, và **Cloud Storage**.
-3. Mở file [js/firebase-config.js](file:///C:/Users/letua/.gemini/antigravity/scratch/water-intelligence-hub/js/firebase-config.js) và thay thế `firebaseConfig` bằng API Keys từ Firebase Console của bạn.
+Lưu ý bảo mật: Supabase anon key có thể xuất hiện trên client — bắt buộc phải dùng RLS + policies để bảo vệ dữ liệu; service_role key phải giữ an toàn trên server.
 
 ---
 
-## 🌐 Hướng dẫn Đẩy mã nguồn lên GitHub & Chạy Live trên Internet
+## 🚀 Chạy local & Deploy (tóm tắt)
+- Local: mở trực tiếp `index.html` hoặc dùng Live Server của VS Code.
+- Deploy: GitHub Pages / Vercel / Netlify (ứng dụng tĩnh) hoặc Firebase Hosting nếu bạn vẫn muốn (lưu ý chỉ hosting frontend).
 
-### Bước 1: Đẩy mã nguồn lên GitHub
-Mở Terminal tại thư mục dự án và thực hiện các lệnh sau:
+---
 
-```bash
-# 1. Khởi tạo kho chứa Git
-git init
+## 📝 Ghi chú chuyển đổi từ Firebase -> Supabase
+- Firestore (NoSQL) → chuyển sang Postgres (quan hệ): cần thiết kế lại schema (collections → tables, documents → rows).
+- Firebase Storage → Supabase Storage: di chuyển file & cập nhật link/metadata.
+- Các rule/permission Firebase → RLS policies trên Supabase.
+- Realtime: Firestore listeners → Supabase Realtime (Postgres replication / real-time subscriptions).
 
-# 2. Thêm toàn bộ mã nguồn
-git add .
+---
 
-# 3. Commit mã nguồn
-git commit -m "Initial commit - Water Intelligence Hub (Thủ Đức Water)"
+Nếu bạn muốn, mình có thể:
+- a) Chuẩn bị bản README đầy đủ (toàn bộ file) để bạn copy-paste, hoặc
+- b) Thêm mẫu file `js/supabase-config.js` và ví dụ code thay thế chỗ dùng Firebase.
 
-# 4. Liên kết với Repository trên GitHub của bạn
-git remote add origin https://github.com/USERNAME/water-intelligence-hub.git
-git branch -M main
-
-# 5. Đẩy mã nguồn lên GitHub
-git push -u origin main
-```
-
-### Bước 2: Đưa ứng dụng lên Internet (Deploy)
-* **Cách 1: Sử dụng GitHub Pages (Miễn phí & Nhanh nhất)**:
-  1. Vào repository trên GitHub -> Chọn **Settings** -> **Pages**.
-  2. Tại phần **Source**, chọn nhánh `main` và thư mục `/ (root)` -> Bấm **Save**.
-  3. Sau 1 phút, trang web của bạn sẽ chạy trực tuyến tại địa chỉ: `https://USERNAME.github.io/water-intelligence-hub/`.
-
-* **Cách 2: Triển khai bằng Vercel hoặc Netlify**:
-  1. Đăng nhập vào [Vercel.com](https://vercel.com).
-  2. Bấm **Add New Project** -> Chọn Repository GitHub `water-intelligence-hub`.
-  3. Bấm **Deploy**. Vercel sẽ tự động cấp tên miền `.vercel.app` cho ứng dụng của bạn.
-
-* **Cách 3: Deploy lên Firebase Hosting**:
-  1. Chạy lệnh `npx firebase-tools init hosting`.
-  2. Chạy lệnh `npx firebase-tools deploy --only hosting`.
+Bạn muốn mình tiếp tục theo lựa chọn nào?
