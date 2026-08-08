@@ -609,7 +609,6 @@ class AppController {
         <td style="text-align: right;">
           <div class="table-actions" style="justify-content: flex-end;">
             <button class="table-btn preview-btn" data-id="${escapeHTML(file.id)}">Xem & Tải về</button>
-            <button class="table-btn ai-analyze-btn" data-id="${escapeHTML(file.id)}" style="background: #f0f9ff; color: #0284c7; border: 1px solid #bae6fd;">🤖 Phân tích AI</button>
             <button class="table-btn table-btn-delete delete-btn" data-id="${escapeHTML(file.id)}">Xóa</button>
           </div>
         </td>
