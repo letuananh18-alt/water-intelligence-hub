@@ -64,6 +64,7 @@ class AppController {
     this.selectedFolderId = null;
     this.currentDeptFolderId = null;
     this.currentPersonalFolderId = null;
+    this.currentProcessFolderId = null;
     this.pendingUploadFiles = null;
     this.pendingUploadCategory = 'personal';
     this.currentPreviewFileId = null;
@@ -82,6 +83,7 @@ class AppController {
         this.bindFolderEvents();
         this.bindPersonalFolderEvents();
         this.bindDeptFilterEvents();
+        this.bindProcessFilterEvents();
         this.bindGlobalModalEvents();
         this.bindChatEvents();
         this.bindAiEvents();
@@ -238,11 +240,15 @@ class AppController {
       const isAdmin = window.authManager && window.authManager.isAdmin();
       const adminUploadDeptBtn = document.getElementById('adminUploadDeptBtn');
       const btnCreateNewFolder = document.getElementById('btnCreateNewFolder');
+      const adminUploadProcessBtn = document.getElementById('adminUploadProcessBtn');
+      const btnCreateNewProcessFolder = document.getElementById('btnCreateNewProcessFolder');
       const btnPurgeCloudFiles = document.getElementById('btnPurgeCloudFiles');
       const navItemUsers = document.getElementById('navItemUsers');
 
       if (adminUploadDeptBtn) adminUploadDeptBtn.style.display = isAdmin ? 'flex' : 'none';
       if (btnCreateNewFolder) btnCreateNewFolder.style.display = isAdmin ? 'flex' : 'none';
+      if (adminUploadProcessBtn) adminUploadProcessBtn.style.display = isAdmin ? 'flex' : 'none';
+      if (btnCreateNewProcessFolder) btnCreateNewProcessFolder.style.display = isAdmin ? 'flex' : 'none';
       if (btnPurgeCloudFiles) btnPurgeCloudFiles.style.display = isAdmin ? 'flex' : 'none';
       if (navItemUsers) navItemUsers.style.display = isAdmin ? 'flex' : 'none';
 
@@ -294,6 +300,7 @@ class AppController {
       'dashboard': 'viewDashboard',
       'personal-docs': 'viewPersonalDocs',
       'dept-docs': 'viewDeptDocs',
+      'process-docs': 'viewProcessDocs',
       'team-chat': 'viewTeamChat',
       'ai-assistant': 'viewAiAssistant',
       'folders': 'viewFolders',
@@ -318,6 +325,7 @@ class AppController {
     this.renderPersonalDocs();
     this.renderDeptTable();
     this.renderDeptFolders();
+    this.renderProcessDocs();
     this.renderReports();
     this.renderUsersTable();
     this.renderTeamChat();
@@ -756,6 +764,137 @@ class AppController {
     });
   }
 
+  renderProcessDocs() {
+    this.renderProcessFolders();
+    this.renderProcessTable();
+    this.refreshLucideIcons();
+  }
+
+  renderProcessTable() {
+    const tbody = document.getElementById('processFilesTableBody');
+    const tableCard = document.querySelector('#viewProcessDocs .table-card');
+    const tableTitle = document.getElementById('processTableTitle');
+    if (!tbody || !window.storageService) return;
+
+    if (tableCard) tableCard.style.display = 'block';
+
+    const docTypeVal = document.getElementById('processDocTypeFilter')?.value || 'all';
+    const fileTypeVal = document.getElementById('processFileTypeFilter')?.value || 'all';
+
+    const files = window.storageService.getFiles('process', this.searchQuery, fileTypeVal, this.currentProcessFolderId, docTypeVal);
+    const isAdmin = window.authManager && window.authManager.isAdmin();
+
+    if (tableTitle) {
+      if (this.currentProcessFolderId) {
+        const folders = window.storageService.getFolders('process');
+        const activeFold = folders.find(f => f.id === this.currentProcessFolderId);
+        tableTitle.textContent = activeFold ? `Quy trình trong thư mục: ${activeFold.name}` : `Tất cả Quy trình & Hướng dẫn Công việc`;
+      } else {
+        tableTitle.textContent = `Tất cả Quy trình & Hướng dẫn Công việc`;
+      }
+    }
+
+    if (files.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
+            ⚙️ Kho Quy trình & Công việc chưa có tài liệu nào. ${isAdmin ? 'Bấm "+ Thêm quy trình & công việc" ở trên để đăng tệp!' : 'Chỉ Admin được phép đăng quy trình.'}
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = files.map(file => {
+      const isChecked = this.selectedFileIds && this.selectedFileIds.has(file.id) ? 'checked' : '';
+      return `
+      <tr>
+        <td style="text-align: center;"><input type="checkbox" class="file-select-cb process-file-cb" data-id="${escapeHTML(file.id)}" ${isChecked}></td>
+        <td>
+          <div class="file-name-cell">
+            <span class="file-type-icon type-${escapeHTML(file.type.toLowerCase())}">${escapeHTML(file.type)}</span>
+            <span>${highlightSearchTerm(file.name, this.searchQuery)}</span>
+          </div>
+        </td>
+        <td><span class="badge-tag type-docx">${escapeHTML(file.docType || 'Quy trình CSKH')}</span></td>
+        <td><span class="badge-tag" style="background: var(--slate-100); color: var(--slate-800);">${escapeHTML(file.statusTag || '🟢 Đã ban hành')}</span></td>
+        <td>${escapeHTML(file.sizeFormatted)}</td>
+        <td>${highlightSearchTerm(file.uploadedBy, this.searchQuery)}</td>
+        <td>${escapeHTML(file.uploadDate)}</td>
+        <td style="text-align: right;">
+          <div class="table-actions" style="justify-content: flex-end;">
+            <button class="table-btn preview-btn" data-id="${escapeHTML(file.id)}">Xem & Tải về</button>
+            ${isAdmin ? `<button class="table-btn table-btn-delete delete-btn" data-id="${escapeHTML(file.id)}">Xóa</button>` : `<span style="font-size: 11px; color: var(--slate-500); padding: 4px 10px; background: var(--slate-100); border-radius: 4px; font-weight: 600;">👁️ Quyền xem & Tải về</span>`}
+          </div>
+        </td>
+      </tr>
+    `}).join('');
+  }
+
+  renderProcessFolders() {
+    const grid = document.getElementById('processFoldersGrid');
+    const foldersSection = document.getElementById('processFoldersSection');
+    const breadcrumbFolderPart = document.getElementById('breadcrumbProcessFolderPart');
+    const btnBackToRootFolder = document.getElementById('btnBackToProcessRootFolder');
+    const processTitle = document.getElementById('processTitle');
+
+    if (!grid || !window.storageService) return;
+
+    const folders = window.storageService.getFolders('process');
+    const allProcessFiles = window.storageService.getFiles('process');
+    const isAdmin = window.authManager && window.authManager.isAdmin();
+
+    if (this.currentProcessFolderId) {
+      const activeFold = folders.find(f => f.id === this.currentProcessFolderId);
+      if (foldersSection) foldersSection.style.display = 'none';
+      if (btnBackToRootFolder) btnBackToRootFolder.style.display = 'flex';
+      if (breadcrumbFolderPart && activeFold) {
+        breadcrumbFolderPart.innerHTML = ` &gt; <span style="color: var(--slate-800);">${escapeHTML(activeFold.name)}</span>`;
+      }
+      if (processTitle && activeFold) {
+        processTitle.textContent = `Thư mục Quy trình: ${activeFold.name}`;
+      }
+    } else {
+      if (foldersSection) foldersSection.style.display = folders.length > 0 ? 'block' : 'none';
+      if (btnBackToRootFolder) btnBackToRootFolder.style.display = 'none';
+      if (breadcrumbFolderPart) breadcrumbFolderPart.innerHTML = '';
+      if (processTitle) processTitle.textContent = 'Kho Quy trình & Công việc KDDVKH';
+    }
+
+    const html = folders.map(fold => {
+      let realFileCount = allProcessFiles.filter(f => f.folderId === fold.id).length;
+      const cleanFoldName = fold.name.replace(/^📁\s*/, '');
+      return `
+        <div class="folder-card-compact folder-card-item process-folder-card-item" data-folder-id="${escapeHTML(fold.id)}">
+          <div class="folder-header-row">
+            <div style="display: flex; align-items: flex-start; gap: 10px;">
+              <i data-lucide="folder" style="color: #2563eb; width: 22px; height: 22px; flex-shrink: 0; margin-top: 2px;"></i>
+              <span class="folder-title-text">${escapeHTML(cleanFoldName)}</span>
+            </div>
+            ${isAdmin ? `<button class="icon-btn folder-opt-btn" data-folder-id="${escapeHTML(fold.id)}" title="Tùy chọn thư mục" style="padding: 2px 6px;">⋮</button>` : ''}
+          </div>
+          <div class="folder-meta-row">
+            <span style="font-weight: 700; color: #2563eb; display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="files" style="width: 14px; height: 14px;"></i> ${realFileCount} tệp</span>
+            <span style="display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i> ${escapeHTML(fold.createdAt || fold.date || '2026-01-15')}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    grid.innerHTML = html;
+    this.refreshLucideIcons();
+  }
+
+  bindProcessFilterEvents() {
+    document.getElementById('processDocTypeFilter')?.addEventListener('change', () => this.renderProcessTable());
+    document.getElementById('processFileTypeFilter')?.addEventListener('change', () => this.renderProcessTable());
+
+    document.getElementById('btnBackToProcessRootFolder')?.addEventListener('click', () => {
+      this.currentProcessFolderId = null;
+      this.renderCurrentView();
+    });
+  }
+
   renderUsersTable() {
     const tbody = document.getElementById('usersTableBody');
     const auditTbody = document.getElementById('clientUploadAuditTableBody');
@@ -860,6 +999,7 @@ class AppController {
 
   bindFolderEvents() {
     const btnCreateFolder = document.getElementById('btnCreateNewFolder');
+    const btnCreateProcessFolder = document.getElementById('btnCreateNewProcessFolder');
     const folderModal = document.getElementById('folderActionModal');
     const folderInput = document.getElementById('folderNameInput');
     const folderMeta = document.getElementById('folderMetaInfo');
@@ -869,6 +1009,15 @@ class AppController {
       if (name && name.trim()) {
         await window.storageService.createFolder(name, 'department');
         alert("✨ Đã tạo thư mục mới thành công!");
+      }
+    });
+
+    btnCreateProcessFolder?.addEventListener('click', async () => {
+      const name = prompt("NHẬP TÊN THƯ MỤC QUY TRÌNH MỚI:");
+      if (name && name.trim()) {
+        await window.storageService.createFolder(name, 'process');
+        this.renderCurrentView();
+        alert("✨ Đã tạo thư mục quy trình mới thành công!");
       }
     });
 
@@ -886,7 +1035,11 @@ class AppController {
       if (card && !e.target.classList.contains('folder-opt-btn')) {
         const id = card.getAttribute('data-folder-id');
         if (id) {
-          this.currentDeptFolderId = id;
+          if (card.classList.contains('process-folder-card-item')) {
+            this.currentProcessFolderId = id;
+          } else {
+            this.currentDeptFolderId = id;
+          }
           this.renderCurrentView();
         }
       }
@@ -979,6 +1132,7 @@ class AppController {
 
     const getActiveCategory = () => {
       if (this.currentView === 'dept-docs') return 'department';
+      if (this.currentView === 'process-docs') return 'process';
       return 'personal';
     };
 
@@ -992,6 +1146,19 @@ class AppController {
         const fileInput = this.getOrCreateFileInput();
         fileInput.value = '';
         fileInput.setAttribute('data-target-cat', 'department');
+        fileInput.click();
+        return;
+      }
+
+      const adminProcBtn = e.target.closest('#adminUploadProcessBtn');
+      if (adminProcBtn) {
+        if (!window.authManager || !window.authManager.isAdmin()) {
+          alert("⛔ Bị từ chối: Chỉ Ban Quản trị Admin mới có quyền tải lên Kho Quy trình & Công việc!");
+          return;
+        }
+        const fileInput = this.getOrCreateFileInput();
+        fileInput.value = '';
+        fileInput.setAttribute('data-target-cat', 'process');
         fileInput.click();
         return;
       }
@@ -1020,9 +1187,9 @@ class AppController {
         const files = e.target.files;
         const category = e.target.getAttribute('data-target-cat') || getActiveCategory();
         if (files && files.length > 0) {
-          if (category === 'department') {
+          if (category === 'department' || category === 'process') {
             this.pendingUploadFiles = Array.from(files);
-            this.pendingUploadCategory = 'department';
+            this.pendingUploadCategory = category;
             if (uploadMetaModal) uploadMetaModal.style.display = 'flex';
           } else {
             let successCount = 0;
@@ -1051,13 +1218,18 @@ class AppController {
         const docType = document.getElementById('modalDocTypeSelect')?.value || 'Hợp đồng cấp nước';
         const statusTag = document.getElementById('modalStatusTagSelect')?.value || '🟢 Đã ban hành';
 
-        const deptFolders = window.storageService.getFolders('department');
-        const targetFolderId = this.currentDeptFolderId || (deptFolders[0] ? deptFolders[0].id : null);
-        const filesToUpload = [...this.pendingUploadFiles];
-
-        if (!this.currentDeptFolderId && targetFolderId) {
-          this.currentDeptFolderId = targetFolderId;
+        const uploadCat = this.pendingUploadCategory || 'department';
+        const targetFolders = window.storageService.getFolders(uploadCat);
+        let targetFolderId = null;
+        if (uploadCat === 'process') {
+          targetFolderId = this.currentProcessFolderId || (targetFolders[0] ? targetFolders[0].id : null);
+          if (!this.currentProcessFolderId && targetFolderId) this.currentProcessFolderId = targetFolderId;
+        } else {
+          targetFolderId = this.currentDeptFolderId || (targetFolders[0] ? targetFolders[0].id : null);
+          if (!this.currentDeptFolderId && targetFolderId) this.currentDeptFolderId = targetFolderId;
         }
+
+        const filesToUpload = [...this.pendingUploadFiles];
 
         this.closeModal('uploadMetaModal');
         this.pendingUploadFiles = null;
@@ -1069,13 +1241,13 @@ class AppController {
 
         let successCount = 0;
         for (const f of filesToUpload) {
-          const res = await window.storageService.uploadFile(f, 'department', targetFolderId, docType, statusTag);
+          const res = await window.storageService.uploadFile(f, uploadCat, targetFolderId, docType, statusTag);
           if (res) successCount++;
         }
 
         this.renderCurrentView();
         if (successCount > 0) {
-          alert(`✅ Đã tải lên ${successCount} tệp PDF/Văn bản thành công vào Thư mục!`);
+          alert(`✅ Đã tải lên ${successCount} tệp PDF/Văn bản thành công!`);
         }
       }
     });

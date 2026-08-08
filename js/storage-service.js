@@ -204,8 +204,13 @@ class StorageService {
       if (folderId) {
         list = list.filter(f => f.folderId === folderId);
       }
+    } else if (category === 'process') {
+      list = list.filter(f => f.category === 'process');
+      if (folderId) {
+        list = list.filter(f => f.folderId === folderId);
+      }
     } else if (category === 'department') {
-      list = list.filter(f => f.category === 'department' || !f.category);
+      list = list.filter(f => f.category === 'department' || (!f.category && f.category !== 'personal' && f.category !== 'process'));
       if (folderId) {
         list = list.filter(f => f.folderId === folderId);
       }
@@ -239,8 +244,21 @@ class StorageService {
     if (category === 'personal') {
       if (!user) return [];
       return this.folders.filter(f => f.category === 'personal' && (f.uploaderUid === uUid || (f.uploaderEmail || '').toLowerCase().trim() === uEmail));
+    } else if (category === 'process') {
+      let procFolders = this.folders.filter(f => f.category === 'process');
+      if (procFolders.length === 0) {
+        procFolders = [
+          { id: 'fold_proc_1', name: 'Quy trình Tiếp nhận & CSKH', category: 'process', fileCount: 0, createdAt: '2026-01-15' },
+          { id: 'fold_proc_2', name: 'Quy trình Lắp đặt & Thay đồng hồ', category: 'process', fileCount: 0, createdAt: '2026-01-15' },
+          { id: 'fold_proc_3', name: 'Hướng dẫn Xử lý Sự cố & Khiếu nại', category: 'process', fileCount: 0, createdAt: '2026-01-15' },
+          { id: 'fold_proc_4', name: 'Quy chế & Bảng mô tả Công việc', category: 'process', fileCount: 0, createdAt: '2026-01-15' }
+        ];
+        this.folders.push(...procFolders);
+        this.saveLocal();
+      }
+      return procFolders;
     }
-    return this.folders.filter(f => f.category === 'department' || !f.category);
+    return this.folders.filter(f => f.category === 'department' || (!f.category && f.category !== 'personal' && f.category !== 'process'));
   }
 
   getStorageStats() {
