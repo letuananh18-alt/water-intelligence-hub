@@ -1047,15 +1047,15 @@ class AppController {
       if (e.target.classList.contains('folder-opt-btn')) {
         e.stopPropagation();
         const id = e.target.getAttribute('data-folder-id');
-        const fold = window.storageService.getFolders().find(f => f.id === id);
+        const fold = window.storageService ? window.storageService.folders.find(f => f.id === id) : null;
         if (fold) {
           this.selectedFolderId = id;
           if (folderInput) folderInput.value = fold.name;
           if (folderMeta) {
             folderMeta.innerHTML = `
-              📅 <strong>Ngày tạo:</strong> ${escapeHTML(fold.date)}<br>
-              👤 <strong>Người tạo:</strong> ${escapeHTML(fold.createdBy)}<br>
-              📂 <strong>Phòng ban:</strong> Phòng Kinh doanh & Dịch vụ Khách hàng
+              📅 <strong>Ngày tạo:</strong> ${escapeHTML(fold.createdAt || fold.date || '2026-01-15')}<br>
+              👤 <strong>Người tạo:</strong> ${escapeHTML(fold.createdBy || fold.uploaderEmail || 'Admin')}<br>
+              📂 <strong>Phân loại:</strong> ${fold.category === 'process' ? 'Kho Quy trình & Công việc' : 'Kho Tri thức KDDVKH'}
             `;
           }
           if (folderModal) folderModal.style.display = 'flex';
