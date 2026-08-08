@@ -184,7 +184,7 @@
           <span>Quy trình & Công việc</span>
         </div>
 
-        <div class="nav-item" data-view="dept-docs">
+        <div class="nav-item" data-view="form-docs">
           <i data-lucide="files"></i>
           <span>Tài liệu và Biểu mẫu</span>
         </div>
@@ -723,6 +723,96 @@
                     <td colspan="8"
                       style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
                       ⚙️ Kho Quy trình & Công việc chưa có tài liệu nào. Bấm "+ Thêm quy trình & công việc" ở trên để đăng tệp!
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3.6. FORM & TEMPLATE VAULT VIEW (TÀI LIỆU VÀ BIỂU MẪU KDDVKH) -->
+        <section id="viewFormDocs" class="view-panel" style="display: none;">
+          <div class="page-header">
+            <div>
+              <div id="formBreadcrumbs"
+                style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--accent-blue); margin-bottom: 6px;">
+                <span>Tài liệu & Biểu mẫu</span>
+                <span id="breadcrumbFormFolderPart"></span>
+              </div>
+              <h2 class="welcome-title" id="formTitle">Kho Tài liệu & Biểu mẫu KDDVKH</h2>
+              <p class="welcome-sub" id="formSub">Biểu mẫu nghiệp vụ, hợp đồng mẫu, tờ trình và tài liệu chuẩn do Admin quản lý</p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn-primary" id="btnBackToFormRootFolder"
+                style="display: none; background: var(--slate-100); color: var(--slate-800); border: 1px solid var(--slate-300); width: auto;">
+                <i data-lucide="arrow-left"></i>
+                <span>← Quay lại Thư mục gốc</span>
+              </button>
+
+              <button class="btn-primary" id="btnCreateNewFormFolder"
+                style="background: white; color: var(--accent-blue); border: 1px solid var(--slate-200); box-shadow: var(--shadow-sm); width: auto;">
+                <i data-lucide="folder-plus"></i>
+                <span>+ Tạo thư mục mới</span>
+              </button>
+              <button class="btn-primary" id="adminUploadFormBtn" style="display: flex; width: auto;">
+                <i data-lucide="plus"></i>
+                <span>Thêm tài liệu & biểu mẫu</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="formFoldersSection">
+            <div class="card-title"
+              style="margin-bottom: 12px; font-size: 15px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+              <i data-lucide="files" style="width: 18px; height: 18px; color: #2563eb;"></i>
+              <span>Thư mục Tài liệu & Biểu mẫu</span>
+            </div>
+            <div id="formFoldersGrid" class="folder-grid-compact"></div>
+          </div>
+
+          <div class="table-card" style="display: block;">
+            <div class="table-header-bar" style="flex-wrap: wrap; gap: 12px;">
+              <h3 class="card-title" id="formTableTitle">Tất cả Tài liệu & Biểu mẫu KDDVKH</h3>
+
+              <div style="display: flex; gap: 10px;">
+                <select id="formDocTypeFilter" class="filter-select">
+                  <option value="all">Phân loại: Tất cả biểu mẫu</option>
+                  <option value="Biểu mẫu CSKH">📋 Biểu mẫu CSKH</option>
+                  <option value="Hợp đồng mẫu">📝 Hợp đồng mẫu</option>
+                  <option value="Tờ trình & Đề xuất">🏛️ Tờ trình & Đề xuất</option>
+                  <option value="Báo cáo mẫu">📊 Báo cáo mẫu</option>
+                  <option value="Tài liệu hướng dẫn">📖 Tài liệu hướng dẫn</option>
+                </select>
+
+                <select id="formFileTypeFilter" class="filter-select">
+                  <option value="all">Loại tệp: Tất cả</option>
+                  <option value="pdf">PDF</option>
+                  <option value="docx">DOCX</option>
+                  <option value="xlsx">XLSX</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="data-table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th style="width: 36px; text-align: center;"><input type="checkbox" id="selectAllFormCheckbox"></th>
+                    <th>Tên biểu mẫu / tệp</th>
+                    <th>Phân loại biểu mẫu</th>
+                    <th>Trạng thái & Độ khẩn</th>
+                    <th>Dung lượng</th>
+                    <th>Người đăng (Admin)</th>
+                    <th>Ngày ban hành</th>
+                    <th style="text-align: right;">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="formFilesTableBody">
+                  <tr>
+                    <td colspan="8"
+                      style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
+                      📑 Kho Tài liệu & Biểu mẫu chưa có tài liệu nào. Bấm "+ Thêm tài liệu & biểu mẫu" ở trên để đăng tệp!
                     </td>
                   </tr>
                 </tbody>

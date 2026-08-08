@@ -242,6 +242,8 @@ class AppController {
       const btnCreateNewFolder = document.getElementById('btnCreateNewFolder');
       const adminUploadProcessBtn = document.getElementById('adminUploadProcessBtn');
       const btnCreateNewProcessFolder = document.getElementById('btnCreateNewProcessFolder');
+      const adminUploadFormBtn = document.getElementById('adminUploadFormBtn');
+      const btnCreateNewFormFolder = document.getElementById('btnCreateNewFormFolder');
       const btnPurgeCloudFiles = document.getElementById('btnPurgeCloudFiles');
       const navItemUsers = document.getElementById('navItemUsers');
 
@@ -249,6 +251,8 @@ class AppController {
       if (btnCreateNewFolder) btnCreateNewFolder.style.display = isAdmin ? 'flex' : 'none';
       if (adminUploadProcessBtn) adminUploadProcessBtn.style.display = isAdmin ? 'flex' : 'none';
       if (btnCreateNewProcessFolder) btnCreateNewProcessFolder.style.display = isAdmin ? 'flex' : 'none';
+      if (adminUploadFormBtn) adminUploadFormBtn.style.display = isAdmin ? 'flex' : 'none';
+      if (btnCreateNewFormFolder) btnCreateNewFormFolder.style.display = isAdmin ? 'flex' : 'none';
       if (btnPurgeCloudFiles) btnPurgeCloudFiles.style.display = isAdmin ? 'flex' : 'none';
       if (navItemUsers) navItemUsers.style.display = isAdmin ? 'flex' : 'none';
 
@@ -301,6 +305,7 @@ class AppController {
       'personal-docs': 'viewPersonalDocs',
       'dept-docs': 'viewDeptDocs',
       'process-docs': 'viewProcessDocs',
+      'form-docs': 'viewFormDocs',
       'team-chat': 'viewTeamChat',
       'ai-assistant': 'viewAiAssistant',
       'folders': 'viewFolders',
@@ -326,6 +331,7 @@ class AppController {
     this.renderDeptTable();
     this.renderDeptFolders();
     this.renderProcessDocs();
+    this.renderFormDocs();
     this.renderReports();
     this.renderUsersTable();
     this.renderTeamChat();
@@ -895,6 +901,137 @@ class AppController {
     });
   }
 
+  renderFormDocs() {
+    this.renderFormFolders();
+    this.renderFormTable();
+    this.refreshLucideIcons();
+  }
+
+  renderFormTable() {
+    const tbody = document.getElementById('formFilesTableBody');
+    const tableCard = document.querySelector('#viewFormDocs .table-card');
+    const tableTitle = document.getElementById('formTableTitle');
+    if (!tbody || !window.storageService) return;
+
+    if (tableCard) tableCard.style.display = 'block';
+
+    const docTypeVal = document.getElementById('formDocTypeFilter')?.value || 'all';
+    const fileTypeVal = document.getElementById('formFileTypeFilter')?.value || 'all';
+
+    const files = window.storageService.getFiles('forms', this.searchQuery, fileTypeVal, this.currentFormFolderId, docTypeVal);
+    const isAdmin = window.authManager && window.authManager.isAdmin();
+
+    if (tableTitle) {
+      if (this.currentFormFolderId) {
+        const folders = window.storageService.getFolders('forms');
+        const activeFold = folders.find(f => f.id === this.currentFormFolderId);
+        tableTitle.textContent = activeFold ? `Biểu mẫu trong thư mục: ${activeFold.name}` : `Tất cả Tài liệu & Biểu mẫu KDDVKH`;
+      } else {
+        tableTitle.textContent = `Tất cả Tài liệu & Biểu mẫu KDDVKH`;
+      }
+    }
+
+    if (files.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align: center; padding: 35px; color: var(--slate-400); font-weight: 500;">
+            📑 Kho Tài liệu & Biểu mẫu chưa có tài liệu nào. ${isAdmin ? 'Bấm "+ Thêm tài liệu & biểu mẫu" ở trên để đăng tệp!' : 'Chỉ Admin được phép đăng biểu mẫu.'}
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = files.map(file => {
+      const isChecked = this.selectedFileIds && this.selectedFileIds.has(file.id) ? 'checked' : '';
+      return `
+      <tr>
+        <td style="text-align: center;"><input type="checkbox" class="file-select-cb form-file-cb" data-id="${escapeHTML(file.id)}" ${isChecked}></td>
+        <td>
+          <div class="file-name-cell">
+            <span class="file-type-icon type-${escapeHTML(file.type.toLowerCase())}">${escapeHTML(file.type)}</span>
+            <span>${highlightSearchTerm(file.name, this.searchQuery)}</span>
+          </div>
+        </td>
+        <td><span class="badge-tag type-docx">${escapeHTML(file.docType || 'Biểu mẫu CSKH')}</span></td>
+        <td><span class="badge-tag" style="background: var(--slate-100); color: var(--slate-800);">${escapeHTML(file.statusTag || '🟢 Đã ban hành')}</span></td>
+        <td>${escapeHTML(file.sizeFormatted)}</td>
+        <td>${highlightSearchTerm(file.uploadedBy, this.searchQuery)}</td>
+        <td>${escapeHTML(file.uploadDate)}</td>
+        <td style="text-align: right;">
+          <div class="table-actions" style="justify-content: flex-end;">
+            <button class="table-btn preview-btn" data-id="${escapeHTML(file.id)}">Xem & Tải về</button>
+            ${isAdmin ? `<button class="table-btn table-btn-delete delete-btn" data-id="${escapeHTML(file.id)}">Xóa</button>` : `<span style="font-size: 11px; color: var(--slate-500); padding: 4px 10px; background: var(--slate-100); border-radius: 4px; font-weight: 600;">👁️ Quyền xem & Tải về</span>`}
+          </div>
+        </td>
+      </tr>
+    `}).join('');
+  }
+
+  renderFormFolders() {
+    const grid = document.getElementById('formFoldersGrid');
+    const foldersSection = document.getElementById('formFoldersSection');
+    const breadcrumbFolderPart = document.getElementById('breadcrumbFormFolderPart');
+    const btnBackToRootFolder = document.getElementById('btnBackToFormRootFolder');
+    const formTitle = document.getElementById('formTitle');
+
+    if (!grid || !window.storageService) return;
+
+    const folders = window.storageService.getFolders('forms');
+    const allFormFiles = window.storageService.getFiles('forms');
+    const isAdmin = window.authManager && window.authManager.isAdmin();
+
+    if (this.currentFormFolderId) {
+      const activeFold = folders.find(f => f.id === this.currentFormFolderId);
+      if (foldersSection) foldersSection.style.display = 'none';
+      if (btnBackToRootFolder) btnBackToRootFolder.style.display = 'flex';
+      if (breadcrumbFolderPart && activeFold) {
+        breadcrumbFolderPart.innerHTML = ` &gt; <span style="color: var(--slate-800);">${escapeHTML(activeFold.name)}</span>`;
+      }
+      if (formTitle && activeFold) {
+        formTitle.textContent = `Thư mục Biểu mẫu: ${activeFold.name}`;
+      }
+    } else {
+      if (foldersSection) foldersSection.style.display = folders.length > 0 ? 'block' : 'none';
+      if (btnBackToRootFolder) btnBackToRootFolder.style.display = 'none';
+      if (breadcrumbFolderPart) breadcrumbFolderPart.innerHTML = '';
+      if (formTitle) formTitle.textContent = 'Kho Tài liệu & Biểu mẫu KDDVKH';
+    }
+
+    const html = folders.map(fold => {
+      let realFileCount = allFormFiles.filter(f => f.folderId === fold.id).length;
+      const cleanFoldName = fold.name.replace(/^📁\s*/, '');
+      return `
+        <div class="folder-card-compact folder-card-item form-folder-card-item" data-folder-id="${escapeHTML(fold.id)}">
+          <div class="folder-header-row">
+            <div style="display: flex; align-items: flex-start; gap: 10px;">
+              <i data-lucide="folder" style="color: #2563eb; width: 22px; height: 22px; flex-shrink: 0; margin-top: 2px;"></i>
+              <span class="folder-title-text">${escapeHTML(cleanFoldName)}</span>
+            </div>
+            ${isAdmin ? `<button class="icon-btn folder-opt-btn" data-folder-id="${escapeHTML(fold.id)}" title="Tùy chọn thư mục" style="padding: 2px 6px;">⋮</button>` : ''}
+          </div>
+          <div class="folder-meta-row">
+            <span style="font-weight: 700; color: #2563eb; display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="files" style="width: 14px; height: 14px;"></i> ${realFileCount} tệp</span>
+            <span style="display: inline-flex; align-items: center; gap: 4px;"><i data-lucide="calendar" style="width: 14px; height: 14px; color: #64748b;"></i> ${escapeHTML(fold.createdAt || fold.date || '2026-01-15')}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    grid.innerHTML = html;
+    this.refreshLucideIcons();
+  }
+
+  bindFormFilterEvents() {
+    document.getElementById('formDocTypeFilter')?.addEventListener('change', () => this.renderFormTable());
+    document.getElementById('formFileTypeFilter')?.addEventListener('change', () => this.renderFormTable());
+
+    document.getElementById('btnBackToFormRootFolder')?.addEventListener('click', () => {
+      this.currentFormFolderId = null;
+      this.renderCurrentView();
+    });
+  }
+
   renderUsersTable() {
     const tbody = document.getElementById('usersTableBody');
     const auditTbody = document.getElementById('clientUploadAuditTableBody');
@@ -1021,6 +1158,15 @@ class AppController {
       }
     });
 
+    document.getElementById('btnCreateNewFormFolder')?.addEventListener('click', async () => {
+      const name = prompt("NHẬP TÊN THƯ MỤC BIỂU MẪU MỚI:");
+      if (name && name.trim()) {
+        await window.storageService.createFolder(name, 'forms');
+        this.renderCurrentView();
+        alert("✨ Đã tạo thư mục biểu mẫu mới thành công!");
+      }
+    });
+
     const btnPurgeCloudFiles = document.getElementById('btnPurgeCloudFiles');
     btnPurgeCloudFiles?.addEventListener('click', async () => {
       if (confirm("⚠️ ANH CÓ CHẮC CHẮN MUỐN DỌN DẸP SẠCH DỮ LIỆU TỆP DƯ THỪA TRÊN SUPABASE CLOUD KHÔNG?\n\nThao tác này sẽ dọn dẹp toàn bộ dữ liệu tệp tin cũ trên Supabase PostgreSQL để CSDL sạch sẽ 100% đồng bộ với giao diện hiện tại!")) {
@@ -1037,6 +1183,8 @@ class AppController {
         if (id) {
           if (card.classList.contains('process-folder-card-item')) {
             this.currentProcessFolderId = id;
+          } else if (card.classList.contains('form-folder-card-item')) {
+            this.currentFormFolderId = id;
           } else {
             this.currentDeptFolderId = id;
           }
@@ -1051,11 +1199,15 @@ class AppController {
         if (fold) {
           this.selectedFolderId = id;
           if (folderInput) folderInput.value = fold.name;
+          let catName = 'Kho Tri thức KDDVKH';
+          if (fold.category === 'process') catName = 'Kho Quy trình & Công việc';
+          if (fold.category === 'forms') catName = 'Kho Tài liệu & Biểu mẫu';
+
           if (folderMeta) {
             folderMeta.innerHTML = `
               📅 <strong>Ngày tạo:</strong> ${escapeHTML(fold.createdAt || fold.date || '2026-01-15')}<br>
               👤 <strong>Người tạo:</strong> ${escapeHTML(fold.createdBy || fold.uploaderEmail || 'Admin')}<br>
-              📂 <strong>Phân loại:</strong> ${fold.category === 'process' ? 'Kho Quy trình & Công việc' : 'Kho Tri thức KDDVKH'}
+              📂 <strong>Phân loại:</strong> ${catName}
             `;
           }
           if (folderModal) folderModal.style.display = 'flex';
@@ -1133,6 +1285,7 @@ class AppController {
     const getActiveCategory = () => {
       if (this.currentView === 'dept-docs') return 'department';
       if (this.currentView === 'process-docs') return 'process';
+      if (this.currentView === 'form-docs') return 'forms';
       return 'personal';
     };
 
@@ -1163,6 +1316,19 @@ class AppController {
         return;
       }
 
+      const adminFormBtn = e.target.closest('#adminUploadFormBtn');
+      if (adminFormBtn) {
+        if (!window.authManager || !window.authManager.isAdmin()) {
+          alert("⛔ Bị từ chối: Chỉ Ban Quản trị Admin mới có quyền tải lên Kho Tài liệu & Biểu mẫu!");
+          return;
+        }
+        const fileInput = this.getOrCreateFileInput();
+        fileInput.value = '';
+        fileInput.setAttribute('data-target-cat', 'forms');
+        fileInput.click();
+        return;
+      }
+
       const topBtn = e.target.closest('#topUploadBtn');
       if (topBtn) {
         const fileInput = this.getOrCreateFileInput();
@@ -1187,7 +1353,7 @@ class AppController {
         const files = e.target.files;
         const category = e.target.getAttribute('data-target-cat') || getActiveCategory();
         if (files && files.length > 0) {
-          if (category === 'department' || category === 'process') {
+          if (category === 'department' || category === 'process' || category === 'forms') {
             this.pendingUploadFiles = Array.from(files);
             this.pendingUploadCategory = category;
             if (uploadMetaModal) uploadMetaModal.style.display = 'flex';
@@ -1224,6 +1390,9 @@ class AppController {
         if (uploadCat === 'process') {
           targetFolderId = this.currentProcessFolderId || (targetFolders[0] ? targetFolders[0].id : null);
           if (!this.currentProcessFolderId && targetFolderId) this.currentProcessFolderId = targetFolderId;
+        } else if (uploadCat === 'forms') {
+          targetFolderId = this.currentFormFolderId || (targetFolders[0] ? targetFolders[0].id : null);
+          if (!this.currentFormFolderId && targetFolderId) this.currentFormFolderId = targetFolderId;
         } else {
           targetFolderId = this.currentDeptFolderId || (targetFolders[0] ? targetFolders[0].id : null);
           if (!this.currentDeptFolderId && targetFolderId) this.currentDeptFolderId = targetFolderId;

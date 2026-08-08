@@ -209,8 +209,13 @@ class StorageService {
       if (folderId) {
         list = list.filter(f => f.folderId === folderId);
       }
+    } else if (category === 'forms') {
+      list = list.filter(f => f.category === 'forms');
+      if (folderId) {
+        list = list.filter(f => f.folderId === folderId);
+      }
     } else if (category === 'department') {
-      list = list.filter(f => f.category === 'department' || (!f.category && f.category !== 'personal' && f.category !== 'process'));
+      list = list.filter(f => f.category === 'department' || (!f.category && f.category !== 'personal' && f.category !== 'process' && f.category !== 'forms'));
       if (folderId) {
         list = list.filter(f => f.folderId === folderId);
       }
@@ -246,8 +251,10 @@ class StorageService {
       return this.folders.filter(f => f.category === 'personal' && (f.uploaderUid === uUid || (f.uploaderEmail || '').toLowerCase().trim() === uEmail));
     } else if (category === 'process') {
       return this.folders.filter(f => f.category === 'process');
+    } else if (category === 'forms') {
+      return this.folders.filter(f => f.category === 'forms');
     }
-    return this.folders.filter(f => f.category === 'department' || (!f.category && f.category !== 'personal' && f.category !== 'process'));
+    return this.folders.filter(f => f.category === 'department' || (!f.category && f.category !== 'personal' && f.category !== 'process' && f.category !== 'forms'));
   }
 
   getStorageStats() {
