@@ -1172,85 +1172,20 @@
           <div class="folder-grid-compact" id="allFoldersListGrid"></div>
         </section>
 
+        <!-- 10. SYSTEM SETTINGS VIEW -->
         <section id="viewSettings" class="view-panel" style="display: none;">
           <div class="page-header">
-            <h2 class="welcome-title">Cài đặt Cổng Kết Nối AI Gateway</h2>
+            <h2 class="welcome-title">Cài đặt Hệ thống</h2>
           </div>
           <div class="table-card" style="padding: 24px;">
             <div
-              style="font-size: 13.5px; color: var(--slate-700); line-height: 1.8; margin-bottom: 20px; background: var(--slate-50); padding: 16px 20px; border-radius: 10px; border: 1px solid var(--slate-200);">
+              style="font-size: 13.5px; color: var(--slate-700); line-height: 1.8; margin-bottom: 0; background: var(--slate-50); padding: 16px 20px; border-radius: 10px; border: 1px solid var(--slate-200);">
               <p style="margin: 0 0 6px 0;">🏢 <strong>Phòng ban áp dụng:</strong> Phòng Kinh doanh & Dịch vụ Khách hàng
                 (Thủ Đức Water)</p>
               <p style="margin: 0 0 6px 0;">👑 <strong>Ban Quản trị Admin:</strong> waterain8n@gmail.com /
                 letuananh18@gmail.com</p>
               <p style="margin: 0;">⚡ <strong>Hạ tầng CSDL Cloud:</strong> Supabase PostgreSQL (Postgres Realtime Sync
                 Engine)</p>
-            </div>
-
-            <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--slate-200);">
-              <h3
-                style="font-size: 15px; font-weight: 800; color: var(--accent-blue); margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-                <span>🤖 Cấu hình Mã Khóa Trợ lý AI Engine</span>
-              </h3>
-              <p style="font-size: 12.5px; color: var(--slate-600); margin-bottom: 14px;">
-                Dán Mã Khóa Google Gemini Key hoặc OpenAI Key (`sk-...`) để kích hoạt Trợ lý AI đọc văn bản & phân tích
-                tự động:
-              </p>
-              <div style="display: flex; gap: 10px; max-width: 600px; flex-wrap: wrap;">
-                <div style="position: relative; flex: 1; min-width: 280px;">
-                  <input type="password" id="geminiApiKeyInput" class="form-input"
-                    placeholder="Dán Mã Khóa AI Engine tại đây..." style="padding: 10px 14px; width: 100%;">
-                </div>
-                <button id="btnSaveGeminiKey" class="btn-primary"
-                  style="padding: 10px 22px; font-size: 13px; width: auto; flex-shrink: 0; font-weight: 700;">Lưu Mã
-                  Khóa AI</button>
-              </div>
-              <div id="geminiKeyStatus" style="font-size: 12.5px; margin-top: 10px; font-weight: 700;"></div>
-            </div>
-
-            <!-- SUPABASE REALTIME N8N AI GATEWAY INTEGRATION -->
-            <div style="margin-top: 28px; padding-top: 22px; border-top: 1px dashed var(--slate-300);">
-              <h3
-                style="font-size: 15px; font-weight: 800; color: #0284c7; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
-                <span>⚡ Cấu hình Cổng Supabase Realtime AI Gateway (Kết nối n8n qua CSDL)</span>
-              </h3>
-              <p style="font-size: 12.5px; color: var(--slate-600); margin-bottom: 14px;">
-                Khi bật tính năng này, tất cả câu hỏi trên <strong>AI Assistant</strong> sẽ được tự động chèn vào bảng
-                Supabase <code>ai_chat_requests</code>. Node n8n của anh sẽ đọc từ Supabase, cho AI trả lời và
-                <code>Update a row</code>. Hệ thống sẽ tự động lắng nghe <strong>Postgres Realtime</strong> và hiển thị
-                câu trả lời ngay lập tức (Không sợ bị chặn CORS!):
-              </p>
-
-              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap;">
-                <label style="position: relative; display: inline-block; width: 46px; height: 24px; cursor: pointer;">
-                  <input type="checkbox" id="toggleSupabaseAiMode" style="opacity: 0; width: 0; height: 0;">
-                  <span id="sliderSupabaseAi"
-                    style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .3s; border-radius: 24px;"></span>
-                </label>
-                <span style="font-size: 13.5px; font-weight: 700; color: var(--slate-800);">Kích hoạt chế độ AI Gateway
-                  qua Supabase Realtime + n8n Engine</span>
-                <button id="btnTestSupabaseInsert" onclick="window.testSupabaseInsert && window.testSupabaseInsert()"
-                  class="btn-primary"
-                  style="padding: 6px 14px; font-size: 12px; width: auto; font-weight: 700; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; border-radius: 6px; margin-left: 10px;">🧪
-                  Test Ghi Dữ Liệu Vào Supabase</button>
-              </div>
-
-              <div id="supabaseAiStatus" style="font-size: 12.5px; margin-top: 8px; font-weight: 700;"></div>
-
-              <!-- SQL CREATION SCRIPT GUIDE -->
-              <details
-                style="margin-top: 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
-                <summary style="font-size: 12.5px; font-weight: 700; color: #0369a1; cursor: pointer;">📜 Xem đoạn mã
-                  SQL Mở Quyền Ghi (Tắt RLS) cho bảng 'ai_chat_requests' trên Supabase</summary>
-                <pre
-                  style="background: #0f172a; color: #38bdf8; padding: 12px; border-radius: 6px; font-size: 11.5px; font-family: monospace; overflow-x: auto; margin-top: 10px; white-space: pre-wrap;">
--- 1. Tắt RLS để bảng ai_chat_requests chuyển thành UNRESTRICTED (Giống tất cả các bảng khác trong dự án của anh)
-ALTER TABLE public.ai_chat_requests DISABLE ROW LEVEL SECURITY;
-
--- 2. Đảm bảo Kích hoạt tính năng PostgreSQL Realtime cho bảng
-ALTER PUBLICATION supabase_realtime ADD TABLE public.ai_chat_requests;
-                </pre>
-              </details>
             </div>
           </div>
         </section>
