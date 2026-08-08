@@ -19,7 +19,7 @@ class AiAnalyzerModule {
 
   setOpenAiKey(key) {
     this.openaiApiKey = (key || '').trim();
-    if (this.openaiApiKey) {
+    if (this.openaiApiKey && this.openaiApiKey.startsWith('sk-')) {
       localStorage.setItem('openai_api_key', this.openaiApiKey);
     } else {
       localStorage.removeItem('openai_api_key');
@@ -28,7 +28,15 @@ class AiAnalyzerModule {
 
   getOpenAiKey() {
     const defaultEnc = 'c2stcHJvai0zSVhPUTJDYUlnQVY2X1hOUWlCWTE5blByX1hILXVFRE1Ja3lfWDJMTzVxQTRyM3RiV1BrWndrb2UxOFJRXzB3ZGZQMTU0c2dNMlQzQmxia0ZKUWhLN0YyYy1jNlg0c0hnNkJZdnJEamtKeVdpVm94eGNMRmhIYkJ5ejZGQWwwaGhYUkZlU1FMMjUtZlZ1OUlhVTBtdHJYV2EzNEE=';
-    return this.openaiApiKey || localStorage.getItem('openai_api_key') || (typeof atob !== 'undefined' ? atob(defaultEnc) : '');
+    const defaultKey = typeof atob !== 'undefined' ? atob(defaultEnc) : '';
+
+    const stored = (localStorage.getItem('openai_api_key') || '').trim();
+    if (stored && stored.startsWith('sk-')) return stored;
+
+    const instanceKey = (this.openaiApiKey || '').trim();
+    if (instanceKey && instanceKey.startsWith('sk-')) return instanceKey;
+
+    return defaultKey;
   }
 
   async getArrayBufferFromSource(blobOrUrl) {
@@ -64,12 +72,16 @@ class AiAnalyzerModule {
   async queryOpenAiGptGateway(promptText) {
     const key = this.getOpenAiKey();
 
+    const cleanPrompt = String(promptText || '')
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, ' ')
+      .substring(0, 10000);
+
     // A. Primary Serverless API Route (/api/summarize) - Bypasses Browser CORS/Adblockers
     try {
       const serverlessRes = await fetch('/api/summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ promptText: promptText, customKey: key })
+        body: JSON.stringify({ promptText: cleanPrompt, customKey: key })
       });
 
       if (serverlessRes.ok) {
@@ -85,8 +97,8 @@ class AiAnalyzerModule {
     }
 
     // B. Direct OpenAI API Call (Fallback for static local testing)
-    if (!key) {
-      return { ok: false, error: "Chưa cấu hình Mã khóa OpenAI API Key." };
+    if (!key || !key.startsWith('sk-')) {
+      return { ok: false, error: "Chưa cấu hình Mã khóa OpenAI API Key hợp lệ (phải bắt đầu bằng sk-)." };
     }
 
     const systemPrompt = `Bạn là Trợ lý AI Chuyên gia Phân tích Văn bản của CÔNG TY CỔ PHẦN CẤP NƯỚC THỦ ĐỨC (Thủ Đức Water). Nhiệm vụ của bạn là đọc kỹ toàn bộ tệp đính kèm và trình bày một bản phân tích tóm tắt nội dung đầy đủ, chính xác, mạch lạc và chuyên nghiệp nhất cho người dùng. Hãy trình bày rõ ràng từng phần theo định dạng danh sách dễ đọc.`;
@@ -94,6 +106,7 @@ class AiAnalyzerModule {
     try {
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
+        mode: 'cors',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${key}`
@@ -102,7 +115,7 @@ class AiAnalyzerModule {
           model: 'gpt-4o-mini',
           messages: [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: promptText }
+            { role: 'user', content: cleanPrompt }
           ],
           max_tokens: 2000
         })

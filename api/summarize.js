@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
+    return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
   }
 
   try {
@@ -22,7 +22,15 @@ export default async function handler(req, res) {
 
     const defaultEnc = 'c2stcHJvai0zSVhPUTJDYUlnQVY2X1hOUWlCWTE5blByX1hILXVFRE1Ja3lfWDJMTzVxQTRyM3RiV1BrWndrb2UxOFJRXzB3ZGZQMTU0c2dNMlQzQmxia0ZKUWhLN0YyYy1jNlg0c0hnNkJZdnJEamtKeVdpVm94eGNMRmhIYkJ5ejZGQWwwaGhYUkZlU1FMMjUtZlZ1OUlhVTBtdHJYV2EzNEE=';
     const defaultKey = Buffer.from(defaultEnc, 'base64').toString('utf-8');
-    const key = (customKey || defaultKey).trim();
+
+    let key = (customKey || '').trim();
+    if (!key || !key.startsWith('sk-')) {
+      key = defaultKey;
+    }
+
+    const cleanPromptText = String(promptText)
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, ' ')
+      .substring(0, 10000);
 
     const systemPrompt = `Bạn là Trợ lý AI Chuyên gia Phân tích Văn bản của CÔNG TY CỔ PHẦN CẤP NƯỚC THỦ ĐỨC (Thủ Đức Water). Nhiệm vụ của bạn là đọc kỹ toàn bộ tệp đính kèm và trình bày một bản phân tích tóm tắt nội dung đầy đủ, chính xác, mạch lạc và chuyên nghiệp nhất cho người dùng. Hãy trình bày rõ ràng từng phần theo định dạng danh sách dễ đọc.`;
 
@@ -36,7 +44,7 @@ export default async function handler(req, res) {
         model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: promptText }
+          { role: 'user', content: cleanPromptText }
         ],
         max_tokens: 2000
       })
