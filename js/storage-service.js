@@ -34,6 +34,16 @@ class StorageService {
       } catch (e) {}
     }
 
+    // Deduplicate files and folders by id
+    if (this.files.length > 0) {
+      const seenF = new Set();
+      this.files = this.files.filter(f => f && f.id && !seenF.has(f.id) && seenF.add(f.id));
+    }
+    if (this.folders.length > 0) {
+      const seenFold = new Set();
+      this.folders = this.folders.filter(f => f && f.id && !seenFold.has(f.id) && seenFold.add(f.id));
+    }
+
     if (window.supabaseClient) {
       this.syncFoldersFromSupabase();
       this.syncFilesFromSupabase();
@@ -122,9 +132,10 @@ class StorageService {
       }
       if (data !== null) {
         const cloudFolders = data.map(f => this.normalizeFolderFromDb(f));
-        // Keep personal folders, but department folders are 100% authoritative from Supabase Cloud
-        const personalFolders = this.folders.filter(f => f.category === 'personal');
-        this.folders = [...cloudFolders, ...personalFolders];
+        const cloudFolderIds = new Set(cloudFolders.map(f => f.id));
+        const unSyncedLocalFolders = this.folders.filter(f => !cloudFolderIds.has(f.id));
+
+        this.folders = [...cloudFolders, ...unSyncedLocalFolders];
         this.saveLocal();
         this.notify();
       }
@@ -143,9 +154,10 @@ class StorageService {
       }
       if (data !== null) {
         const cloudFiles = data.map(f => this.normalizeFileFromDb(f));
-        // Keep personal files, but department files are 100% authoritative from Supabase Cloud
-        const personalFiles = this.files.filter(f => f.category === 'personal');
-        this.files = [...cloudFiles, ...personalFiles];
+        const cloudFileIds = new Set(cloudFiles.map(f => f.id));
+        const unSyncedLocalFiles = this.files.filter(f => !cloudFileIds.has(f.id));
+
+        this.files = [...cloudFiles, ...unSyncedLocalFiles];
         this.saveLocal();
         this.notify();
       }
