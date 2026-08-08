@@ -84,6 +84,7 @@ class AppController {
         this.bindPersonalFolderEvents();
         this.bindDeptFilterEvents();
         this.bindProcessFilterEvents();
+        this.bindFormFilterEvents();
         this.bindGlobalModalEvents();
         this.bindChatEvents();
         this.bindAiEvents();
@@ -285,6 +286,35 @@ class AppController {
           document.querySelector('.sidebar')?.classList.remove('mobile-open');
           document.getElementById('sidebarOverlay')?.classList.remove('mobile-open');
         }
+      }
+
+      // Universal click handler for all "Back to root folder" buttons
+      const backDept = e.target.closest('#btnBackToRootFolder');
+      if (backDept) {
+        this.currentDeptFolderId = null;
+        this.renderCurrentView();
+        return;
+      }
+
+      const backProc = e.target.closest('#btnBackToProcessRootFolder');
+      if (backProc) {
+        this.currentProcessFolderId = null;
+        this.renderCurrentView();
+        return;
+      }
+
+      const backForm = e.target.closest('#btnBackToFormRootFolder');
+      if (backForm) {
+        this.currentFormFolderId = null;
+        this.renderCurrentView();
+        return;
+      }
+
+      const backPersonal = e.target.closest('#btnBackToPersonalRootFolder');
+      if (backPersonal) {
+        this.currentPersonalFolderId = null;
+        this.renderCurrentView();
+        return;
       }
     });
   }
