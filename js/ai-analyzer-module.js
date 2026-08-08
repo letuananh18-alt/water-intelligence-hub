@@ -32,25 +32,33 @@ class AiAnalyzerModule {
     return this.openaiApiKey || localStorage.getItem('openai_api_key') || '';
   }
 
+  async getArrayBufferFromSource(blobOrUrl) {
+    if (!blobOrUrl) return null;
+    try {
+      if (blobOrUrl instanceof Blob) return await blobOrUrl.arrayBuffer();
+      if (blobOrUrl instanceof ArrayBuffer) return blobOrUrl;
+      if (typeof blobOrUrl === 'string' && blobOrUrl.length > 0) {
+        const resp = await fetch(blobOrUrl);
+        return await resp.arrayBuffer();
+      }
+    } catch (e) {
+      console.warn("ArrayBuffer extraction notice:", e);
+    }
+    return null;
+  }
+
   // 1. CONVERT PDF PAGE TO HIGH-RES JPEG BASE64 IMAGE FOR VISION OCR
   async convertPdfPageToImageBase64(blobOrUrl, pageNum = 1) {
     try {
       if (!window.pdfjsLib) return null;
       window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-      let arrayBuffer;
-      if (typeof blobOrUrl === 'string' && blobOrUrl.startsWith('http')) {
-        const resp = await fetch(blobOrUrl);
-        arrayBuffer = await resp.arrayBuffer();
-      } else if (blobOrUrl instanceof Blob) {
-        arrayBuffer = await blobOrUrl.arrayBuffer();
-      } else {
-        return null;
-      }
+      const arrayBuffer = await this.getArrayBufferFromSource(blobOrUrl);
+      if (!arrayBuffer) return null;
 
       const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       const page = await pdf.getPage(Math.min(pageNum, pdf.numPages));
-      
+
       const viewport = page.getViewport({ scale: 1.5 }); // High-quality 1.5x zoom for sharp vision reading
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d');
@@ -317,15 +325,8 @@ class AiAnalyzerModule {
       if (!window.pdfjsLib) return { text: "", numPages: 1 };
       window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-      let arrayBuffer;
-      if (typeof blobOrUrl === 'string' && blobOrUrl.startsWith('http')) {
-        const resp = await fetch(blobOrUrl);
-        arrayBuffer = await resp.arrayBuffer();
-      } else if (blobOrUrl instanceof Blob) {
-        arrayBuffer = await blobOrUrl.arrayBuffer();
-      } else {
-        return { text: "", numPages: 1 };
-      }
+      const arrayBuffer = await this.getArrayBufferFromSource(blobOrUrl);
+      if (!arrayBuffer) return { text: "", numPages: 1 };
 
       const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       let fullText = "";
@@ -336,7 +337,7 @@ class AiAnalyzerModule {
         const textContent = await page.getTextContent();
         const pageText = textContent.items.map(item => item.str).join(' ').trim();
         if (pageText) {
-          fullText += pageText + " ";
+          fullText += pageText + "\n";
         }
       }
 
@@ -457,15 +458,16 @@ class AiAnalyzerModule {
     let pageBase64Image = null;
 
     // A. Extract Text & Render PDF Page 1 to Crisp High-Res JPEG Image
-    if (ext === 'pdf') {
-      const pdfRes = await this.extractTextFromPdfBlob(rawBlob || fileObj.url);
+    const pdfSource = rawBlob || fileObj.rawBlob || fileObj.dataUrl || fileObj.url;
+    if (ext === 'pdf' || (fileObj.type && fileObj.type.includes('pdf'))) {
+      const pdfRes = await this.extractTextFromPdfBlob(pdfSource);
       extractedText = pdfRes.text;
       totalPdfPages = pdfRes.numPages;
 
       // Render Page 1 to Canvas JPEG Base64 for Vision OCR
-      pageBase64Image = await this.convertPdfPageToImageBase64(rawBlob || fileObj.url, 1);
-    } else if (ext === 'docx' || ext === 'doc') {
-      extractedText = await this.extractTextFromDocxBlob(rawBlob);
+      pageBase64Image = await this.convertPdfPageToImageBase64(pdfSource, 1);
+    } else if (ext === 'docx' || ext === 'doc' || (fileObj.type && fileObj.type.includes('word'))) {
+      extractedText = await this.extractTextFromDocxBlob(pdfSource);
     } else if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
       pageBase64Image = fileObj.dataUrl || fileObj.url;
     }

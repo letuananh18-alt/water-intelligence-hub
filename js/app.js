@@ -1303,6 +1303,11 @@ class AppController {
           file = { id: this.currentPreviewFileId || Date.now(), name: fileName, type: fileName.split('.').pop() || 'pdf' };
         }
 
+        const docIframe = document.querySelector('#docViewerContainer iframe');
+        if (docIframe && docIframe.src) {
+          if (!file.url || file.url === '#') file.url = docIframe.src.replace('#toolbar=1', '');
+        }
+
         const rawFile = this.currentPreviewFileId ? window.storageService.getRawFile(this.currentPreviewFileId) : null;
         const modal = document.getElementById('aiDocAnalyzerModal');
         const titleEl = document.getElementById('aiAnalyzerModalTitle');
