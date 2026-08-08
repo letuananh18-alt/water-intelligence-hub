@@ -21,6 +21,43 @@ function highlightSearchTerm(text, query) {
   return escapedText.replace(regex, '<mark class="search-highlight">$1</mark>');
 }
 
+function formatBotChatMarkdownHtml(rawText) {
+  if (!rawText || typeof rawText !== 'string') return '';
+
+  let text = rawText;
+
+  // 1. Convert Dify combo triple asterisks like '***Trực tiếp:**' -> '- **Trực tiếp:**'
+  text = text.replace(/^\*\*\*(.*?)\*\*/gim, '- **$1**');
+
+  // 2. Headings (### Title -> Clean h4 title)
+  text = text.replace(/^#{1,6}\s+(.*$)/gim, '<h4 style="font-size: 14.5px; font-weight: 800; color: #0284c7; margin-top: 14px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1.5px solid #e0f2fe; display: flex; align-items: center; gap: 6px;"><span>📄</span> <span>$1</span></h4>');
+
+  // 3. Bold-Italic (***text***)
+  text = text.replace(/\*\*\*(.*?)\*\*\*/g, '<strong style="color: #0f172a; font-weight: 700;"><em>$1</em></strong>');
+
+  // 4. Bold text (**text**)
+  text = text.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #0f172a; font-weight: 700;">$1</strong>');
+
+  // 5. Italic text (*text*)
+  text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+  // 6. Numbered list items (e.g. 1. **Title**: text or 1. Title)
+  text = text.replace(/^(\d+)\.\s+(.*)$/gim, '<div style="margin-top: 8px; margin-bottom: 6px; font-size: 13.5px; line-height: 1.6;"><span style="font-weight: 800; color: #0284c7; margin-right: 6px;">$1.</span><span style="color: #1e293b;">$2</span></div>');
+
+  // 7. Bullet list items (- text or * text)
+  text = text.replace(/^[*-]\s+(.*)$/gim, '<div style="font-size: 13.5px; color: #334155; line-height: 1.6; margin-bottom: 4px; padding-left: 12px; border-left: 3px solid #38bdf8;">• $1</div>');
+
+  // 8. Line breaks & paragraphs
+  text = text.replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+
+  // Clean trailing linebreaks after block tags
+  text = text.replace(/<\/div><br>/g, '</div>').replace(/<\/h4><br>/g, '</h4>');
+
+  return text;
+}
+window.formatBotChatMarkdownHtml = formatBotChatMarkdownHtml;
+
+
 class AppController {
   constructor() {
     this.currentView = 'dashboard';
@@ -1980,9 +2017,13 @@ class AppController {
           document.getElementById(loadingId)?.remove();
 
           if (response.ok && data.answer) {
+            const formattedAnswer = formatBotChatMarkdownHtml(data.answer);
             chatMessages.innerHTML += `
-              <div style="background: #ffffff; border: 1px solid #e2e8f0; color: #1e293b; padding: 14px 18px; border-radius: 12px; font-size: 13.5px; max-width: 85%; box-shadow: 0 2px 5px rgba(0,0,0,0.03); margin-bottom: 12px;">
-                <strong>🤖 Trợ lý AI Dify:</strong><br><br>${data.answer.replace(/\n/g, '<br>')}
+              <div style="background: #ffffff; border: 1px solid #e2e8f0; color: #1e293b; padding: 16px 20px; border-radius: 12px; font-size: 13.5px; max-width: 88%; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 12px; line-height: 1.6;">
+                <div style="font-size: 12px; font-weight: 800; color: #0284c7; margin-bottom: 10px; text-transform: uppercase; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                  🤖 TRỢ LÝ AI DIFY THỦ ĐỨC WATER
+                </div>
+                <div>${formattedAnswer}</div>
               </div>
             `;
           } else {
@@ -2013,23 +2054,6 @@ class AppController {
   renderAiChat() {
     const area = document.getElementById('aiChatArea');
     if (!area || !window.aiAssistant) return;
-
-    const formatBotChatMarkdownHtml = (rawText) => {
-      if (!rawText) return '';
-
-      return rawText
-        // Remove raw markdown headings (### Title -> Clean h4 title)
-        .replace(/^#{1,6}\s+(.*$)/gim, '<h4 style="font-size: 14.5px; font-weight: 800; color: #0284c7; margin-top: 14px; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1.5px solid #e0f2fe; display: flex; align-items: center; gap: 6px;"><span>📄</span> <span>$1</span></h4>')
-        // Bold text (**text**)
-        .replace(/\*\*(.*?)\*\*/g, '<strong style="color: #0f172a; font-weight: 700;">$1</strong>')
-        // Numbered list items (1. **Title**: text)
-        .replace(/^\d+\.\s+\*\*(.*?)\*\*(.*)$/gim, '<div style="margin-top: 10px; margin-bottom: 6px; font-size: 13.5px;"><span style="font-weight: 800; color: #0369a1;">▶ $1</span><span style="color: #334155;">$2</span></div>')
-        // Bullet list items (- or *)
-        .replace(/^[*-]\s+(.*)$/gim, '<div style="font-size: 13.5px; color: #334155; line-height: 1.6; margin-bottom: 4px; padding-left: 10px; border-left: 3px solid #38bdf8;">• $1</div>')
-        // Line breaks & paragraphs
-        .replace(/\n\n/g, '<br><br>')
-        .replace(/\n/g, '<br>');
-    };
 
     const msgs = window.aiAssistant.getActiveMessages();
     area.innerHTML = msgs.map(m => {
