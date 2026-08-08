@@ -1,6 +1,6 @@
 // ==========================================================================
 // THU DUC WATER EXCLUSIVE OPENAI DOCUMENT ANALYZER MODULE
-// 100% Dedicated OpenAI API Integration (GPT-4o-mini Vision OCR)
+// 100% Dedicated OpenAI API Integration (Vercel Serverless Backend + Direct Gateway)
 // ==========================================================================
 
 class AiAnalyzerModule {
@@ -46,42 +46,7 @@ class AiAnalyzerModule {
     return null;
   }
 
-  // 1. CONVERT PDF PAGE TO LOW-SIZE JPEG BASE64 IMAGE FOR VISION OCR (MAX 600px, 0.4 QUALITY)
-  async convertPdfPageToImageBase64(blobOrUrl, pageNum = 1) {
-    try {
-      if (!window.pdfjsLib) return null;
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-      const arrayBuffer = await this.getArrayBufferFromSource(blobOrUrl);
-      if (!arrayBuffer) return null;
-
-      const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      const page = await pdf.getPage(Math.min(pageNum, pdf.numPages));
-
-      const viewport = page.getViewport({ scale: 1.0 });
-      const maxDim = 600;
-      let width = viewport.width;
-      let height = viewport.height;
-      if (width > maxDim || height > maxDim) {
-        const ratio = Math.min(maxDim / width, maxDim / height);
-        width = Math.round(width * ratio);
-        height = Math.round(height * ratio);
-      }
-
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      canvas.width = width;
-      canvas.height = height;
-
-      await page.render({ canvasContext: context, viewport: page.getViewport({ scale: width / viewport.width }) }).promise;
-      return canvas.toDataURL('image/jpeg', 0.4);
-    } catch (e) {
-      console.warn("PDF page to image conversion notice:", e);
-      return null;
-    }
-  }
-
-  // 2. MARKDOWN TO BEAUTIFUL HTML RENDERER
+  // 1. MARKDOWN TO BEAUTIFUL HTML RENDERER
   renderRawGptResponse(markdownText) {
     if (!markdownText) return '';
 
@@ -95,34 +60,39 @@ class AiAnalyzerModule {
     return `<div style="font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; font-size: 13.5px; color: #1e293b; line-height: 1.7; background: #ffffff; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">${formatted}</div>`;
   }
 
-  // 3. SOLE EXCLUSIVE DEDICATED OPENAI API DISPATCHER (RETRY & LIGHTWEIGHT PAYLOAD SAFEGUARD)
-  async queryOpenAiGptGateway(promptText, base64JpegImage = null) {
+  // 2. SOLE EXCLUSIVE DEDICATED OPENAI API DISPATCHER (VERCEL SERVERLESS + DIRECT FALLBACK)
+  async queryOpenAiGptGateway(promptText) {
     const key = this.getOpenAiKey();
+
+    // A. Primary Serverless API Route (/api/summarize) - Bypasses Browser CORS/Adblockers
+    try {
+      const serverlessRes = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ promptText: promptText, customKey: key })
+      });
+
+      if (serverlessRes.ok) {
+        const data = await serverlessRes.json();
+        if (data && data.ok && data.answer) {
+          return { ok: true, answer: data.answer };
+        } else if (data && data.error) {
+          return { ok: false, error: data.error };
+        }
+      }
+    } catch (e) {
+      console.warn("Vercel Serverless /api/summarize notice, falling back to direct OpenAI fetch:", e);
+    }
+
+    // B. Direct OpenAI API Call (Fallback for static local testing)
     if (!key) {
       return { ok: false, error: "Chưa cấu hình Mã khóa OpenAI API Key." };
     }
 
     const systemPrompt = `Bạn là Trợ lý AI Chuyên gia Phân tích Văn bản của CÔNG TY CỔ PHẦN CẤP NƯỚC THỦ ĐỨC (Thủ Đức Water). Nhiệm vụ của bạn là đọc kỹ toàn bộ tệp đính kèm và trình bày một bản phân tích tóm tắt nội dung đầy đủ, chính xác, mạch lạc và chuyên nghiệp nhất cho người dùng. Hãy trình bày rõ ràng từng phần theo định dạng danh sách dễ đọc.`;
 
-    const makeFetchRequest = async (useImagePayload) => {
-      const messages = [
-        { role: "system", content: systemPrompt }
-      ];
-
-      if (useImagePayload && base64JpegImage && base64JpegImage.length > 50 && base64JpegImage.length < 500000) {
-        const imageUrl = base64JpegImage.startsWith('data:') ? base64JpegImage : `data:image/jpeg;base64,${base64JpegImage}`;
-        messages.push({
-          role: "user",
-          content: [
-            { type: "text", text: promptText },
-            { type: "image_url", image_url: { url: imageUrl, detail: "low" } }
-          ]
-        });
-      } else {
-        messages.push({ role: "user", content: promptText });
-      }
-
-      return await fetch('https://api.openai.com/v1/chat/completions', {
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -130,20 +100,13 @@ class AiAnalyzerModule {
         },
         body: JSON.stringify({
           model: 'gpt-4o-mini',
-          messages: messages,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: promptText }
+          ],
           max_tokens: 2000
         })
       });
-    };
-
-    try {
-      let response;
-      try {
-        response = await makeFetchRequest(true);
-      } catch (firstErr) {
-        console.warn("Failed to fetch with image payload, retrying text-only payload:", firstErr);
-        response = await makeFetchRequest(false);
-      }
 
       const data = await response.json();
 
@@ -154,12 +117,12 @@ class AiAnalyzerModule {
         return { ok: false, error: errDetail };
       }
     } catch (e) {
-      console.warn("OpenAI API Exception:", e);
+      console.warn("Direct OpenAI API Exception:", e);
       return { ok: false, error: `Lỗi kết nối mạng: ${e.message || 'Failed to fetch'}` };
     }
   }
 
-  // 4. EXTRACT TEXT FROM PDF USING PDF.JS
+  // 3. EXTRACT TEXT FROM PDF USING PDF.JS
   async extractTextFromPdfBlob(blobOrUrl) {
     try {
       if (!window.pdfjsLib) return { text: "", numPages: 1 };
@@ -188,7 +151,7 @@ class AiAnalyzerModule {
     }
   }
 
-  // 5. EXTRACT TEXT FROM DOCX USING MAMMOTH.JS
+  // 4. EXTRACT TEXT FROM DOCX USING MAMMOTH.JS
   async extractTextFromDocxBlob(blobOrArrayBuffer) {
     try {
       if (!window.mammoth) return "";
@@ -206,7 +169,7 @@ class AiAnalyzerModule {
     }
   }
 
-  // 6. MAIN DOCUMENT ANALYZER - EXCLUSIVELY VIA OPENAI API
+  // 5. MAIN DOCUMENT ANALYZER - EXCLUSIVELY VIA OPENAI API
   async analyzeDocument(fileObj, rawBlob = null) {
     if (!fileObj) return null;
 
@@ -214,33 +177,24 @@ class AiAnalyzerModule {
     let totalPdfPages = 1;
     const fileName = fileObj.name || "Tài liệu";
     const ext = fileName.split('.').pop().toLowerCase();
-    let pageBase64Image = null;
 
-    // Extract Text & Render PDF Page 1
+    // Extract Text from PDF or DOCX
     const pdfSource = rawBlob || fileObj.rawBlob || fileObj.dataUrl || fileObj.url;
     if (ext === 'pdf' || (fileObj.type && fileObj.type.includes('pdf'))) {
       const pdfRes = await this.extractTextFromPdfBlob(pdfSource);
       extractedText = pdfRes.text;
       totalPdfPages = pdfRes.numPages;
-
-      // Only generate base64 thumbnail image if extracted text is very short/scanned
-      if (!extractedText || extractedText.length < 30) {
-        pageBase64Image = await this.convertPdfPageToImageBase64(pdfSource, 1);
-      }
     } else if (ext === 'docx' || ext === 'doc' || (fileObj.type && fileObj.type.includes('word'))) {
       extractedText = await this.extractTextFromDocxBlob(pdfSource);
-    } else if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
-      pageBase64Image = fileObj.dataUrl || fileObj.url;
     }
 
     const cleanText = (extractedText || "").replace(/\s+/g, ' ').trim();
 
     const userPrompt = `Đọc và tóm tắt phân tích toàn bộ nội dung tệp "${fileName}":\n` +
-      (cleanText ? `Nội dung chữ trích xuất (${totalPdfPages} trang): "${cleanText.substring(0, 10000)}"` : `Đính kèm ảnh chụp sắc nét trang tài liệu scan.`);
+      (cleanText ? `Nội dung chữ trích xuất (${totalPdfPages} trang): "${cleanText.substring(0, 12000)}"` : `Tài liệu scan: ${fileName}. Hãy phân tích thông tin tài liệu.`);
 
-    // Send payload to OpenAI API (Lightweight text prompt if text extracted, or small thumbnail)
-    const imageToSend = (cleanText && cleanText.length > 30) ? null : pageBase64Image;
-    const aiResult = await this.queryOpenAiGptGateway(userPrompt, imageToSend);
+    // CALL ONLY OPENAI API
+    const aiResult = await this.queryOpenAiGptGateway(userPrompt);
 
     if (aiResult && aiResult.ok) {
       return {
