@@ -1232,40 +1232,14 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.ai_chat_requests;
       </div>
 
       <div
-        style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 10px;">
-        <span id="previewFileMeta" style="font-size: 12px; color: var(--slate-500);"></span>
+        style="display: flex; justify-content: flex-end; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 10px;">
+        <span id="previewFileMeta" style="font-size: 12px; color: var(--slate-500); margin-right: auto;"></span>
         <div style="display: flex; gap: 10px;">
-          <button id="btnAiSummarizeDoc" class="btn-primary"
-            style="padding: 10px 18px; font-size: 13px; background: linear-gradient(135deg, #0052CC 0%, #00B8D9 100%); width: auto;">
-            <i data-lucide="bot" style="width: 16px; height: 16px;"></i>
-            <span>Trợ lý AI Phân tích Tóm tắt</span>
-          </button>
           <a href="#" id="previewDownloadBtn" class="btn-primary"
             style="padding: 10px 20px; font-size: 13.5px; width: auto;">
             <i data-lucide="download" style="width: 16px; height: 16px;"></i>
             <span>Tải tệp này về máy</span>
           </a>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- STANDALONE ISOLATED AI DOCUMENT ANALYZER MODAL -->
-  <div id="aiDocAnalyzerModal" class="modal-backdrop" style="display: none;">
-    <div class="modal-content" style="max-width: 680px; width: 92%; border-radius: 16px;">
-      <div class="modal-header">
-        <h3 id="aiAnalyzerModalTitle" class="modal-title" style="color: var(--accent-blue);">🤖 Báo cáo Phân tích Trợ lý
-          AI Thủ Đức Water</h3>
-        <i data-lucide="x" class="close-btn" id="closeAiAnalyzerModalBtn"></i>
-      </div>
-      <div style="padding: 14px 0;">
-        <div id="aiAnalyzerStatusMode"
-          style="font-size: 12px; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 8px 14px; border-radius: 8px; margin-bottom: 14px;">
-          ⌛ Đang kết nối Trợ lý AI để phân tích tệp...
-        </div>
-        <div id="aiAnalyzerResultBody"
-          style="background: white; border: 1px solid var(--slate-200); padding: 18px; border-radius: 12px; max-height: 440px; overflow-y: auto;">
-          <!-- Dynamically populated by ai-analyzer-module.js -->
         </div>
       </div>
     </div>
@@ -1376,10 +1350,6 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.ai_chat_requests;
   <!-- Official Supabase v2 SDK Library -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- PDF.js & Mammoth.js for PDF/Word AI Analysis & Vision OCR -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-
   <!-- Application Logic with Supabase Backend -->
   <script src="js/supabase-config.js?v=20260802_v175"></script>
   <script src="js/tech-bg.js?v=20260802_v175"></script>
@@ -1387,7 +1357,6 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.ai_chat_requests;
   <script src="js/storage-service.js?v=20260802_v175"></script>
   <script src="js/chat-service.js?v=20260802_v175"></script>
   <script src="js/ai-assistant.js?v=20260802_v175"></script>
-  <script src="js/ai-analyzer-module.js?v=20260802_v175"></script>
   <script src="js/app.js?v=20260802_v175"></script>
 </body>
 
