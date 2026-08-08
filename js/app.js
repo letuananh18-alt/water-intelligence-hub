@@ -159,7 +159,7 @@ class AppController {
     if (window.lucide) {
       try {
         window.lucide.createIcons();
-      } catch (e) {}
+      } catch (e) { }
     }
   }
 
@@ -292,7 +292,7 @@ class AppController {
     if (!window.storageService) return;
     const stats = window.storageService.getStorageStats();
     const deptFiles = window.storageService.getFiles('department');
-    
+
     const elTotal = document.getElementById('statTotalFiles');
     if (elTotal) elTotal.textContent = stats.totalFiles.toLocaleString();
 
@@ -759,10 +759,10 @@ class AppController {
 
         let adminActionsHtml = '<span style="color: var(--slate-400); font-size: 12px; font-style: italic;">Master Admin</span>';
         if (isAdmin && !isMasterAdmin) {
-          const toggleBlockBtn = uStatus === 'blocked' ? 
-            `<button class="table-btn btn-unblock-user" data-email="${escapeHTML(u.email)}" style="padding: 4px 10px; font-size: 11px; background: #0284c7; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer;">🔓 Mở Khóa</button>` : 
+          const toggleBlockBtn = uStatus === 'blocked' ?
+            `<button class="table-btn btn-unblock-user" data-email="${escapeHTML(u.email)}" style="padding: 4px 10px; font-size: 11px; background: #0284c7; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer;">🔓 Mở Khóa</button>` :
             `<button class="table-btn btn-block-user" data-email="${escapeHTML(u.email)}" style="padding: 4px 10px; font-size: 11px; background: #ef4444; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer;">⛔ Khóa</button>`;
-          
+
           const deleteBtn = `<button class="table-btn table-btn-delete btn-delete-user" data-email="${escapeHTML(u.email)}" style="padding: 4px 10px; font-size: 11px; border-radius: 6px; font-weight: 700; cursor: pointer;">🗑️ Xóa</button>`;
 
           adminActionsHtml = `
@@ -1014,7 +1014,7 @@ class AppController {
 
         const docType = document.getElementById('modalDocTypeSelect')?.value || 'Hợp đồng cấp nước';
         const statusTag = document.getElementById('modalStatusTagSelect')?.value || '🟢 Đã ban hành';
-        
+
         const deptFolders = window.storageService.getFolders('department');
         const targetFolderId = this.currentDeptFolderId || (deptFolders[0] ? deptFolders[0].id : null);
         const filesToUpload = [...this.pendingUploadFiles];
@@ -1328,7 +1328,7 @@ class AppController {
           const previewMeta = document.getElementById('previewFileMeta');
           const downloadBtn = document.getElementById('previewDownloadBtn');
           const modal = document.getElementById('filePreviewModal');
-          
+
           const rawFile = window.storageService.getRawFile(id);
           let fileSrc = file.dataUrl || file.url;
           if (rawFile && (!fileSrc || fileSrc === "#")) {
@@ -1368,14 +1368,14 @@ class AppController {
                   <img src="${imageSource}" alt="${escapeHTML(file.name)}" style="max-width: 100%; max-height: 480px; border-radius: 8px; box-shadow: var(--shadow-md); object-fit: contain;">
                 </div>
               `;
-            } 
+            }
             else if (isPdf && fileSrc && fileSrc !== "#") {
               docViewer.innerHTML = `
                 <div style="width: 100%; height: 500px;">
                   <iframe src="${fileSrc}#toolbar=1" width="100%" height="100%" style="border: none; border-radius: 8px;"></iframe>
                 </div>
               `;
-            } 
+            }
             else if (isDocx) {
               docViewer.innerHTML = `
                 <div style="text-align: center; padding: 50px 20px; color: var(--accent-blue);">
@@ -1425,7 +1425,7 @@ class AppController {
                   try {
                     const buffer = await rawFile.arrayBuffer();
                     success = await tryConvertArrayBuffer(buffer);
-                  } catch (e) {}
+                  } catch (e) { }
                 }
 
                 if (!success && file.dataUrl && file.dataUrl.includes('base64,')) {
@@ -1438,7 +1438,7 @@ class AppController {
                       bytes[i] = binaryStr.charCodeAt(i);
                     }
                     success = await tryConvertArrayBuffer(bytes.buffer);
-                  } catch (e) {}
+                  } catch (e) { }
                 }
 
                 if (!success && file.url && file.url !== "#") {
@@ -1446,7 +1446,7 @@ class AppController {
                     const resp = await fetch(file.url);
                     const buffer = await resp.arrayBuffer();
                     success = await tryConvertArrayBuffer(buffer);
-                  } catch (e) {}
+                  } catch (e) { }
                 }
 
                 if (!success) {
@@ -1477,7 +1477,7 @@ class AppController {
                 `;
               };
               reader.readAsText(rawFile);
-            } 
+            }
             else {
               docViewer.innerHTML = `
                 <div class="doc-reader-paper">
@@ -1531,7 +1531,7 @@ class AppController {
         return;
       }
       if (!createModal) return;
-      
+
       // Populate member checkboxes
       const realUsers = window.chatService ? window.chatService.getRealDirectUsers() : [];
       if (membersListEl) {
@@ -1610,7 +1610,7 @@ class AppController {
       if (file) {
         let formattedSize = (file.size / 1024).toFixed(1) + ' KB';
         if (file.size > 1024 * 1024) formattedSize = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
-        
+
         this.pendingChatAttachment = {
           name: file.name,
           size: formattedSize,
@@ -1834,7 +1834,7 @@ class AppController {
         const targetId = item.getAttribute('data-target');
         document.querySelectorAll('[data-target]').forEach(i => i.classList.remove('active'));
         item.classList.add('active');
-        
+
         // Show chat window on mobile when a room is selected
         document.querySelector('.team-chat-container')?.classList.add('mobile-show-chat');
 
@@ -1928,50 +1928,85 @@ class AppController {
     listEl.scrollTop = listEl.scrollHeight;
   }
 
-  bindAiEvents() {
-    const btnSend = document.getElementById('btnSendAiChat');
-    const aiInput = document.getElementById('aiChatInput');
-    const btnNewChat = document.getElementById('btnNewAiChat');
-    const btnClearHistory = document.getElementById('btnClearAiHistory');
 
-    const handleSend = () => {
-      if (aiInput && aiInput.value.trim()) {
-        window.aiAssistant.askQuestion(aiInput.value);
+  bindAiEvents() {
+    const btnSend = document.getElementById('difySendBtn') || document.getElementById('btnSendAiChat');
+    const aiInput = document.getElementById('difyInputQuery') || document.getElementById('aiChatInput');
+    const chatMessages = document.getElementById('difyChatMessages') || document.getElementById('aiChatArea');
+
+    const DIFY_API_URL = 'https://api.dify.ai/v1/chat-messages';
+    const DIFY_API_KEY = 'Bearer app-ySiiYNuV5BxrM29po2dQkOX7';
+
+    const handleSendDify = async () => {
+      const queryText = aiInput?.value.trim();
+      if (!queryText) return;
+
+      // 1. Hiển thị câu hỏi của User
+      if (chatMessages) {
+        chatMessages.innerHTML += `
+          <div style="background: #0284c7; color: white; padding: 12px 16px; border-radius: 12px; font-size: 13.5px; max-width: 80%; margin-left: auto; text-align: right; margin-bottom: 12px;">
+            ${queryText}
+          </div>
+        `;
         aiInput.value = '';
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // 2. Trạng thái đang tải
+        const loadingId = 'loading_' + Date.now();
+        chatMessages.innerHTML += `
+          <div id="${loadingId}" style="background: #f1f5f9; color: #64748b; padding: 10px 14px; border-radius: 12px; font-size: 13px; max-width: 60%; margin-bottom: 12px;">
+            🤖 Trợ lý AI Dify đang suy nghĩ...
+          </div>
+        `;
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        try {
+          // 3. Gọi Service API của Dify
+          const response = await fetch(DIFY_API_URL, {
+            method: 'POST',
+            headers: {
+              'Authorization': DIFY_API_KEY,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              inputs: {},
+              query: queryText,
+              response_mode: "blocking",
+              user: "tuan_anh_admin"
+            })
+          });
+
+          const data = await response.json();
+          document.getElementById(loadingId)?.remove();
+
+          if (response.ok && data.answer) {
+            chatMessages.innerHTML += `
+              <div style="background: #ffffff; border: 1px solid #e2e8f0; color: #1e293b; padding: 14px 18px; border-radius: 12px; font-size: 13.5px; max-width: 85%; box-shadow: 0 2px 5px rgba(0,0,0,0.03); margin-bottom: 12px;">
+                <strong>🤖 Trợ lý AI Dify:</strong><br><br>${data.answer.replace(/\n/g, '<br>')}
+              </div>
+            `;
+          } else {
+            chatMessages.innerHTML += `
+              <div style="background: #fee2e2; color: #dc2626; padding: 10px 14px; border-radius: 12px; font-size: 13px; margin-bottom: 12px;">
+                ⚠️ Lỗi từ Dify API: ${data.message || 'Không thể kết nối.'}
+              </div>
+            `;
+          }
+        } catch (error) {
+          document.getElementById(loadingId)?.remove();
+          chatMessages.innerHTML += `
+            <div style="background: #fee2e2; color: #dc2626; padding: 10px 14px; border-radius: 12px; font-size: 13px; margin-bottom: 12px;">
+              ⚠️ Lỗi kết nối mạng đến Dify API.
+            </div>
+          `;
+        }
+        chatMessages.scrollTop = chatMessages.scrollHeight;
       }
     };
 
-    btnSend?.addEventListener('click', handleSend);
+    btnSend?.addEventListener('click', handleSendDify);
     aiInput?.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') handleSend();
-    });
-
-    btnNewChat?.addEventListener('click', () => {
-      if (window.aiAssistant) window.aiAssistant.clearHistory();
-    });
-
-    btnClearHistory?.addEventListener('click', () => {
-      if (window.aiAssistant) window.aiAssistant.clearHistory();
-    });
-
-    document.addEventListener('click', (e) => {
-      if (e.target.classList.contains('suggested-prompt-pill')) {
-        const text = e.target.textContent.replace(/^🔍|^📊|^📋|^📂/, '').trim();
-        window.aiAssistant.askQuestion(text);
-      }
-    });
-
-    // Thread item click listeners
-    const threadItems = document.querySelectorAll('#aiThreadList .thread-item');
-    threadItems.forEach(item => {
-      item.addEventListener('click', () => {
-        threadItems.forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
-        const text = item.textContent.trim();
-        if (window.aiAssistant) {
-          window.aiAssistant.askQuestion(`Tra cứu thông tin về: ${text}`);
-        }
-      });
+      if (e.key === 'Enter') handleSendDify();
     });
   }
 
@@ -2036,12 +2071,12 @@ class AppController {
 
   renderReports() {
     const deptFiles = window.storageService ? window.storageService.getFiles('department') : [];
-    
+
     // 1. Calculate Summary Metrics
     const totalCount = deptFiles.length;
     const contractCount = deptFiles.filter(f => (f.docType || '').includes('Hợp đồng')).length;
     const processCount = deptFiles.filter(f => (f.docType || '').includes('Quy trình') || (f.docType || '').includes('Biểu giá')).length;
-    
+
     let totalSizeBytes = 0;
     deptFiles.forEach(f => {
       totalSizeBytes += (f.sizeInBytes || 1024 * 500);
@@ -2147,7 +2182,7 @@ class AppController {
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `Bao_Cao_Thong_Ke_Kho_KDDVKH_${new Date().toISOString().slice(0,10)}.csv`);
+      link.setAttribute("download", `Bao_Cao_Thong_Ke_Kho_KDDVKH_${new Date().toISOString().slice(0, 10)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -2170,8 +2205,8 @@ class AppController {
       }
       if (statusEl) {
         if (savedKey) {
-          statusEl.innerHTML = savedKey.startsWith('sk-') ? 
-            `<span style="color: #10b981; display: inline-flex; align-items: center; gap: 4px;">✅ Đã kích hoạt OpenAI ChatGPT Key (${savedKey.slice(0, 7)}...)</span>` : 
+          statusEl.innerHTML = savedKey.startsWith('sk-') ?
+            `<span style="color: #10b981; display: inline-flex; align-items: center; gap: 4px;">✅ Đã kích hoạt OpenAI ChatGPT Key (${savedKey.slice(0, 7)}...)</span>` :
             `<span style="color: #10b981; display: inline-flex; align-items: center; gap: 4px;">✅ Đã kích hoạt Google Gemini AI Key (${savedKey.slice(0, 6)}...)</span>`;
         } else {
           statusEl.innerHTML = `<span style="color: #64748b;">ℹ️ Chưa dán Mã Khóa AI Engine tùy chỉnh (Đang dùng Key mặc định của hệ thống)</span>`;
@@ -2213,7 +2248,7 @@ class AppController {
 
     toggleSupabaseAi?.addEventListener('change', async (e) => {
       const isChecked = e.target.checked;
-      
+
       if (isChecked && window.aiAnalyzerModule) {
         const tableExists = await window.aiAnalyzerModule.checkSupabaseAiTable();
         if (!tableExists) {
@@ -2244,7 +2279,7 @@ class AppController {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       if (!AudioContext) return;
       const ctx = new AudioContext();
-      
+
       const osc1 = ctx.createOscillator();
       const gain1 = ctx.createGain();
       osc1.type = 'sine';
@@ -2268,7 +2303,7 @@ class AppController {
         osc2.start();
         osc2.stop(ctx.currentTime + 0.4);
       }, 100);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   handleIncomingMessageNotif(message, targetId) {
@@ -2285,7 +2320,7 @@ class AppController {
             body: message.text || 'Đã gửi một tệp đính kèm',
             icon: 'assets/logo.png'
           });
-        } catch (e) {}
+        } catch (e) { }
       }
     }
 
@@ -2349,7 +2384,7 @@ class AppController {
 new AppController();
 
 // Global Handler to test Supabase Data Insertion directly
-window.testSupabaseInsert = async function() {
+window.testSupabaseInsert = async function () {
   const btn = document.getElementById('btnTestSupabaseInsert');
   if (btn) {
     btn.disabled = true;
