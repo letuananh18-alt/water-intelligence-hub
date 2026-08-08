@@ -1286,40 +1286,59 @@ class AppController {
     });
 
     // Nút AI Tóm Tắt 3 Giây - Kết nối Module AI Phân tích Độc lập (Không chạm đến Storage/DB)
-    document.getElementById('btnAiSummarizeDoc')?.addEventListener('click', async () => {
-      if (!this.currentPreviewFileId || !window.storageService || !window.aiAnalyzerModule) return;
-      const file = window.storageService.files.find(f => f.id === this.currentPreviewFileId);
-      const rawFile = window.storageService.getRawFile(this.currentPreviewFileId);
-      const btn = document.getElementById('btnAiSummarizeDoc');
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('#btnAiSummarizeDoc');
+      if (btn) {
+        e.preventDefault();
+        if (!window.storageService || !window.aiAnalyzerModule) return;
 
-      const modal = document.getElementById('aiDocAnalyzerModal');
-      const titleEl = document.getElementById('aiAnalyzerModalTitle');
-      const modeEl = document.getElementById('aiAnalyzerStatusMode');
-      const bodyEl = document.getElementById('aiAnalyzerResultBody');
+        let file = null;
+        if (this.currentPreviewFileId) {
+          file = window.storageService.files.find(f => String(f.id) === String(this.currentPreviewFileId));
+        }
 
-      if (file && modal && bodyEl) {
-        const originalBtnHtml = btn ? btn.innerHTML : '';
-        if (btn) {
+        if (!file) {
+          const modalTitle = document.getElementById('previewModalTitle')?.textContent || '';
+          const fileName = modalTitle.replace(/^Xem trực tiếp:\s*/i, '').trim() || 'Tài liệu';
+          file = { id: this.currentPreviewFileId || Date.now(), name: fileName, type: fileName.split('.').pop() || 'pdf' };
+        }
+
+        const rawFile = this.currentPreviewFileId ? window.storageService.getRawFile(this.currentPreviewFileId) : null;
+        const modal = document.getElementById('aiDocAnalyzerModal');
+        const titleEl = document.getElementById('aiAnalyzerModalTitle');
+        const modeEl = document.getElementById('aiAnalyzerStatusMode');
+        const bodyEl = document.getElementById('aiAnalyzerResultBody');
+
+        if (modal && bodyEl) {
+          const originalBtnHtml = btn.innerHTML;
           btn.disabled = true;
           btn.innerHTML = `<span style="font-size: 12px; color: white;">⌛ AI đang đọc file...</span>`;
+
+          if (titleEl) titleEl.textContent = `🤖 Phân tích AI Độc lập: ${file.name}`;
+          if (modeEl) modeEl.textContent = `⌛ PDF.js / Gemini Engine đang trích xuất chữ thực tế...`;
+          if (bodyEl) bodyEl.innerHTML = `<div style="text-align: center; padding: 30px; color: var(--slate-500);">⌛ Mắt thần AI đang giải mã từng trang tài liệu PDF / Word...</div>`;
+          modal.style.display = 'flex';
+
+          try {
+            const result = await window.aiAnalyzerModule.analyzeDocument(file, rawFile);
+            if (result) {
+              if (modeEl) modeEl.textContent = result.modeText || `⚡ Trích xuất hoàn tất.`;
+              if (bodyEl) bodyEl.innerHTML = result.contentHtml;
+            }
+          } catch (err) {
+            console.error("AI Analyzer error:", err);
+            if (bodyEl) bodyEl.innerHTML = `<div style="padding: 15px; color: #dc2626;">⚠️ Lỗi khi tóm tắt: ${err.message}</div>`;
+          } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalBtnHtml;
+          }
         }
+      }
 
-        if (titleEl) titleEl.textContent = `🤖 Phân tích AI Độc lập: ${file.name}`;
-        if (modeEl) modeEl.textContent = `⌛ PDF.js / Gemini Engine đang trích xuất chữ thực tế...`;
-        if (bodyEl) bodyEl.innerHTML = `<div style="text-align: center; padding: 30px; color: var(--slate-500);">⌛ Mắt thần AI đang giải mã từng trang tài liệu PDF / Word...</div>`;
-        modal.style.display = 'flex';
-
-        const result = await window.aiAnalyzerModule.analyzeDocument(file, rawFile);
-
-        if (btn) {
-          btn.disabled = false;
-          btn.innerHTML = originalBtnHtml;
-        }
-
-        if (result) {
-          if (modeEl) modeEl.textContent = result.modeText || `⚡ Trích xuất hoàn tất.`;
-          if (bodyEl) bodyEl.innerHTML = result.contentHtml;
-        }
+      // Nút Đóng Modal Phân tích AI
+      if (e.target.closest('#closeAiAnalyzerModalBtn') || e.target.id === 'aiDocAnalyzerModal') {
+        const modal = document.getElementById('aiDocAnalyzerModal');
+        if (modal) modal.style.display = 'none';
       }
     });
 
